@@ -5,73 +5,123 @@
     "lon": -121.975
   },
   {
-    "name": "PooPooPt",
-    "lat": 47.5,
-    "lon": -121.977
+    "name": "TigerHikeLookout",
+    "lat": 47.508,
+    "lon": -121.985
   },
   {
-    "name": "WestTiger3",
-    "lat": 47.49,
-    "lon": -121.995
+    "name": "TigerLZ",
+    "lat": 47.498,
+    "lon": -122.021
+  },
+  {
+    "name": "Poo_Poo_Point",
+    "lat": 47.49927,
+    "lon": -122.00819
+  },
+  {
+    "name": "West_Tiger_3",
+    "lat": 47.5119,
+    "lon": -121.99032
+  },
+  {
+    "name": "West_Tiger_2",
+    "lat": 47.50887,
+    "lon": -121.98513
+  },
+  {
+    "name": "West_Tiger_1",
+    "lat": 47.50394,
+    "lon": -121.97565
+  },
+  {
+    "name": "East_Tiger",
+    "lat": 47.48868,
+    "lon": -121.94691
+  },
+  {
+    "name": "Taylor_Mountain",
+    "lat": 47.45332,
+    "lon": -121.89468
+  },
+  {
+    "name": "Mitchell_Hill",
+    "lat": 47.55096,
+    "lon": -121.93743
+  },
+  {
+    "name": "Grand_Ridge_Park",
+    "lat": 47.55045,
+    "lon": -121.98245
+  },
+  {
+    "name": "Issaquah_Highlands",
+    "lat": 47.54634,
+    "lon": -122.00423
   },
   {
     "name": "Rattlesnake",
-    "lat": 47.434,
-    "lon": -121.782
+    "lat": 47.466792,
+    "lon": -121.823934
   },
   {
-    "name": "MailboxPk",
-    "lat": 47.467,
-    "lon": -121.674
+    "name": "Green_Mtn_Launch",
+    "lat": 47.5121111,
+    "lon": -121.6777222
   },
   {
-    "name": "SiMain",
-    "lat": 47.454,
-    "lon": -121.723
+    "name": "Green_Mtn_LZ",
+    "lat": 47.4874722,
+    "lon": -121.6756111
   },
   {
-    "name": "SiHaystack",
-    "lat": 47.46,
-    "lon": -121.707
+    "name": "MtSi",
+    "lat": 47.507751,
+    "lon": -121.739688
   },
   {
-    "name": "Teneriffe",
-    "lat": 47.488,
-    "lon": -121.711
+    "name": "Mt_Washington",
+    "lat": 47.426,
+    "lon": -121.69885
   },
   {
-    "name": "GreenMtn",
-    "lat": 47.483,
-    "lon": -121.649
+    "name": "SquakMountain",
+    "lat": 47.50434,
+    "lon": -122.04735
   },
   {
-    "name": "CedarButte",
-    "lat": 47.433,
-    "lon": -121.76
+    "name": "McDonald",
+    "lat": 47.33466,
+    "lon": -121.88212
   },
   {
-    "name": "SquakMtn",
-    "lat": 47.503,
-    "lon": -122.043
+    "name": "Carnation",
+    "lat": 47.64334,
+    "lon": -121.93639
   },
   {
-    "name": "CougarMtn",
-    "lat": 47.535,
-    "lon": -122.1
+    "name": "5_Mile",
+    "lat": 47.6145,
+    "lon": -121.691243
   },
   {
-    "name": "GrandRidge",
-    "lat": 47.527,
-    "lon": -121.948
+    "name": "Grand_Prospect",
+    "lat": 47.47162,
+    "lon": -121.82094
   },
   {
-    "name": "BanderaMtn",
-    "lat": 47.427,
-    "lon": -121.573
+    "name": "Bandera_Mountain",
+    "lat": 47.41984,
+    "lon": -121.55438
   },
   {
-    "name": "McClellanButte",
-    "lat": 47.405,
-    "lon": -121.608
+    "name": "Mailbox_Peak",
+    "lat": 47.46226,
+    "lon": -121.63947
+  },
+  {
+    "name": "Bergseth",
+    "lat": 47.243289,
+    "lon": -121.924084
   }
 ]
