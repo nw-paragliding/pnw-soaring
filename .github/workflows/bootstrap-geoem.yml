@@ -1,0 +1,81 @@
+name: Bootstrap geo_em files
+
+on:
+  workflow_dispatch:
+    inputs:
+      domain:
+        description: 'Domain config (nam or hrrr)'
+        required: true
+        default: 'nam'
+
+env:
+  IMAGE: ghcr.io/nw-paragliding/windgram:latest
+  GEOG_URL: https://www2.mmm.ucar.edu/wrf/src/wps_files/geog_low_res_mandatory.tar.gz
+
+jobs:
+  generate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      packages: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download GEOG data (low-res, ~3GB)
+        run: |
+          curl -L --progress-bar "$GEOG_URL" -o geog.tar.gz
+          mkdir -p geog
+          tar xzf geog.tar.gz -C geog --strip-components=1
+          rm geog.tar.gz
+          echo "GEOG size: $(du -sh geog | cut -f1)"
+
+      - name: Select domain config
+        run: |
+          if [ "${{ inputs.domain }}" = "hrrr" ]; then
+            echo "CONFIG=domains/cascades-hrrr-d01.yaml" >> $GITHUB_ENV
+            echo "CACHE_KEY=geo-em-cascades-hrrr-v1" >> $GITHUB_ENV
+          else
+            echo "CONFIG=domains/cascades.yaml" >> $GITHUB_ENV
+            echo "CACHE_KEY=geo-em-cascades-nam-v1" >> $GITHUB_ENV
+          fi
+
+      - name: Pull image
+        run: docker pull $IMAGE
+
+      - name: Run geogrid
+        run: |
+          mkdir -p geo_em
+          docker run --rm \
+            -v ${{ github.workspace }}/geog:/mnt/geog:ro \
+            -v ${{ github.workspace }}/geo_em:/mnt/output:rw \
+            -v ${{ github.workspace }}/${{ env.CONFIG }}:/opt/rasp/domain.yaml:ro \
+            --entrypoint bash \
+            $IMAGE -c "
+              python3 -m rasp.namelist_generator domain.yaml \
+                --date 2026-01-01 --cycle 00 \
+                --output-dir /opt/rasp/wps
+              cd /opt/rasp/wps
+              ./geogrid.exe
+              cp geo_em.d0*.nc /mnt/output/
+            "
+          echo "geo_em files:"
+          ls -lh geo_em/
+
+      - name: Cache geo_em files
+        uses: actions/cache/save@v4
+        with:
+          path: geo_em/
+          key: ${{ env.CACHE_KEY }}
+
+      - name: Upload as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: geo-em-${{ inputs.domain }}
+          path: geo_em/geo_em.d0*.nc
+          retention-days: 90
