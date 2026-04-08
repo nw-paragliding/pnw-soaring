@@ -76,7 +76,7 @@ jobs:
             "
 
       - name: Save geo_em cache
-        if: always()
+        if: hashFiles('geo_em/geo_em.d01.nc') != ''
         uses: actions/cache/save@v4
         with:
           path: geo_em/
