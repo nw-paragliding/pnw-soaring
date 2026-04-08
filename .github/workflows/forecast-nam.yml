@@ -2,8 +2,8 @@ name: Forecast (NAM)
 
 on:
   schedule:
-    - cron: '30 7 * * *'     # Evening: next-day planning (12:30am PDT)
-    - cron: '30 14 * * *'    # Morning: day-of update (7:30am PDT)
+    - cron: '0 5 * * *'     # Evening: next-day planning (10pm PDT, uses 00z NAM)
+    - cron: '30 16 * * *'   # Morning: day-of update (9:30am PDT, uses 12z NAM)
   workflow_dispatch:
     inputs:
       target_date:

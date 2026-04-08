@@ -2,7 +2,8 @@ name: Forecast (HRRR)
 
 on:
   schedule:
-    - cron: '30 15 * * *'
+    - cron: '0 5 * * *'       # Evening: next-day planning (10pm PDT)
+    - cron: '30 14 * * *'     # Morning: day-of rapid refresh (7:30am PDT)
   workflow_dispatch:
     inputs:
       target_date:
