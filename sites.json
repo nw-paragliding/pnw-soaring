@@ -1,0 +1,77 @@
+[
+  {
+    "name": "Tiger",
+    "lat": 47.503,
+    "lon": -121.975
+  },
+  {
+    "name": "PooPooPt",
+    "lat": 47.5,
+    "lon": -121.977
+  },
+  {
+    "name": "WestTiger3",
+    "lat": 47.49,
+    "lon": -121.995
+  },
+  {
+    "name": "Rattlesnake",
+    "lat": 47.434,
+    "lon": -121.782
+  },
+  {
+    "name": "MailboxPk",
+    "lat": 47.467,
+    "lon": -121.674
+  },
+  {
+    "name": "SiMain",
+    "lat": 47.454,
+    "lon": -121.723
+  },
+  {
+    "name": "SiHaystack",
+    "lat": 47.46,
+    "lon": -121.707
+  },
+  {
+    "name": "Teneriffe",
+    "lat": 47.488,
+    "lon": -121.711
+  },
+  {
+    "name": "GreenMtn",
+    "lat": 47.483,
+    "lon": -121.649
+  },
+  {
+    "name": "CedarButte",
+    "lat": 47.433,
+    "lon": -121.76
+  },
+  {
+    "name": "SquakMtn",
+    "lat": 47.503,
+    "lon": -122.043
+  },
+  {
+    "name": "CougarMtn",
+    "lat": 47.535,
+    "lon": -122.1
+  },
+  {
+    "name": "GrandRidge",
+    "lat": 47.527,
+    "lon": -121.948
+  },
+  {
+    "name": "BanderaMtn",
+    "lat": 47.427,
+    "lon": -121.573
+  },
+  {
+    "name": "McClellanButte",
+    "lat": 47.405,
+    "lon": -121.608
+  }
+]
