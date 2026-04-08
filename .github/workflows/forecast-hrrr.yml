@@ -63,7 +63,7 @@ jobs:
           docker run --rm \
             -v ${{ github.workspace }}/geo_em:/mnt/geo_em:ro \
             -v ${{ github.workspace }}/output:/mnt/output:rw \
-            -v ${{ github.workspace }}/domains/cascades-hrrr-native.yaml:/opt/rasp/domain.yaml:ro \
+            -v ${{ github.workspace }}/domains/cascades-hrrr-d01.yaml:/opt/rasp/domain.yaml:ro \
             -v ${{ github.workspace }}/sites/issaquah-sites.csv:/opt/rasp/sites.csv:ro \
             --entrypoint bash \
             $IMAGE -c "
