@@ -2,8 +2,11 @@ name: Forecast (HRRR)
 
 on:
   schedule:
-    - cron: '0 5 * * *'       # Evening: next-day planning (10pm PDT)
-    - cron: '30 14 * * *'     # Morning: day-of rapid refresh (7:30am PDT)
+    # Crons fire ~4h early to hedge GH Actions scheduling delays (typically 3-4h).
+    # Pipeline --not-before makes us sleep until the actual target time if we start early,
+    # so we always pick a fresh cycle regardless of whether GH delays us.
+    - cron: '0 1 * * *'       # Target 05:00 UTC (10pm PDT evening planning)
+    - cron: '0 11 * * *'      # Target 15:00 UTC (8:00am PDT morning refresh)
   workflow_dispatch:
     inputs:
       target_date:
@@ -60,6 +63,13 @@ jobs:
             TARGET_FLAG="--target-date $TARGET_DATE"
           fi
 
+          # Pass --not-before based on which cron fired (no-op for manual dispatch)
+          NOT_BEFORE_FLAG=""
+          case "${{ github.event.schedule }}" in
+            '0 1 * * *')   NOT_BEFORE_FLAG="--not-before 05:00" ;;  # evening target
+            '0 11 * * *')  NOT_BEFORE_FLAG="--not-before 15:00" ;;  # morning target
+          esac
+
           docker run --rm \
             -v ${{ github.workspace }}/geo_em:/mnt/geo_em:ro \
             -v ${{ github.workspace }}/output:/mnt/output:rw \
@@ -72,6 +82,7 @@ jobs:
                 --sites sites.csv \
                 --output-dir /mnt/output \
                 --num-procs 4 \
+                $NOT_BEFORE_FLAG \
                 $TARGET_FLAG
             "
 

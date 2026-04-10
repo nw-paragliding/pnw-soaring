@@ -2,8 +2,10 @@ name: Forecast (NAM)
 
 on:
   schedule:
-    - cron: '0 5 * * *'     # Evening: next-day planning (10pm PDT, uses 00z NAM)
-    - cron: '30 16 * * *'   # Morning: day-of update (9:30am PDT, uses 12z NAM)
+    # Crons fire ~4h early to hedge GH Actions scheduling delays (typically 3-4h).
+    # Pipeline --not-before sleeps until the actual target time if we start early.
+    - cron: '0 1 * * *'       # Target 05:00 UTC (10pm PDT evening planning, uses 00z NAM)
+    - cron: '30 12 * * *'     # Target 16:30 UTC (9:30am PDT morning update, uses 12z NAM)
   workflow_dispatch:
     inputs:
       target_date:
@@ -60,6 +62,13 @@ jobs:
             TARGET_FLAG="--target-date $TARGET_DATE"
           fi
 
+          # Pass --not-before based on which cron fired (no-op for manual dispatch)
+          NOT_BEFORE_FLAG=""
+          case "${{ github.event.schedule }}" in
+            '0 1 * * *')    NOT_BEFORE_FLAG="--not-before 05:00" ;;  # evening target
+            '30 12 * * *')  NOT_BEFORE_FLAG="--not-before 16:30" ;;  # morning target
+          esac
+
           docker run --rm \
             -v ${{ github.workspace }}/geo_em:/mnt/geo_em:ro \
             -v ${{ github.workspace }}/output:/mnt/output:rw \
@@ -72,6 +81,7 @@ jobs:
                 --sites sites.csv \
                 --output-dir /mnt/output \
                 --num-procs 4 \
+                $NOT_BEFORE_FLAG \
                 $TARGET_FLAG
             "
 
