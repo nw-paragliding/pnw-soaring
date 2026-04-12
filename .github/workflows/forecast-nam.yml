@@ -18,7 +18,8 @@ env:
 jobs:
   forecast:
     runs-on: ubuntu-24.04-arm
-    timeout-minutes: 180
+    # Budget: up to 4h sleep (from --not-before compensation) + ~1.5h runtime
+    timeout-minutes: 360
     permissions:
       contents: write
       packages: read
