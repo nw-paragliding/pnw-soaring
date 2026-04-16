@@ -8,3 +8,4 @@ center_lon: -121.4
 target_dx_km: 1.0
 inner_extent_km: 100
 direct_reader: false
+geog_data_res: lowres    # use lowres until 30s GEOG data is available
