@@ -1,0 +1,10 @@
+# Cascades HRRR nested — 3km outer → 1km inner
+# Uses WRF to downsample HRRR from 3km to 1km for better terrain resolution.
+# Requires geo_em files from bootstrap-geoem workflow (domain=hrrr-1km).
+name: cascades-hrrr-1km
+model: hrrr
+center_lat: 47.6
+center_lon: -121.4
+target_dx_km: 1.0
+inner_extent_km: 100
+direct_reader: false

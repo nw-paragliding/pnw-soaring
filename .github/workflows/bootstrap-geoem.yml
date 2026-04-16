@@ -37,13 +37,20 @@ jobs:
 
       - name: Select domain config
         run: |
-          if [ "${{ inputs.domain }}" = "hrrr" ]; then
-            echo "CONFIG=domains/cascades-hrrr-d01.yaml" >> $GITHUB_ENV
-            echo "CACHE_KEY=geo-em-cascades-hrrr-v1" >> $GITHUB_ENV
-          else
-            echo "CONFIG=domains/cascades.yaml" >> $GITHUB_ENV
-            echo "CACHE_KEY=geo-em-cascades-nam-v1" >> $GITHUB_ENV
-          fi
+          case "${{ inputs.domain }}" in
+            hrrr)
+              echo "CONFIG=domains/cascades-hrrr-d01.yaml" >> $GITHUB_ENV
+              echo "CACHE_KEY=geo-em-cascades-hrrr-v1" >> $GITHUB_ENV
+              ;;
+            hrrr-1km)
+              echo "CONFIG=domains/cascades-hrrr-1km.yaml" >> $GITHUB_ENV
+              echo "CACHE_KEY=geo-em-cascades-hrrr-1km-v1" >> $GITHUB_ENV
+              ;;
+            *)
+              echo "CONFIG=domains/cascades.yaml" >> $GITHUB_ENV
+              echo "CACHE_KEY=geo-em-cascades-nam-v1" >> $GITHUB_ENV
+              ;;
+          esac
 
       - name: Pull image
         run: docker pull $IMAGE

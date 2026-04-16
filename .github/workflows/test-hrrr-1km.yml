@@ -1,0 +1,73 @@
+name: Test HRRR 1km (experimental)
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_date:
+        description: 'Target date YYYY-MM-DD (blank = auto)'
+        required: false
+
+env:
+  IMAGE: ghcr.io/nw-paragliding/windgram:latest
+
+jobs:
+  forecast:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 120
+    permissions:
+      packages: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Restore geo_em cache
+        id: cache
+        uses: actions/cache/restore@v4
+        with:
+          path: geo_em/
+          key: geo-em-cascades-hrrr-1km-v1
+
+      - name: Check geo_em exists
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          echo "ERROR: geo_em cache not found. Run bootstrap-geoem with domain=hrrr-1km first."
+          exit 1
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull image
+        run: docker pull $IMAGE
+
+      - name: Run forecast
+        run: |
+          mkdir -p output
+          TARGET_DATE="${{ inputs.target_date }}"
+          TARGET_FLAG=""
+          if [ -n "$TARGET_DATE" ]; then
+            TARGET_FLAG="--target-date $TARGET_DATE"
+          fi
+
+          docker run --rm \
+            -v ${{ github.workspace }}/geo_em:/mnt/geo_em:ro \
+            -v ${{ github.workspace }}/output:/mnt/output:rw \
+            -v ${{ github.workspace }}/domains/cascades-hrrr-1km.yaml:/opt/rasp/domain.yaml:ro \
+            -v ${{ github.workspace }}/sites/issaquah-sites.csv:/opt/rasp/sites.csv:ro \
+            --entrypoint bash \
+            $IMAGE -c "
+              cp /mnt/geo_em/geo_em.d0*.nc /opt/rasp/wps/ 2>/dev/null || true
+              python3 -m rasp.pipeline domain.yaml \
+                --sites sites.csv \
+                --output-dir /mnt/output \
+                --num-procs 4 \
+                $TARGET_FLAG
+            "
+
+      - name: Upload windgrams (artifact only, no deploy)
+        uses: actions/upload-artifact@v4
+        with:
+          name: hrrr-1km-windgrams
+          path: output/*.png
+          retention-days: 7
