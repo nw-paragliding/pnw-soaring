@@ -15,6 +15,7 @@ jobs:
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 120
     permissions:
+      contents: read
       packages: read
     steps:
       - uses: actions/checkout@v4
@@ -26,11 +27,17 @@ jobs:
           path: geo_em/
           key: geo-em-cascades-hrrr-1km-v1
 
-      - name: Check geo_em exists
+      - name: Download geo_em from release (cache miss fallback)
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
-          echo "ERROR: geo_em cache not found. Run bootstrap-geoem with domain=hrrr-1km first."
-          exit 1
+          mkdir -p geo_em
+          gh release download geo-em-v1 --pattern 'geo_em_hrrr-1km.tar.gz' --dir .
+          tar xzf geo_em_hrrr-1km.tar.gz -C geo_em
+          rm geo_em_hrrr-1km.tar.gz
+          echo "Downloaded geo_em from release:"
+          ls -lh geo_em/
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: docker/login-action@v3
         with:
@@ -64,6 +71,13 @@ jobs:
                 --num-procs 4 \
                 $TARGET_FLAG
             "
+
+      - name: Save geo_em cache
+        if: hashFiles('geo_em/geo_em.d01.nc') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: geo_em/
+          key: geo-em-cascades-hrrr-1km-v1
 
       - name: Upload windgrams (artifact only, no deploy)
         uses: actions/upload-artifact@v4
