@@ -118,8 +118,23 @@
       r.addEventListener('change', e => {
         currentModel = e.target.value;
         updateMeta();
-        // Close any open popup so it refreshes on next click
-        map.closePopup();
+        // Update the image in any open popup without closing it
+        const popup = document.querySelector('.windgram-popup');
+        if (popup) {
+          const img = popup.querySelector('img');
+          const link = popup.querySelector('a');
+          const openLink = popup.querySelector('.open-link');
+          const noData = popup.querySelector('.no-data');
+          if (img) {
+            const site = popup.querySelector('h3').textContent;
+            const newSrc = `forecasts/latest/${currentModel}/${site}_windgram.png`;
+            img.style.display = '';
+            noData.style.display = 'none';
+            img.src = newSrc;
+            if (link) link.href = newSrc;
+            if (openLink) openLink.href = newSrc;
+          }
+        }
       });
     });
 
