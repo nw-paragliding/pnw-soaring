@@ -63,33 +63,21 @@ jobs:
             -v ${{ github.workspace }}/domains/cascades-hrrr-1km.yaml:/opt/rasp/domain.yaml:ro \
             -v ${{ github.workspace }}/sites/issaquah-sites.csv:/opt/rasp/sites.csv:ro \
             --entrypoint bash \
-            $IMAGE -c "
+            $IMAGE -c '
               cp /mnt/geo_em/geo_em.d0*.nc /opt/rasp/wps/ 2>/dev/null || true
               python3 -m rasp.pipeline domain.yaml \
                 --sites sites.csv \
                 --output-dir /mnt/output \
                 --num-procs 4 \
-                $TARGET_FLAG
+                '"$TARGET_FLAG"'
 
-              # Diagnostics: check wrfout time structure
-              echo '=== WRFOUT DIAGNOSTICS ==='
+              echo "=== WRFOUT DIAGNOSTICS ==="
               for f in /opt/rasp/runs/cascades-hrrr-1km/wrfout_d0*; do
-                echo \"--- \$(basename \$f) ---\"
-                ncdump -h \$f | grep -E 'Time|UNLIMITED|HFX|PBLH'
-                python3 -c \"
-import netCDF4
-nc = netCDF4.Dataset('\$f')
-print('Times:', nc.variables['Times'][:].tostring() if 'Times' in nc.variables else 'N/A')
-print('HFX shape:', nc.variables['HFX'].shape if 'HFX' in nc.variables else 'N/A')
-if 'HFX' in nc.variables:
-    import numpy as np
-    hfx = nc.variables['HFX'][:]
-    print('HFX min/max per time:', [(float(np.nanmin(hfx[t])), float(np.nanmax(hfx[t]))) for t in range(hfx.shape[0])])
-nc.close()
-\"
+                echo "--- $(basename $f) ---"
+                ncdump -h $f | grep -E "Time|UNLIMITED|HFX|PBLH"
+                ncdump -v Times $f 2>/dev/null | tail -20
               done
-              echo '========================='
-            "
+            '
 
       - name: Save geo_em cache
         if: hashFiles('geo_em/geo_em.d01.nc') != ''
