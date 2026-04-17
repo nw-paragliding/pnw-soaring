@@ -64,7 +64,7 @@ jobs:
             -v ${{ github.workspace }}/domains/cascades-hrrr-1km.yaml:/opt/rasp/domain.yaml:ro \
             -v ${{ github.workspace }}/sites/issaquah-sites.csv:/opt/rasp/sites.csv:ro \
             --entrypoint bash \
-            $IMAGE -c "cp /mnt/geo_em/geo_em.d0*.nc /opt/rasp/wps/ 2>/dev/null || true && python3 -m rasp.pipeline domain.yaml --sites sites.csv --output-dir /mnt/output --num-procs 4 --max-hours 2 $TARGET_FLAG; EC=\$?; cp /opt/rasp/runs/cascades-hrrr-1km/wrfout_d0* /mnt/wrfout/ 2>/dev/null || true; cp /opt/rasp/runs/cascades-hrrr-1km/rsl.* /mnt/wrfout/ 2>/dev/null || true; cp /opt/rasp/runs/cascades-hrrr-1km/namelist.* /mnt/wrfout/ 2>/dev/null || true; exit \$EC"
+            $IMAGE -c "cp /mnt/geo_em/geo_em.d0*.nc /opt/rasp/wps/ 2>/dev/null || true && python3 -m rasp.pipeline domain.yaml --sites sites.csv --output-dir /mnt/output --num-procs 4 $TARGET_FLAG; EC=\$?; cp /opt/rasp/runs/cascades-hrrr-1km/wrfout_d0* /mnt/wrfout/ 2>/dev/null || true; cp /opt/rasp/runs/cascades-hrrr-1km/rsl.* /mnt/wrfout/ 2>/dev/null || true; cp /opt/rasp/runs/cascades-hrrr-1km/namelist.* /mnt/wrfout/ 2>/dev/null || true; exit \$EC"
 
       - name: Diagnose wrfout
         if: always()
