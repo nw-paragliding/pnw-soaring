@@ -1,10 +1,13 @@
 # Cascades HRRR nested — 3km outer → 1km inner
-# Uses WRF to downsample HRRR from 3km to 1km for better terrain resolution.
-# Requires geo_em files from bootstrap-geoem workflow (domain=hrrr-1km).
+# Centered on Issaquah sites cluster (47.24-47.64, -122.05 to -121.55).
+# d02 extent 120km gives all sites >30km buffer from boundaries
+# (avoids NaN issues observed when sites were within 7 cells of edge).
+# d01 extent 240km provides clean boundary forcing for the nest.
 name: cascades-hrrr-1km
 model: hrrr
-center_lat: 47.6
-center_lon: -121.4
+center_lat: 47.44
+center_lon: -121.80
 target_dx_km: 1.0
-inner_extent_km: 100
+inner_extent_km: 120
+outer_extent_km: 240
 direct_reader: false

@@ -25,7 +25,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: geo_em/
-          key: geo-em-cascades-hrrr-1km-v1
+          key: geo-em-cascades-hrrr-1km-v2
 
       - name: Download geo_em from release (cache miss fallback)
         if: steps.cache.outputs.cache-hit != 'true'
@@ -111,7 +111,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: geo_em/
-          key: geo-em-cascades-hrrr-1km-v1
+          key: geo-em-cascades-hrrr-1km-v2
 
       - name: Upload windgrams (artifact only, no deploy)
         uses: actions/upload-artifact@v4
