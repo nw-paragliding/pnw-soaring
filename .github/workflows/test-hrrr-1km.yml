@@ -70,6 +70,25 @@ jobs:
                 --output-dir /mnt/output \
                 --num-procs 4 \
                 $TARGET_FLAG
+
+              # Diagnostics: check wrfout time structure
+              echo '=== WRFOUT DIAGNOSTICS ==='
+              for f in /opt/rasp/runs/cascades-hrrr-1km/wrfout_d0*; do
+                echo \"--- \$(basename \$f) ---\"
+                ncdump -h \$f | grep -E 'Time|UNLIMITED|HFX|PBLH'
+                python3 -c \"
+import netCDF4
+nc = netCDF4.Dataset('\$f')
+print('Times:', nc.variables['Times'][:].tostring() if 'Times' in nc.variables else 'N/A')
+print('HFX shape:', nc.variables['HFX'].shape if 'HFX' in nc.variables else 'N/A')
+if 'HFX' in nc.variables:
+    import numpy as np
+    hfx = nc.variables['HFX'][:]
+    print('HFX min/max per time:', [(float(np.nanmin(hfx[t])), float(np.nanmax(hfx[t]))) for t in range(hfx.shape[0])])
+nc.close()
+\"
+              done
+              echo '========================='
             "
 
       - name: Save geo_em cache
