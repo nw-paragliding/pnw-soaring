@@ -50,7 +50,7 @@ jobs:
 
       - name: Run forecast
         run: |
-          mkdir -p output
+          mkdir -p output wrfout-debug
           TARGET_DATE="${{ inputs.target_date }}"
           TARGET_FLAG=""
           if [ -n "$TARGET_DATE" ]; then
@@ -60,37 +60,31 @@ jobs:
           docker run --rm \
             -v ${{ github.workspace }}/geo_em:/mnt/geo_em:ro \
             -v ${{ github.workspace }}/output:/mnt/output:rw \
+            -v ${{ github.workspace }}/wrfout-debug:/mnt/wrfout:rw \
             -v ${{ github.workspace }}/domains/cascades-hrrr-1km.yaml:/opt/rasp/domain.yaml:ro \
             -v ${{ github.workspace }}/sites/issaquah-sites.csv:/opt/rasp/sites.csv:ro \
             --entrypoint bash \
-            $IMAGE -c '
-              cp /mnt/geo_em/geo_em.d0*.nc /opt/rasp/wps/ 2>/dev/null || true
-              python3 -m rasp.pipeline domain.yaml \
-                --sites sites.csv \
-                --output-dir /mnt/output \
-                --num-procs 4 \
-                '"$TARGET_FLAG"'
+            $IMAGE -c "cp /mnt/geo_em/geo_em.d0*.nc /opt/rasp/wps/ 2>/dev/null || true && python3 -m rasp.pipeline domain.yaml --sites sites.csv --output-dir /mnt/output --num-procs 4 $TARGET_FLAG && cp /opt/rasp/runs/cascades-hrrr-1km/wrfout_d0* /mnt/wrfout/"
 
-              echo "=== WRFOUT DIAGNOSTICS ==="
-              python3 -c "
-import netCDF4, numpy as np
-for dom in [1,2]:
-    import glob
-    files = sorted(glob.glob(f'/opt/rasp/runs/cascades-hrrr-1km/wrfout_d0{dom}_*'))
-    if not files: continue
-    nc = netCDF4.Dataset(files[0])
-    nt = nc.dimensions[\"Time\"].size
-    print(f'=== d0{dom}: {nt} times, file={files[0]} ===')
-    for v in [\"T\",\"HFX\",\"LH\",\"PBLH\",\"T2\"]:
-        if v in nc.variables:
-            d = nc.variables[v]
-            print(f'  {v}: shape={d.shape}')
-            for t in range(min(nt,4)):
-                vals = d[t]
-                print(f'    t={t}: min={float(np.nanmin(vals)):.3f} max={float(np.nanmax(vals)):.3f} mean={float(np.nanmean(vals)):.3f}')
-    nc.close()
-"
-            '
+      - name: Diagnose wrfout
+        if: always()
+        run: |
+          pip3 install netCDF4 numpy
+          python3 << 'PYEOF'
+          import netCDF4, numpy as np, glob
+          for f in sorted(glob.glob("wrfout-debug/wrfout_d0*")):
+              nc = netCDF4.Dataset(f)
+              nt = nc.dimensions["Time"].size
+              print(f"\n=== {f}: {nt} times ===")
+              for v in ["T","HFX","LH","PBLH","T2"]:
+                  if v not in nc.variables: continue
+                  d = nc.variables[v]
+                  print(f"  {v}: shape={d.shape}")
+                  for t in range(min(nt,4)):
+                      vals = d[t]
+                      print(f"    t={t}: min={np.nanmin(vals):.3f} max={np.nanmax(vals):.3f} mean={np.nanmean(vals):.3f}")
+              nc.close()
+          PYEOF
 
       - name: Save geo_em cache
         if: hashFiles('geo_em/geo_em.d01.nc') != ''
