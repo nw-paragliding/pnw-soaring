@@ -72,11 +72,24 @@ jobs:
                 '"$TARGET_FLAG"'
 
               echo "=== WRFOUT DIAGNOSTICS ==="
-              for f in /opt/rasp/runs/cascades-hrrr-1km/wrfout_d0*; do
-                echo "--- $(basename $f) ---"
-                ncdump -h $f | grep -E "Time|UNLIMITED|HFX|PBLH"
-                ncdump -v Times $f 2>/dev/null | tail -20
-              done
+              python3 -c "
+import netCDF4, numpy as np
+for dom in [1,2]:
+    import glob
+    files = sorted(glob.glob(f'/opt/rasp/runs/cascades-hrrr-1km/wrfout_d0{dom}_*'))
+    if not files: continue
+    nc = netCDF4.Dataset(files[0])
+    nt = nc.dimensions[\"Time\"].size
+    print(f'=== d0{dom}: {nt} times, file={files[0]} ===')
+    for v in [\"T\",\"HFX\",\"LH\",\"PBLH\",\"T2\"]:
+        if v in nc.variables:
+            d = nc.variables[v]
+            print(f'  {v}: shape={d.shape}')
+            for t in range(min(nt,4)):
+                vals = d[t]
+                print(f'    t={t}: min={float(np.nanmin(vals)):.3f} max={float(np.nanmax(vals)):.3f} mean={float(np.nanmean(vals)):.3f}')
+    nc.close()
+"
             '
 
       - name: Save geo_em cache
