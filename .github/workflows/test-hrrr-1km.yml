@@ -72,17 +72,26 @@ jobs:
           pip3 install netCDF4 numpy
           python3 << 'PYEOF'
           import netCDF4, numpy as np, glob
+          # Tiger location
+          tlat, tlon = 47.503, -121.975
           for f in sorted(glob.glob("wrfout-debug/wrfout_d0*")):
               nc = netCDF4.Dataset(f)
               nt = nc.dimensions["Time"].size
               print(f"\n=== {f}: {nt} times ===")
-              for v in ["T","HFX","LH","PBLH","T2"]:
-                  if v not in nc.variables: continue
-                  d = nc.variables[v]
-                  print(f"  {v}: shape={d.shape}")
-                  for t in range(min(nt,4)):
-                      vals = d[t]
-                      print(f"    t={t}: min={np.nanmin(vals):.3f} max={np.nanmax(vals):.3f} mean={np.nanmean(vals):.3f}")
+              # Find Tiger grid point
+              if "XLAT" in nc.variables:
+                  xlat = nc.variables["XLAT"][0]
+                  xlon = nc.variables["XLONG"][0]
+                  dist = (xlat - tlat)**2 + (xlon - tlon)**2
+                  iy, ix = np.unravel_index(dist.argmin(), dist.shape)
+                  print(f"  Tiger grid pt: ({iy},{ix}) lat={float(xlat[iy,ix]):.3f} lon={float(xlon[iy,ix]):.3f}")
+                  for v in ["HFX","LH","PBLH","T2","U10","V10"]:
+                      if v not in nc.variables: continue
+                      d = nc.variables[v]
+                      print(f"  {v} at Tiger:")
+                      for t in range(nt):
+                          val = float(d[t, iy, ix])
+                          print(f"    t={t}: {val:.3f}")
               nc.close()
           PYEOF
 
