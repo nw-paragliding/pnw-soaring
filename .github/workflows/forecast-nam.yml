@@ -5,7 +5,7 @@ on:
     # Crons fire ~1h after cycle init. Pipeline polls NOMADS and runs as soon
     # as all needed forecast hours are available.
     - cron: '0 1 * * *'       # Target 00z NAM cycle (evening planning)
-    - cron: '0 13 * * *'      # Target 12z NAM cycle (morning refresh)
+    - cron: '30 12 * * *'     # Target 12z NAM cycle (morning refresh)
   workflow_dispatch:
     inputs:
       target_date:
@@ -66,8 +66,8 @@ jobs:
           # Pass --target-cycle based on which cron fired (no-op for manual dispatch).
           CYCLE_FLAG=""
           case "${{ github.event.schedule }}" in
-            '0 1 * * *')   CYCLE_FLAG="--target-cycle 0" ;;   # evening: 00z cycle
-            '0 13 * * *')  CYCLE_FLAG="--target-cycle 12" ;;  # morning: 12z cycle
+            '0 1 * * *')    CYCLE_FLAG="--target-cycle 0" ;;   # evening: 00z cycle
+            '30 12 * * *')  CYCLE_FLAG="--target-cycle 12" ;;  # morning: 12z cycle
           esac
 
           docker run --rm \
