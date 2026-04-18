@@ -2,10 +2,10 @@ name: Forecast (NAM)
 
 on:
   schedule:
-    # Crons fire ~4h early to hedge GH Actions scheduling delays (typically 3-4h).
-    # Pipeline --not-before sleeps until the actual target time if we start early.
-    - cron: '0 1 * * *'       # Target 05:00 UTC (10pm PDT evening planning, uses 00z NAM)
-    - cron: '30 12 * * *'     # Target 16:30 UTC (9:30am PDT morning update, uses 12z NAM)
+    # Crons fire ~1h after cycle init. Pipeline polls NOMADS and runs as soon
+    # as all needed forecast hours are available.
+    - cron: '0 1 * * *'       # Target 00z NAM cycle (evening planning)
+    - cron: '0 13 * * *'      # Target 12z NAM cycle (morning refresh)
   workflow_dispatch:
     inputs:
       target_date:
@@ -63,11 +63,11 @@ jobs:
             TARGET_FLAG="--target-date $TARGET_DATE"
           fi
 
-          # Pass --not-before based on which cron fired (no-op for manual dispatch)
-          NOT_BEFORE_FLAG=""
+          # Pass --target-cycle based on which cron fired (no-op for manual dispatch).
+          CYCLE_FLAG=""
           case "${{ github.event.schedule }}" in
-            '0 1 * * *')    NOT_BEFORE_FLAG="--not-before 05:00" ;;  # evening target
-            '30 12 * * *')  NOT_BEFORE_FLAG="--not-before 16:30" ;;  # morning target
+            '0 1 * * *')   CYCLE_FLAG="--target-cycle 0" ;;   # evening: 00z cycle
+            '0 13 * * *')  CYCLE_FLAG="--target-cycle 12" ;;  # morning: 12z cycle
           esac
 
           docker run --rm \
@@ -82,7 +82,7 @@ jobs:
                 --sites sites.csv \
                 --output-dir /mnt/output \
                 --num-procs 4 \
-                $NOT_BEFORE_FLAG \
+                $CYCLE_FLAG \
                 $TARGET_FLAG
             "
 
