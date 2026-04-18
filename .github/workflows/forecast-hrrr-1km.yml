@@ -1,0 +1,133 @@
+name: Forecast (HRRR 1km)
+
+on:
+  schedule:
+    # Crons fire ~4h early to hedge GH Actions scheduling delays (typically 3-4h).
+    # Pipeline --not-before makes us sleep until the actual target time if we start early,
+    # so we always pick a fresh cycle regardless of whether GH delays us.
+    - cron: '0 1 * * *'       # Target 05:00 UTC (10pm PDT evening planning)
+    - cron: '0 11 * * *'      # Target 15:00 UTC (8:00am PDT morning refresh)
+  workflow_dispatch:
+    inputs:
+      target_date:
+        description: 'Target date YYYY-MM-DD (blank = auto)'
+        required: false
+
+env:
+  IMAGE: ghcr.io/nw-paragliding/windgram:latest
+
+jobs:
+  forecast:
+    runs-on: ubuntu-24.04-arm
+    # Budget: up to 4h sleep (from --not-before compensation) + ~15 min runtime
+    timeout-minutes: 360
+    permissions:
+      contents: write
+      packages: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Restore geo_em cache
+        id: cache
+        uses: actions/cache/restore@v4
+        with:
+          path: geo_em/
+          key: geo-em-cascades-hrrr-1km-v2
+
+      - name: Download geo_em from release (cache miss fallback)
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p geo_em
+          gh release download geo-em-v1 --pattern 'geo_em_hrrr-1km.tar.gz' --dir .
+          tar xzf geo_em_hrrr-1km.tar.gz -C geo_em
+          rm geo_em_hrrr-1km.tar.gz
+          echo "Downloaded geo_em from release:"
+          ls -lh geo_em/
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull image
+        run: docker pull $IMAGE
+
+      - name: Run forecast
+        run: |
+          mkdir -p output
+          TARGET_DATE="${{ inputs.target_date }}"
+          TARGET_FLAG=""
+          if [ -n "$TARGET_DATE" ]; then
+            TARGET_FLAG="--target-date $TARGET_DATE"
+          fi
+
+          # Pass --not-before based on which cron fired (no-op for manual dispatch)
+          NOT_BEFORE_FLAG=""
+          case "${{ github.event.schedule }}" in
+            '0 1 * * *')   NOT_BEFORE_FLAG="--not-before 05:00" ;;  # evening target
+            '0 11 * * *')  NOT_BEFORE_FLAG="--not-before 15:00" ;;  # morning target
+          esac
+
+          docker run --rm \
+            -v ${{ github.workspace }}/geo_em:/mnt/geo_em:ro \
+            -v ${{ github.workspace }}/output:/mnt/output:rw \
+            -v ${{ github.workspace }}/domains/cascades-hrrr-1km.yaml:/opt/rasp/domain.yaml:ro \
+            -v ${{ github.workspace }}/sites/issaquah-sites.csv:/opt/rasp/sites.csv:ro \
+            --entrypoint bash \
+            $IMAGE -c "
+              cp /mnt/geo_em/geo_em.d0*.nc /opt/rasp/wps/ 2>/dev/null || true
+              python3 -m rasp.pipeline domain.yaml \
+                --sites sites.csv \
+                --output-dir /mnt/output \
+                --num-procs 4 \
+                $NOT_BEFORE_FLAG \
+                $TARGET_FLAG
+            "
+
+      - name: Save geo_em cache
+        if: hashFiles('geo_em/geo_em.d01.nc') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: geo_em/
+          key: geo-em-cascades-hrrr-1km-v2
+
+      - name: Upload windgrams
+        uses: actions/upload-artifact@v4
+        with:
+          name: hrrr-1km-windgrams
+          path: output/*.png
+          retention-days: 7
+
+      - name: Deploy to Pages
+        run: |
+          DATE=$(ls output/*.png | head -1 | xargs basename | cut -d_ -f1)
+          MODEL=hrrr-1km
+
+          git fetch origin gh-pages
+          git worktree add pages origin/gh-pages
+
+          mkdir -p "pages/forecasts/${DATE}/${MODEL}"
+          for f in output/*.png; do
+            NEWNAME=$(basename "$f" | sed 's/^[0-9-]*_//')
+            cp "$f" "pages/forecasts/${DATE}/${MODEL}/${NEWNAME}"
+          done
+          echo "{\"model\":\"${MODEL}\",\"date\":\"${DATE}\",\"generated\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" \
+            > "pages/forecasts/${DATE}/${MODEL}/metadata.json"
+
+          rm -rf "pages/forecasts/latest/${MODEL}"
+          mkdir -p "pages/forecasts/latest/${MODEL}"
+          cp "pages/forecasts/${DATE}/${MODEL}/"* "pages/forecasts/latest/${MODEL}/"
+
+          python3 site/generate-sites-json.py sites/issaquah-sites.csv > pages/sites.json
+          cp site/index.html pages/index.html
+
+          cd pages
+          git add -A
+          git diff --cached --quiet && echo "No changes" && exit 0
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git commit -m "Update ${MODEL} forecast for ${DATE}"
+          git push origin HEAD:gh-pages
