@@ -31,15 +31,15 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: geo_em/
-          key: geo-em-cascades-nam-v1
+          key: geo-em-cascades-nam-v2
 
       - name: Download geo_em from release (cache miss fallback)
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
           mkdir -p geo_em
-          gh release download geo-em-v1 --pattern 'geo_em_nam.tar.gz' --dir .
-          tar xzf geo_em_nam.tar.gz -C geo_em
-          rm geo_em_nam.tar.gz
+          gh release download geo-em-v1 --pattern 'geo_em_nam-v2.tar.gz' --dir .
+          tar xzf geo_em_nam-v2.tar.gz -C geo_em
+          rm geo_em_nam-v2.tar.gz
           echo "Downloaded geo_em from release:"
           ls -lh geo_em/
         env:
@@ -91,7 +91,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: geo_em/
-          key: geo-em-cascades-nam-v1
+          key: geo-em-cascades-nam-v2
 
       - name: Upload windgrams
         uses: actions/upload-artifact@v4

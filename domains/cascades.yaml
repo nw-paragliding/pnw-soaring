@@ -6,7 +6,9 @@ center_lat: 47.6
 center_lon: -121.4
 
 # Finest resolution — system builds nest chain automatically
-# NAM 12km → 4km → 1.33km
+# Match DrJack RASP PNW-WINDOW: NAM 12km → WRF 4km → WRF 1.33km (2 WRF domains,
+# skipping an intermediate 12km WRF step for cleaner boundary forcing).
+outer_dx_km: 4.0
 target_dx_km: 1.33
 
 # Physical extent at finest resolution (km)
