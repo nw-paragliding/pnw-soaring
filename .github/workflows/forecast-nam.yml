@@ -11,6 +11,9 @@ on:
       target_date:
         description: 'Target date YYYY-MM-DD (blank = auto)'
         required: false
+      target_cycle:
+        description: 'Force a specific cycle (e.g. 0 or 12). Blank = latest available.'
+        required: false
 
 env:
   IMAGE: ghcr.io/nw-paragliding/windgram:latest
@@ -63,12 +66,16 @@ jobs:
             TARGET_FLAG="--target-date $TARGET_DATE"
           fi
 
-          # Pass --target-cycle based on which cron fired (no-op for manual dispatch).
+          # Pass --target-cycle from workflow_dispatch input or based on which cron fired.
           CYCLE_FLAG=""
-          case "${{ github.event.schedule }}" in
-            '0 1 * * *')    CYCLE_FLAG="--target-cycle 0" ;;   # evening: 00z cycle
-            '30 12 * * *')  CYCLE_FLAG="--target-cycle 12" ;;  # morning: 12z cycle
-          esac
+          if [ -n "${{ inputs.target_cycle }}" ]; then
+            CYCLE_FLAG="--target-cycle ${{ inputs.target_cycle }}"
+          else
+            case "${{ github.event.schedule }}" in
+              '0 1 * * *')    CYCLE_FLAG="--target-cycle 0" ;;   # evening: 00z cycle
+              '30 12 * * *')  CYCLE_FLAG="--target-cycle 12" ;;  # morning: 12z cycle
+            esac
+          fi
 
           docker run --rm \
             -v ${{ github.workspace }}/geo_em:/mnt/geo_em:ro \
