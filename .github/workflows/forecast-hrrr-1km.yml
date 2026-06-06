@@ -101,32 +101,6 @@ jobs:
           retention-days: 7
 
       - name: Deploy to Pages
-        run: |
-          DATE=$(ls output/*.png | head -1 | xargs basename | cut -d_ -f1)
-          MODEL=hrrr-1km
-
-          git fetch origin gh-pages
-          git worktree add pages origin/gh-pages
-
-          mkdir -p "pages/forecasts/${DATE}/${MODEL}"
-          for f in output/*.png; do
-            NEWNAME=$(basename "$f" | sed 's/^[0-9-]*_//')
-            cp "$f" "pages/forecasts/${DATE}/${MODEL}/${NEWNAME}"
-          done
-          echo "{\"model\":\"${MODEL}\",\"date\":\"${DATE}\",\"generated\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" \
-            > "pages/forecasts/${DATE}/${MODEL}/metadata.json"
-
-          rm -rf "pages/forecasts/latest/${MODEL}"
-          mkdir -p "pages/forecasts/latest/${MODEL}"
-          cp "pages/forecasts/${DATE}/${MODEL}/"* "pages/forecasts/latest/${MODEL}/"
-
-          python3 site/generate-sites-json.py sites/issaquah-sites.csv > pages/sites.json
-          cp site/index.html pages/index.html
-
-          cd pages
-          git add -A
-          git diff --cached --quiet && echo "No changes" && exit 0
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git commit -m "Update ${MODEL} forecast for ${DATE}"
-          git push origin HEAD:gh-pages
+        uses: ./.github/actions/deploy-forecast
+        with:
+          model: hrrr-1km
