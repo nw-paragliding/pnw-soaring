@@ -29,6 +29,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Free up disk space
+        run: |
+          echo "Disk before cleanup:"; df -h /
+          sudo rm -rf \
+            /usr/local/lib/android \
+            /usr/share/dotnet \
+            /opt/ghc /usr/local/.ghcup \
+            /opt/hostedtoolcache \
+            /usr/local/share/boost 2>/dev/null || true
+          docker system prune -af 2>/dev/null || true
+          echo "Disk after cleanup:"; df -h /
+
       - name: Restore geo_em cache
         id: cache
         uses: actions/cache/restore@v4
