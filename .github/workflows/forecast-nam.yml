@@ -93,6 +93,15 @@ jobs:
                 $TARGET_FLAG
             "
 
+      - name: Check forecast output
+        run: |
+          count=$(ls output/*.png 2>/dev/null | wc -l)
+          if [ "$count" -eq 0 ]; then
+            echo "::error::No windgrams rendered — model produced no usable output (likely bad/NaN model data)."
+            exit 1
+          fi
+          echo "Rendered $count windgrams."
+
       - name: Save geo_em cache
         if: hashFiles('geo_em/geo_em.d01.nc') != ''
         uses: actions/cache/save@v4
