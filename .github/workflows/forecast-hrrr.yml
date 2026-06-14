@@ -2,11 +2,12 @@ name: Forecast (HRRR)
 
 on:
   schedule:
-    # Crons fire ~1h before target cycle is published. Pipeline polls NOMADS
-    # and runs as soon as all needed forecast hours are available — typically
-    # within 1-2h of cycle init.
-    - cron: '0 1 * * *'       # Target 00z cycle (evening planning)
-    - cron: '0 11 * * *'      # Target 12z cycle (morning refresh)
+    # NOAA publishes HRRR data ~1h25 after cycle init (00z ready ~01:25z, 12z
+    # ready ~13:10z). We fire a few hours BEFORE that and let the pipeline poll
+    # NOMADS, so the job is already awake and runs the instant data lands.
+    # Off-the-top-of-the-hour minutes dodge GitHub's worst schedule-dispatch lag.
+    - cron: '17 0 * * *'      # Target 00z cycle (evening planning); data ~01:25z
+    - cron: '7 10 * * *'      # Target 12z cycle (morning refresh); data ~13:10z
   workflow_dispatch:
     inputs:
       target_date:
@@ -68,8 +69,8 @@ jobs:
           # Pipeline polls NOMADS until that cycle's needed fhrs are published.
           CYCLE_FLAG=""
           case "${{ github.event.schedule }}" in
-            '0 1 * * *')   CYCLE_FLAG="--target-cycle 0" ;;   # evening: 00z cycle
-            '0 11 * * *')  CYCLE_FLAG="--target-cycle 12" ;;  # morning: 12z cycle
+            '17 0 * * *')  CYCLE_FLAG="--target-cycle 0" ;;   # evening: 00z cycle
+            '7 10 * * *')  CYCLE_FLAG="--target-cycle 12" ;;  # morning: 12z cycle
           esac
 
           docker run --rm \

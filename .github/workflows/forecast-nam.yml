@@ -2,10 +2,12 @@ name: Forecast (NAM)
 
 on:
   schedule:
-    # Crons fire ~1h after cycle init. Pipeline polls NOMADS and runs as soon
-    # as all needed forecast hours are available.
-    - cron: '0 1 * * *'       # Target 00z NAM cycle (evening planning)
-    - cron: '30 12 * * *'     # Target 12z NAM cycle (morning refresh)
+    # NOAA publishes NAM data ~2h after cycle init (00z ready ~02:05z, 12z ready
+    # ~13:54z). We fire a few hours BEFORE that and let the pipeline poll NOMADS,
+    # so the job is already awake and runs the instant data lands.
+    # Off-the-top-of-the-hour minutes dodge GitHub's worst schedule-dispatch lag.
+    - cron: '37 0 * * *'      # Target 00z NAM cycle (evening planning); data ~02:05z
+    - cron: '12 11 * * *'     # Target 12z NAM cycle (morning refresh); data ~13:54z
   workflow_dispatch:
     inputs:
       target_date:
@@ -72,8 +74,8 @@ jobs:
             CYCLE_FLAG="--target-cycle ${{ inputs.target_cycle }}"
           else
             case "${{ github.event.schedule }}" in
-              '0 1 * * *')    CYCLE_FLAG="--target-cycle 0" ;;   # evening: 00z cycle
-              '30 12 * * *')  CYCLE_FLAG="--target-cycle 12" ;;  # morning: 12z cycle
+              '37 0 * * *')   CYCLE_FLAG="--target-cycle 0" ;;   # evening: 00z cycle
+              '12 11 * * *')  CYCLE_FLAG="--target-cycle 12" ;;  # morning: 12z cycle
             esac
           fi
 
