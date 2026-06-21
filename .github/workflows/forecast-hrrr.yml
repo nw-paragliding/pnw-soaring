@@ -1,17 +1,19 @@
 name: Forecast (HRRR)
 
 on:
-  schedule:
-    # NOAA publishes HRRR data ~1h25 after cycle init (00z ready ~01:25z, 12z
-    # ready ~13:10z). We fire a few hours BEFORE that and let the pipeline poll
-    # NOMADS, so the job is already awake and runs the instant data lands.
-    # Off-the-top-of-the-hour minutes dodge GitHub's worst schedule-dispatch lag.
-    - cron: '17 0 * * *'      # Target 00z cycle (evening planning); data ~01:25z
-    - cron: '7 10 * * *'      # Target 12z cycle (morning refresh); data ~13:10z
+  # Fired by the Cloudflare trigger Worker (cloudflare-trigger/), which carries
+  # the target cycle in client_payload.cycle. repository_dispatch starts within
+  # seconds — unlike GitHub's throttled `schedule` events, which were running
+  # these forecasts ~5h late. The schedule lives in the Worker now.
+  repository_dispatch:
+    types: [run-forecast]
   workflow_dispatch:
     inputs:
       target_date:
         description: 'Target date YYYY-MM-DD (blank = auto)'
+        required: false
+      target_cycle:
+        description: 'Force a cycle (0 or 12). Blank = auto-detect.'
         required: false
 
 env:
@@ -71,19 +73,21 @@ jobs:
       - name: Run forecast
         run: |
           mkdir -p output
-          TARGET_DATE="${{ inputs.target_date }}"
+          # Cycle + date come from the Cloudflare dispatch (client_payload) or a
+          # manual workflow_dispatch input. Only one source is set per event, so
+          # concatenation yields the single value (or empty = auto-detect).
+          TARGET_DATE="${{ inputs.target_date }}${{ github.event.client_payload.target_date }}"
           TARGET_FLAG=""
           if [ -n "$TARGET_DATE" ]; then
             TARGET_FLAG="--target-date $TARGET_DATE"
           fi
 
-          # Pass --target-cycle based on which cron fired (no-op for manual dispatch).
           # Pipeline polls NOMADS until that cycle's needed fhrs are published.
+          CYCLE="${{ github.event.client_payload.cycle }}${{ inputs.target_cycle }}"
           CYCLE_FLAG=""
-          case "${{ github.event.schedule }}" in
-            '17 0 * * *')  CYCLE_FLAG="--target-cycle 0" ;;   # evening: 00z cycle
-            '7 10 * * *')  CYCLE_FLAG="--target-cycle 12" ;;  # morning: 12z cycle
-          esac
+          if [ -n "$CYCLE" ]; then
+            CYCLE_FLAG="--target-cycle $CYCLE"
+          fi
 
           docker run --rm \
             -v ${{ github.workspace }}/geo_em:/mnt/geo_em:ro \
