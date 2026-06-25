@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Soaring cube spike — MapLibre + zarr-layer + click windgram</title>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css"/>
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<style>
+  * { margin:0; box-sizing:border-box; }
+  body { font:13px/1.4 -apple-system,system-ui,sans-serif; color:#1c2622; }
+  #wrap { display:flex; height:100vh; }
+  #left { flex:1; position:relative; }
+  #map { position:absolute; inset:0; }
+  #panel { flex:0 0 600px; max-width:46vw; border-left:1px solid #ccc; padding:14px 16px;
+           overflow:auto; background:#faf8f3; }
+  h1 { font-size:15px; margin-bottom:2px; }
+  .sub { color:#666; font-size:11px; margin-bottom:10px; font-family:ui-monospace,monospace; }
+  .bar { position:absolute; top:10px; left:10px; z-index:1; background:#fff; padding:8px 12px;
+         border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,.25); font-size:12px; }
+  #wg { width:100%; border:1px solid #ddd; border-radius:8px; background:#fff; }
+  .legend { font-family:ui-monospace,monospace; font-size:11px; color:#444; margin-top:8px; }
+  .err { color:#b00; font-family:ui-monospace,monospace; font-size:11px; margin-top:8px; white-space:pre-wrap; }
+  code { background:#eee; padding:1px 4px; border-radius:3px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="left">
+    <div id="map"></div>
+    <div class="bar">
+      <b>TOL overlay</b> &nbsp; <span id="tlabel">--</span><br>
+      <input id="tslider" type="range" min="0" max="0" value="0" step="1" style="width:200px">
+    </div>
+  </div>
+  <div id="panel">
+    <h1>Windgram</h1>
+    <div class="sub" id="wgsub">click anywhere on the map →</div>
+    <canvas id="wg" width="560" height="470"></canvas>
+    <div class="legend" id="legend"></div>
+    <div class="err" id="err"></div>
+  </div>
+</div>
+
+<script type="module">
+const maplibregl = window.maplibregl;   // loaded as a global (worker resolves correctly)
+import * as zarr from "https://esm.sh/zarrita@0.4.0";
+
+const err = m => { document.getElementById("err").textContent += m + "\n"; console.error(m); };
+const CUBE = location.href.replace(/[^/]*$/, "") + "soaring.zarr";
+
+// ── zarrita: coords + windgram columns ───────────────────────
+const store = new zarr.FetchStore(CUBE);
+const root = zarr.root(store);
+const A = {};
+const arr = async n => A[n] ||= await zarr.open(root.resolve(n), {kind:"array"});
+const acc = v => (...ix) => v.data[ix.reduce((s,k,i)=>s+k*v.stride[i],0)];
+
+const pres = (await zarr.get(await arr("level"))).data;
+const hours= (await zarr.get(await arr("time"))).data;
+const latV = await zarr.get(await arr("lat")), lonV = await zarr.get(await arr("lon"));
+const terrV= await zarr.get(await arr("terrain_ft"));
+const Y = latV.shape[0], X = lonV.shape[0], L = pres.length, T = hours.length;
+const lat=acc(latV), lon=acc(lonV), terr=acc(terrV);    // lat/lon now 1D coords
+const lat0=lat(0), lat1=lat(Y-1), lon0=lon(0), lon1=lon(X-1);
+
+// ── MapLibre base map ────────────────────────────────────────
+const map = new maplibregl.Map({
+  container: "map",
+  style: { version:8, sources:{ topo:{ type:"raster",
+      tiles:["https://a.tile.opentopomap.org/{z}/{x}/{y}.png"], tileSize:256,
+      attribution:"© OpenTopoMap" } }, layers:[{id:"topo",type:"raster",source:"topo"}] },
+  bounds: [[lon0,lat0],[lon1,lat1]], fitBoundsOptions:{padding:20},
+});
+
+// TOL colormap stops (weak→strong ceiling)
+const CMAP = ["#9e3b2e","#d97b34","#e6c34a","#5fa84a","#2f7fb0","#3a4fa0"];
+let zlayer = null;
+async function setOverlay(ti){
+  const hr=hours[ti];
+  document.getElementById("tlabel").textContent =
+    `${String(Math.floor(hr)).padStart(2,"0")}:${hr%1?"30":"00"} local`;
+  try {
+    const { ZarrLayer } = await import("https://esm.sh/@carbonplan/zarr-layer");
+    if (zlayer && map.getLayer("tol")) map.removeLayer("tol");
+    zlayer = new ZarrLayer({
+      id:"tol", source:CUBE, variable:"tol_ft", selector:{ time: ti },
+      clim:[1500,10500], colormap:CMAP, opacity:0.6,
+      crs:"EPSG:4326", bounds:[lon0,lat0,lon1,lat1],
+    });
+    map.addLayer(zlayer);
+  } catch(e){ err("ZarrLayer overlay: "+(e?.message||e)); }
+}
+
+// ── windgram (zarrita column → canvas), map-engine agnostic ──
+async function loadColumn(yi,xi){
+  const g3 = async n => acc(await zarr.get(await arr(n), [null,null,yi,xi]));
+  const s2 = async n => acc(await zarr.get(await arr(n), [null,yi,xi]));
+  return { yi,xi, lat:lat(yi), lon:lon(xi), terr:terr(yi,xi),
+    gh:await g3("gh_ft"), tc:await g3("tc"), td:await g3("td"),
+    u:await g3("u_kt"), v:await g3("v_kt"),
+    hfx:await s2("hfx"), lh:await s2("lh"), pblh:await s2("pblh_m"),
+    t2:await s2("t2_k"), sfcp:await s2("sfcp_mb") };
+}
+const MS2FPM=196.85;
+const wstar=(hfx,lh,pblh,t2)=>{const vhf=Math.max(hfx+0.000245268*t2*Math.max(lh,0),0);
+  const a=(9.81/t2)*pblh*(vhf/1200); return a>0?Math.cbrt(a):0;};
+const hcrit=(ws,ter,pblh)=>{const f=ws*MS2FPM; if(f<=225)return ter;
+  const inner=1.3674*(0.4549-0.463*(225/f))+0.01267;
+  return Math.max(0,ter+(Math.sqrt(Math.max(inner,0))+0.1126)*pblh);};
+
+function barb(ctx,x,y,u,v){const spd=Math.hypot(u,v);
+  if(spd<1){ctx.beginPath();ctx.arc(x,y,2,0,7);ctx.stroke();return;}
+  const dx=-u/spd,dy=v/spd,Ln=20,ex=x+dx*Ln,ey=y+dy*Ln;
+  ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(ex,ey);ctx.stroke();
+  let rem=Math.round(spd/5)*5,pos=0;const px=-dy,py=dx,step=4;
+  for(let f=0;f<Math.floor(rem/10);f++){const bx=ex-dx*pos,by=ey-dy*pos;
+    ctx.beginPath();ctx.moveTo(bx,by);ctx.lineTo(bx+px*8,by+py*8);ctx.stroke();pos+=step;}
+  if(rem%10>=5){const bx=ex-dx*pos,by=ey-dy*pos;
+    ctx.beginPath();ctx.moveTo(bx,by);ctx.lineTo(bx+px*4,by+py*4);ctx.stroke();}}
+
+function renderWindgram(col){
+  const cv=document.getElementById("wg"),ctx=cv.getContext("2d"),W=cv.width,H=cv.height;
+  ctx.clearRect(0,0,W,H);
+  const m={l:46,r:14,t:42,b:26},pw=W-m.l-m.r,ph=H-m.t-m.b,zTop=12000,zBot=col.terr;
+  const xT=t=>m.l+(T<2?0:t/(T-1))*pw, yZ=z=>m.t+(1-(z-zBot)/(zTop-zBot))*ph, cellW=pw/T;
+  ctx.font="10px ui-monospace";
+  for(let t=0;t<T;t++){
+    const x0=m.l+t*cellW,terrf=col.terr,blTop=terrf+col.pblh(t);
+    const ws=wstar(col.hfx(t),col.lh(t),col.pblh(t),col.t2(t)),ceil=hcrit(ws,terrf,col.pblh(t));
+    ctx.fillStyle="#eaf3fb";ctx.fillRect(x0,m.t,cellW,yZ(blTop)-m.t);
+    const grd=ctx.createLinearGradient(0,yZ(blTop),0,yZ(terrf));
+    grd.addColorStop(0,"#ffe1b0");grd.addColorStop(1,"#f5b06a");
+    ctx.fillStyle=grd;ctx.fillRect(x0,yZ(blTop),cellW,yZ(terrf)-yZ(blTop));
+    ctx.fillStyle="#cdbfa6";ctx.fillRect(x0,yZ(terrf),cellW,H-m.b-yZ(terrf));
+    ctx.fillStyle=ws>2?"#1f7a3f":ws>1?"#caa12a":"#b15";ctx.fillRect(x0+1,6,cellW-2,16);
+    ctx.fillStyle="#fff";ctx.font="bold 10px ui-monospace";ctx.textAlign="center";
+    ctx.fillText(ws.toFixed(1),x0+cellW/2,18);ctx.textAlign="left";ctx.font="10px ui-monospace";
+    ctx.strokeStyle="#234";ctx.lineWidth=1;
+    for(let l=0;l<L;l+=2){const z=col.gh(t,l);if(z<terrf||z>zTop)continue;barb(ctx,x0+cellW/2,yZ(z),col.u(t,l),col.v(t,l));}
+  }
+  ctx.strokeStyle="#eee";ctx.fillStyle="#888";
+  for(let z=2000;z<=zTop;z+=2000){const y=yZ(z);ctx.beginPath();ctx.moveTo(m.l,y);ctx.lineTo(W-m.r,y);ctx.stroke();ctx.fillText((z/1000)+"k",6,y+3);}
+  ctx.strokeStyle="#1240a0";ctx.lineWidth=2;ctx.beginPath();
+  for(let t=0;t<T;t++){const ws=wstar(col.hfx(t),col.lh(t),col.pblh(t),col.t2(t));
+    const y=yZ(hcrit(ws,col.terr,col.pblh(t)));t?ctx.lineTo(xT(t),y):ctx.moveTo(xT(t),y);}
+  ctx.stroke();
+  ctx.fillStyle="#555";ctx.textAlign="center";
+  for(let t=0;t<T;t++){const hr=hours[t];ctx.fillText(Math.floor(hr)+(hr<12?"a":"p"),xT(t),H-8);}
+  ctx.textAlign="left";
+  document.getElementById("wgsub").textContent=
+    `${col.lat.toFixed(4)}, ${col.lon.toFixed(4)} · terrain ${Math.round(col.terr)} ft · column [${col.yi},${col.xi}]`;
+  document.getElementById("legend").innerHTML=
+    `<b>blue</b>=glider ceiling (hcrit) · <b>orange</b>=BL/lift · top row=W* (m/s) · barbs=wind — one <code>[:,:,${col.yi},${col.xi}]</code> fetch.`;
+}
+function nearest(lng,la){let by=0,bx=0,bdy=1e9,bdx=1e9;
+  for(let j=0;j<Y;j++){const d=Math.abs(lat(j)-la);if(d<bdy){bdy=d;by=j;}}
+  for(let i=0;i<X;i++){const d=Math.abs(lon(i)-lng);if(d<bdx){bdx=d;bx=i;}}
+  return [by,bx];}
+
+map.on("click", async e=>{ const [yi,xi]=nearest(e.lngLat.lng,e.lngLat.lat);
+  renderWindgram(await loadColumn(yi,xi)); });
+
+map.on("error", e=> err("map: " + (e.error?.message || e.error || "unknown")));
+const slider=document.getElementById("tslider"); slider.max=T-1; slider.value=Math.floor(T/2);
+slider.oninput=()=>setOverlay(+slider.value);
+if (map.loaded()) setOverlay(+slider.value); else map.on("load", ()=>setOverlay(+slider.value));
+// windgram works regardless of the overlay
+renderWindgram(await loadColumn(Math.floor(Y*0.45), Math.floor(X*0.5)));
+</script>
+</body>
+</html>
