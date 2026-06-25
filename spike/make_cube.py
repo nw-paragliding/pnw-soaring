@@ -107,7 +107,11 @@ ti_g, yy_g, xx_g = np.meshgrid(np.arange(T), np.arange(Y), np.arange(X), indexin
 ubl = u_kt[ti_g, bl_idx, yy_g, xx_g].astype('f4')
 vbl = v_kt[ti_g, bl_idx, yy_g, xx_g].astype('f4')
 
-# ── write Zarr (v2, gzip) with per-story chunking ──────────────────────
+# ── write Zarr (v2, gzip), GeoZarr / CF-conventions layout ─────────────
+# Every array carries _ARRAY_DIMENSIONS (xarray), spatial fields reference a
+# CF grid_mapping variable 'spatial_ref' (EPSG:4326), and 1D lat/lon/time/level
+# coordinate variables carry CF standard_name/units/axis. This is what
+# zarrita + @carbonplan/zarr-layer read to georeference.
 store = zarr.DirectoryStore('spike/soaring.zarr')
 g = zarr.open_group(store, mode='w')
 cz = numcodecs.GZip(level=5)
@@ -115,31 +119,64 @@ PROF_CH = (T, L, 16, 16)     # column-friendly  -> windgrams
 PLANE_CH = (1, Y, X)         # slab-friendly     -> overlays
 SFC_CH = (T, 16, 16)         # column-friendly surface
 
-def put(name, data, chunks):
-    g.create_dataset(name, data=data, chunks=chunks, compressor=cz, overwrite=True)
+WGS84_WKT = ('GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,'
+             '298.257223563]],PRIMEM["Greenwich",0],UNIT["degree",'
+             '0.0174532925199433],AUTHORITY["EPSG","4326"]]')
 
-# coords / static
-put('pres_mb', pres, (L,))
-put('hours', hours.astype('f4'), (T,))
-put('lat', LAT.astype('f4'), (Y, X))
-put('lon', LON.astype('f4'), (Y, X))
-put('terrain_ft', (terrain_m * 3.28084).astype('f4'), (Y, X))
+def put(name, data, chunks, dims, attrs=None):
+    a = np.asarray(data)
+    d = g.create_dataset(name, data=a, chunks=chunks, compressor=cz, overwrite=True)
+    d.attrs['_ARRAY_DIMENSIONS'] = list(dims)
+    if attrs:
+        d.attrs.update(attrs)
+    return d
+
+GM = {'grid_mapping': 'spatial_ref'}      # spatial fields reference the CRS var
+
+# CRS variable (CF grid_mapping, rioxarray-style)
+crs = g.create_dataset('spatial_ref', data=np.array(0, 'i4'), overwrite=True)
+crs.attrs.update({'_ARRAY_DIMENSIONS': [], 'grid_mapping_name': 'latitude_longitude',
+                  'crs_wkt': WGS84_WKT, 'spatial_ref': WGS84_WKT,
+                  'semi_major_axis': 6378137.0, 'inverse_flattening': 298.257223563,
+                  'longitude_of_prime_meridian': 0.0, 'epsg_code': 'EPSG:4326'})
+
+# coordinate variables (1D, CF)
+put('lat', lats.astype('f4'), (Y,), ['lat'],
+    {'standard_name': 'latitude', 'units': 'degrees_north', 'axis': 'Y'})
+put('lon', lons.astype('f4'), (X,), ['lon'],
+    {'standard_name': 'longitude', 'units': 'degrees_east', 'axis': 'X'})
+put('time', hours.astype('f4'), (T,), ['time'],
+    {'standard_name': 'time', 'units': 'hours since 2026-06-24 00:00:00 local',
+     'long_name': 'forecast valid hour (local)'})
+put('level', pres, (L,), ['level'],
+    {'standard_name': 'air_pressure', 'units': 'hPa', 'positive': 'down'})
+
+# static
+put('terrain_ft', (terrain_m * 3.28084).astype('f4'), (Y, X), ['lat', 'lon'],
+    {**GM, 'long_name': 'terrain height', 'units': 'ft'})
+
 # 3D profiles (windgram columns)
-for nm, arr in [('gh_ft', gh_ft), ('tc', tc), ('td', td), ('rh', rh),
-                ('u_kt', u_kt), ('v_kt', v_kt)]:
-    put(nm, arr, PROF_CH)
+for nm, arr, ln, un in [('gh_ft', gh_ft, 'geopotential height', 'ft'),
+                        ('tc', tc, 'temperature', 'degC'), ('td', td, 'dewpoint', 'degC'),
+                        ('rh', rh, 'relative humidity', '%'),
+                        ('u_kt', u_kt, 'u wind', 'kt'), ('v_kt', v_kt, 'v wind', 'kt')]:
+    put(nm, arr, PROF_CH, ['time', 'level', 'lat', 'lon'], {**GM, 'long_name': ln, 'units': un})
+
 # surface (windgram calc)
-for nm, arr in [('hfx', hfx), ('lh', lh), ('pblh_m', pblh), ('t2_k', t2k), ('sfcp_mb', sfcp)]:
-    put(nm, arr, SFC_CH)
-# 2D overlays (map)
-for nm, arr in [('tol_ft', tol_ft), ('wstar_ms', wstar),
-                ('ubl_kt', ubl), ('vbl_kt', vbl)]:
-    put(nm, arr, PLANE_CH)
+for nm, arr, un in [('hfx', hfx, 'W m-2'), ('lh', lh, 'W m-2'),
+                    ('pblh_m', pblh, 'm'), ('t2_k', t2k, 'K'), ('sfcp_mb', sfcp, 'hPa')]:
+    put(nm, arr, SFC_CH, ['time', 'lat', 'lon'], {**GM, 'units': un})
+
+# 2D overlays (map layers)
+for nm, arr, ln, un in [('tol_ft', tol_ft, 'top of lift', 'ft'),
+                        ('wstar_ms', wstar, 'w* convective velocity', 'm s-1'),
+                        ('ubl_kt', ubl, 'BL-top u wind', 'kt'),
+                        ('vbl_kt', vbl, 'BL-top v wind', 'kt')]:
+    put(nm, arr, PLANE_CH, ['time', 'lat', 'lon'], {**GM, 'long_name': ln, 'units': un})
 
 g.attrs.update({
+    'Conventions': 'CF-1.8', 'title': 'PNW soaring data cube (spike, synthetic)',
     'model': 'SYNTH', 'cycle': '00', 'dx_km': 1.0,
-    'lat0': lat0, 'lat1': lat1, 'lon0': lon0, 'lon1': lon1,
-    'shape': {'time': T, 'level': L, 'y': Y, 'x': X},
 })
 
 # report
