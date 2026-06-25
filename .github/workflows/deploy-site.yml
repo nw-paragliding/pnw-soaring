@@ -36,9 +36,11 @@ jobs:
 
           cp site/index.html pages/index.html
           python3 site/generate-sites-json.py sites/issaquah-sites.csv > pages/sites.json
+          # v2 (beta) — interactive cube frontend, served at /v2
+          mkdir -p pages/v2 && cp -r site/v2/. pages/v2/
 
           cd pages
-          git add index.html sites.json
+          git add index.html sites.json v2
           if git diff --cached --quiet; then
             echo "No frontend changes to publish."
             exit 0

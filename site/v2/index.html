@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PNW Soaring — v2 (beta)</title>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css"/>
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{ --ink:#1c2622; --paper:#f3efe6; --panel:#fbf9f4; --evergreen:#1f5240;
+         --thermal:#e0662a; --line:rgba(28,38,34,.14); }
+  *{margin:0;box-sizing:border-box} html,body{height:100%}
+  body{font-family:'Bricolage Grotesque',system-ui,sans-serif;color:var(--ink)}
+  #wrap{display:flex;height:100dvh}
+  #left{flex:1;position:relative} #map{position:absolute;inset:0}
+  #panel{flex:0 0 440px;max-width:46vw;border-left:1px solid var(--line);
+         background:var(--paper);overflow:auto;padding:16px 18px}
+  .brand{display:flex;align-items:baseline;gap:10px}
+  .brand h1{font-weight:800;font-size:22px;letter-spacing:-.02em}
+  .brand .lift{color:var(--thermal)} .beta{font:600 10px/1 'IBM Plex Mono',monospace;
+    letter-spacing:.12em;text-transform:uppercase;color:#fff;background:var(--thermal);
+    padding:3px 6px;border-radius:5px}
+  .kick{font:500 11px/1.4 'IBM Plex Mono',monospace;color:#4a554f;margin:6px 0 14px}
+  .kick a{color:var(--evergreen)}
+  .seg{display:grid;grid-template-columns:1fr 1fr;background:var(--panel);
+    border:1px solid var(--line);border-radius:10px;padding:4px;position:relative;margin-bottom:12px}
+  .seg label{text-align:center;padding:7px;font-weight:600;font-size:14px;cursor:pointer;
+    border-radius:7px;z-index:1} .seg input{position:absolute;opacity:0}
+  .seg label:has(input:checked){background:var(--evergreen);color:#fff}
+  .bar{position:absolute;top:10px;left:10px;z-index:1;background:#fff;padding:8px 12px;
+    border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.25);font:12px 'IBM Plex Mono',monospace}
+  #wg{width:100%;border:1px solid var(--line);border-radius:8px;background:#fff;margin-top:6px}
+  .site-name{font-weight:800;font-size:18px;margin:8px 0 2px}
+  .coords{font:11px 'IBM Plex Mono',monospace;color:#4a554f}
+  .note{font:12px/1.5 'IBM Plex Mono',monospace;color:#8a7;background:#fff7ec;
+    border:1px solid #f0d9b8;border-radius:8px;padding:10px 12px;margin-top:10px;color:#9a6212}
+  .hint{color:#888;font-size:13px;margin-top:14px}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="left">
+    <div id="map"></div>
+    <div class="bar"><b>Top of lift</b> <span id="tlabel">—</span><br>
+      <input id="tslider" type="range" min="0" max="0" value="0" style="width:190px"></div>
+  </div>
+  <div id="panel">
+    <div class="brand"><h1>PNW <span class="lift">Soaring</span></h1><span class="beta">v2 beta</span></div>
+    <div class="kick">Interactive cube · <a href="/">← back to v1</a></div>
+    <div class="seg" role="radiogroup">
+      <label><input type="radio" name="model" value="hrrr" checked> HRRR</label>
+      <label><input type="radio" name="model" value="nam"> NAM</label>
+    </div>
+    <div id="status"></div>
+    <div id="wgwrap" style="display:none">
+      <div class="site-name" id="site-name"></div>
+      <div class="coords" id="coords"></div>
+      <canvas id="wg" width="540" height="430"></canvas>
+    </div>
+    <div class="hint" id="hint">Click anywhere on the map for a windgram — generated in your browser from the forecast cube.</div>
+  </div>
+</div>
+
+<script type="module">
+import * as zarr from "https://esm.sh/zarrita@0.4.0";
+const maplibregl = window.maplibregl;
+
+// Cube hosting: Cloudflare R2 (per-model "latest"). Override for testing with ?cube=<base>.
+const CUBE_BASE = new URLSearchParams(location.search).get("cube")
+  || "https://cubes.nwparagliding.com";   // TODO: real R2 public base
+const cubeUrl = m => `${CUBE_BASE}/${m}/latest/soaring.zarr`;
+const TOL_CMAP = ["#9e3b2e","#d97b34","#e6c34a","#5fa84a","#2f7fb0","#3a4fa0"];
+
+const map = new maplibregl.Map({ container:"map",
+  style:{version:8,sources:{topo:{type:"raster",
+    tiles:["https://a.tile.opentopomap.org/{z}/{x}/{y}.png"],tileSize:256,attribution:"© OpenTopoMap"}},
+    layers:[{id:"topo",type:"raster",source:"topo"}]},
+  center:[-121.8,47.55], zoom:8 });
+
+let model="hrrr", cube=null, zlayer=null, tIdx=0;
+const $ = id => document.getElementById(id);
+const status = (msg,warn) => { $("status").innerHTML = msg ? `<div class="note">${msg}</div>` : ""; };
+
+async function loadModel(m){
+  model = m; $("wgwrap").style.display="none"; status("Loading "+m.toUpperCase()+" cube…");
+  try {
+    const store = new zarr.FetchStore(cubeUrl(m));
+    const root = zarr.root(store);
+    const open = n => zarr.open(root.resolve(n), {kind:"array"});
+    cube = { store, root, open,
+      lat: await zarr.get(await open("lat")), lon: await zarr.get(await open("lon")),
+      hours:(await zarr.get(await open("time"))).data, pres:(await zarr.get(await open("level"))).data,
+      cacheA:{} };
+    cube.Y = cube.lat.shape[0]; cube.X = cube.lat.shape[1];
+    cube.T = cube.hours.length; cube.L = cube.pres.length;
+    setupTime(); await setOverlay(tIdx); status("");
+  } catch(e){
+    status(`No <b>${m.toUpperCase()}</b> forecast cube published yet — v2 is in beta and waiting on the data pipeline.<br><small>${(e&&e.message||e)}</small>`);
+    if(zlayer && map.getLayer("tol")) map.removeLayer("tol");
+  }
+}
+
+function setupTime(){
+  const s=$("tslider"); s.max=cube.T-1; s.value=tIdx=Math.min(tIdx,cube.T-1);
+  s.oninput=async()=>{ tIdx=+s.value; await setOverlay(tIdx); };
+}
+
+async function setOverlay(ti){
+  const hr=cube.hours[ti];
+  $("tlabel").textContent = `${String(hr|0).padStart(2,"0")}:00 UTC`;
+  try {
+    const { ZarrLayer } = await import("https://esm.sh/@carbonplan/zarr-layer");
+    if(zlayer && map.getLayer("tol")) map.removeLayer("tol");
+    zlayer = new ZarrLayer({ id:"tol", source:cubeUrl(model), variable:"tol_ft",
+      selector:{ time: ti }, clim:[1500,10500], colormap:TOL_CMAP, opacity:0.6 });
+    if(map.loaded()) map.addLayer(zlayer); else map.on("load",()=>map.addLayer(zlayer));
+  } catch(e){ /* overlay optional; windgrams still work */ }
+}
+
+const acc = v => (...ix) => v.data[ix.reduce((s,k,i)=>s+k*v.stride[i],0)];
+function nearest(lng,la){
+  const lat=acc(cube.lat), lon=acc(cube.lon); let best=1e9,by=0,bx=0;
+  for(let j=0;j<cube.Y;j++)for(let i=0;i<cube.X;i++){
+    const d=(lat(j,i)-la)**2+(lon(j,i)-lng)**2; if(d<best){best=d;by=j;bx=i;} }
+  return [by,bx,lat(by,bx),lon(by,bx)];
+}
+async function column(yi,xi){
+  const g3=async n=>acc(await zarr.get(await cube.open(n),[null,null,yi,xi]));
+  const s2=async n=>acc(await zarr.get(await cube.open(n),[null,yi,xi]));
+  const t0=async n=>acc(await zarr.get(await cube.open(n),[yi,xi]));
+  return { gh:await g3("gh_ft"),tc:await g3("tc"),u:await g3("u_kt"),v:await g3("v_kt"),
+    pblh:await s2("pblh_m"),hfx:await s2("hfx"),lh:await s2("lh"),t2:await s2("t2_k"),
+    terr:await t0("terrain_ft") };
+}
+const wstar=(h,l,p,t)=>{const vhf=Math.max(h+0.000245268*t*Math.max(l,0),0);const a=(9.81/t)*p*(vhf/1200);return a>0?Math.cbrt(a):0;};
+const hcrit=(w,ter,p)=>{const f=w*196.85;if(f<=225)return ter;const inr=1.3674*(0.4549-0.463*(225/f))+0.01267;return Math.max(0,ter+(Math.sqrt(Math.max(inr,0))+0.1126)*p);};
+function barb(c,x,y,u,v){const s=Math.hypot(u,v);if(s<1){c.beginPath();c.arc(x,y,2,0,7);c.stroke();return;}
+  const dx=-u/s,dy=v/s,ex=x+dx*18,ey=y+dy*18;c.beginPath();c.moveTo(x,y);c.lineTo(ex,ey);c.stroke();
+  let r=Math.round(s/5)*5,p=0;const px=-dy,py=dx;for(let f=0;f<(r/10|0);f++){const bx=ex-dx*p,by=ey-dy*p;c.beginPath();c.moveTo(bx,by);c.lineTo(bx+px*7,by+py*7);c.stroke();p+=4;}
+  if(r%10>=5){const bx=ex-dx*p,by=ey-dy*p;c.beginPath();c.moveTo(bx,by);c.lineTo(bx+px*4,by+py*4);c.stroke();}}
+
+function renderWindgram(col, latv, lonv){
+  $("wgwrap").style.display=""; $("hint").style.display="none";
+  $("site-name").textContent = `${latv.toFixed(3)}, ${lonv.toFixed(3)}`;
+  $("coords").textContent = `terrain ${Math.round(col.terr)} ft · cube column`;
+  const cv=$("wg"),ctx=cv.getContext("2d"),W=cv.width,H=cv.height;ctx.clearRect(0,0,W,H);
+  const T=cube.T,L=cube.L,m={l:44,r:12,t:40,b:24},pw=W-m.l-m.r,ph=H-m.t-m.b,zTop=12000,zB=col.terr;
+  const xT=t=>m.l+(T<2?0:t/(T-1))*pw, yZ=z=>m.t+(1-(z-zB)/(zTop-zB))*ph, cw=pw/T;
+  ctx.font="10px 'IBM Plex Mono',monospace";
+  for(let t=0;t<T;t++){const x0=m.l+t*cw,bl=col.terr+col.pblh(t),
+    w=wstar(col.hfx(t),col.lh(t),col.pblh(t),col.t2(t));
+    ctx.fillStyle="#eaf3fb";ctx.fillRect(x0,m.t,cw,yZ(bl)-m.t);
+    const g=ctx.createLinearGradient(0,yZ(bl),0,yZ(col.terr));g.addColorStop(0,"#ffe1b0");g.addColorStop(1,"#f5b06a");
+    ctx.fillStyle=g;ctx.fillRect(x0,yZ(bl),cw,yZ(col.terr)-yZ(bl));
+    ctx.fillStyle="#cdbfa6";ctx.fillRect(x0,yZ(col.terr),cw,H-m.b-yZ(col.terr));
+    ctx.fillStyle=w>2?"#1f7a3f":w>1?"#caa12a":"#b15";ctx.fillRect(x0+1,6,cw-2,15);
+    ctx.fillStyle="#fff";ctx.textAlign="center";ctx.fillText(w.toFixed(1),x0+cw/2,17);ctx.textAlign="left";
+    ctx.strokeStyle="#234";for(let l=0;l<L;l+=2){const z=col.gh(t,l);if(z<col.terr||z>zTop)continue;barb(ctx,x0+cw/2,yZ(z),col.u(t,l),col.v(t,l));}}
+  ctx.strokeStyle="#eee";ctx.fillStyle="#888";
+  for(let z=2000;z<=zTop;z+=2000){const y=yZ(z);ctx.beginPath();ctx.moveTo(m.l,y);ctx.lineTo(W-m.r,y);ctx.stroke();ctx.fillText((z/1000)+"k",4,y+3);}
+  ctx.strokeStyle="#1240a0";ctx.lineWidth=2;ctx.beginPath();
+  for(let t=0;t<T;t++){const w=wstar(col.hfx(t),col.lh(t),col.pblh(t),col.t2(t));const y=yZ(hcrit(w,col.terr,col.pblh(t)));t?ctx.lineTo(xT(t),y):ctx.moveTo(xT(t),y);}
+  ctx.stroke();ctx.lineWidth=1;ctx.fillStyle="#555";ctx.textAlign="center";
+  for(let t=0;t<T;t++)ctx.fillText((cube.hours[t]|0)+"z",xT(t),H-7);ctx.textAlign="left";
+}
+
+map.on("click", async e=>{
+  if(!cube) return;
+  const [yi,xi,la,lo]=nearest(e.lngLat.lng,e.lngLat.lat);
+  $("hint").textContent="loading column…"; $("hint").style.display="";
+  try { renderWindgram(await column(yi,xi), la, lo); }
+  catch(err){ $("hint").textContent="column unavailable: "+(err&&err.message||err); }
+});
+document.querySelectorAll('input[name="model"]').forEach(r=>r.addEventListener("change",e=>loadModel(e.target.value)));
+map.on("load", ()=>loadModel("hrrr"));
+</script>
+</body>
+</html>
