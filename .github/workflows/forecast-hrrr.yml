@@ -202,7 +202,7 @@ jobs:
           # The pipeline writes output/soaring.zarr on the 24.04 image; older
           # images don't. Both this and missing R2 secrets skip cleanly.
           if [ ! -d output/soaring.zarr ]; then echo "No cube produced — skipping R2 upload."; exit 0; fi
-          if [ -z "$R2_ACCOUNT_ID" ]; then echo "R2 secrets unset — skipping cube upload."; exit 0; fi
+          if [ -z "$R2_ACCOUNT_ID" ] || [ -z "$R2_ACCESS_KEY_ID" ] || [ -z "$R2_SECRET_ACCESS_KEY" ]; then echo "R2 secrets unset/incomplete — skipping cube upload."; exit 0; fi
           curl -fsSL https://rclone.org/install.sh | sudo bash >/dev/null 2>&1 || sudo apt-get install -y -q rclone
           export RCLONE_S3_PROVIDER=Cloudflare \
                  RCLONE_S3_ENDPOINT="https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com" \
