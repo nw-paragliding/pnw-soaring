@@ -7,6 +7,11 @@ inputs:
   model:
     description: Model slug, used as the forecasts/<date>/<model> subdir (e.g. nam, hrrr)
     required: true
+  update_latest:
+    description: Also copy this day's windgrams to forecasts/latest/<model> (default true).
+      Multi-day runs set this true only for the nearest day so /latest stays "today".
+    required: false
+    default: "true"
 
 runs:
   using: composite
@@ -15,6 +20,7 @@ runs:
       shell: bash
       env:
         MODEL: ${{ inputs.model }}
+        UPDATE_LATEST: ${{ inputs.update_latest }}
       run: |
         # Determine date from output filenames
         DATE=$(ls output/*.png | head -1 | xargs basename | cut -d_ -f1)
@@ -35,10 +41,12 @@ runs:
         echo "{\"model\":\"${MODEL}\",\"date\":\"${DATE}\",\"generated\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" \
           > "pages/forecasts/${DATE}/${MODEL}/metadata.json"
 
-        # Update latest
-        rm -rf "pages/forecasts/latest/${MODEL}"
-        mkdir -p "pages/forecasts/latest/${MODEL}"
-        cp "pages/forecasts/${DATE}/${MODEL}/"* "pages/forecasts/latest/${MODEL}/"
+        # Update latest (only the nearest day in a multi-day run)
+        if [ "$UPDATE_LATEST" = "true" ]; then
+          rm -rf "pages/forecasts/latest/${MODEL}"
+          mkdir -p "pages/forecasts/latest/${MODEL}"
+          cp "pages/forecasts/${DATE}/${MODEL}/"* "pages/forecasts/latest/${MODEL}/"
+        fi
 
         # Generate sites.json and refresh frontend
         python3 site/generate-sites-json.py sites/issaquah-sites.csv > pages/sites.json
