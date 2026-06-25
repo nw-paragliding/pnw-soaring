@@ -48,8 +48,8 @@
     <div class="brand"><h1>PNW <span class="lift">Soaring</span></h1><span class="beta">v2 beta</span></div>
     <div class="kick">Interactive cube · <a href="/">← back to v1</a></div>
     <div class="seg" role="radiogroup">
-      <label><input type="radio" name="model" value="hrrr" checked> HRRR</label>
-      <label><input type="radio" name="model" value="nam"> NAM</label>
+      <label><input type="radio" name="model" value="hrrr"> HRRR</label>
+      <label><input type="radio" name="model" value="nam" checked> NAM</label>
     </div>
     <div id="status"></div>
     <div id="wgwrap" style="display:none">
@@ -77,7 +77,7 @@ const map = new maplibregl.Map({ container:"map",
     layers:[{id:"topo",type:"raster",source:"topo"}]},
   center:[-121.8,47.55], zoom:8 });
 
-let model="hrrr", cube=null, zlayer=null, tIdx=0;
+let model="nam", cube=null, zlayer=null, tIdx=0;
 const $ = id => document.getElementById(id);
 const status = (msg,warn) => { $("status").innerHTML = msg ? `<div class="note">${msg}</div>` : ""; };
 
@@ -95,6 +95,34 @@ async function loadModel(m){
       cacheA:{} };
     cube.Y = cube.lat.shape[0]; cube.X = cube.lat.shape[1];
     cube.T = cube.hours.length; cube.L = cube.pres.length;
+    // Native LCC extent + CRS for the map overlay. The CRS travels with the cube
+    // as a CF grid_mapping (crs_wkt); hand it straight to zarr-layer along with
+    // edge bounds and which dims are spatial. Per-cube so NAM/HRRR each project
+    // correctly. (zarr-layer ≥0.5.1 handles the spherical-earth WKT correctly.)
+    try {
+      const gm = (await (await fetch(cubeUrl(m)+"/spatial_ref/zarr.json")).json()).attributes;
+      cube.crs = gm.crs_wkt;
+      const xa=(await zarr.get(await open("x"))).data, ya=(await zarr.get(await open("y"))).data;
+      const xs=xa[1]-xa[0], ys=ya[1]-ya[0];
+      cube.bounds=[ xa[0]-xs/2, Math.min(ya[0],ya[ya.length-1])-Math.abs(ys)/2,
+                    xa[xa.length-1]+xs/2, Math.max(ya[0],ya[ya.length-1])+Math.abs(ys)/2 ];
+    } catch(e){ console.warn("[overlay] projection metadata unavailable:", e); }
+    // Local-time labels for the slider: the cube's time axis is UTC hour-of-day
+    // on its soaring date (wrapping past midnight); render each in the viewer's
+    // local zone (machine TZ — for PNW users that's PDT, the forecast zone).
+    try {
+      const rootAttrs = (await (await fetch(cubeUrl(m)+"/zarr.json")).json()).attributes || {};
+      const d0 = rootAttrs.date;
+      if (d0) {
+        const [Y,M,D] = d0.split("-").map(Number);
+        let dayOff=0, prev=-1;
+        cube.localTimes = Array.from(cube.hours).map(h=>{
+          h=h|0; if(prev>=0 && h<prev) dayOff++; prev=h;
+          return new Date(Date.UTC(Y,M-1,D+dayOff,h))
+            .toLocaleTimeString([], {hour:"numeric", timeZoneName:"short"});
+        });
+      }
+    } catch(e){ /* fall back to UTC labels */ }
     setupTime(); await setOverlay(tIdx); status("");
     $("hint").textContent = HINT; $("hint").style.display = "";   // cube ready → invite a click
   } catch(e){
@@ -103,21 +131,31 @@ async function loadModel(m){
   }
 }
 
+function timeLabel(ti){
+  return cube.localTimes ? cube.localTimes[ti] : `${String(cube.hours[ti]|0).padStart(2,"0")}:00 UTC`;
+}
 function setupTime(){
   const s=$("tslider"); s.max=cube.T-1; s.value=tIdx=Math.min(tIdx,cube.T-1);
-  s.oninput=async()=>{ tIdx=+s.value; await setOverlay(tIdx); };
+  $("tlabel").textContent = timeLabel(tIdx);
+  // Drive time in place via setSelector — recreating the layer per tick races
+  // and tears the overlay off the map. Build it once in setOverlay().
+  s.oninput=()=>{
+    tIdx=+s.value; $("tlabel").textContent = timeLabel(tIdx);
+    if(zlayer) zlayer.setSelector({ time:{ selected: tIdx, type:"index" } });
+  };
 }
 
 async function setOverlay(ti){
-  const hr=cube.hours[ti];
-  $("tlabel").textContent = `${String(hr|0).padStart(2,"0")}:00 UTC`;
+  $("tlabel").textContent = timeLabel(ti);
   try {
     const { ZarrLayer } = await import("https://esm.sh/@carbonplan/zarr-layer");
     if(zlayer && map.getLayer("tol")) map.removeLayer("tol");
     zlayer = new ZarrLayer({ id:"tol", source:cubeUrl(model), variable:"tol_ft",
-      selector:{ time: ti }, clim:[1500,10500], colormap:TOL_CMAP, opacity:0.6 });
+      zarrVersion:3, proj4:cube.crs, bounds:cube.bounds, spatialDimensions:{lat:"y",lon:"x"},
+      selector:{ time: { selected: ti, type:"index" } },   // ti is an index, not a UTC-hour value
+      clim:[1500,10500], colormap:TOL_CMAP, opacity:0.6 });
     if(map.loaded()) map.addLayer(zlayer); else map.on("load",()=>map.addLayer(zlayer));
-  } catch(e){ /* overlay optional; windgrams still work */ }
+  } catch(e){ console.error("[overlay] failed:", e); }
 }
 
 const acc = v => (...ix) => v.data[ix.reduce((s,k,i)=>s+k*v.stride[i],0)];
@@ -130,7 +168,8 @@ function nearest(lng,la){
 async function column(yi,xi){
   const g3=async n=>acc(await zarr.get(await cube.open(n),[null,null,yi,xi]));
   const s2=async n=>acc(await zarr.get(await cube.open(n),[null,yi,xi]));
-  const t0=async n=>acc(await zarr.get(await cube.open(n),[yi,xi]));
+  // All-integer selection returns a bare scalar (no .data) in zarrita — read it directly.
+  const t0=async n=>{ const v=await zarr.get(await cube.open(n),[yi,xi]); return typeof v==="number"?v:v.data[0]; };
   return { gh:await g3("gh_ft"),tc:await g3("tc"),u:await g3("u_kt"),v:await g3("v_kt"),
     pblh:await s2("pblh_m"),hfx:await s2("hfx"),lh:await s2("lh"),t2:await s2("t2_k"),
     terr:await t0("terrain_ft") };
@@ -175,7 +214,7 @@ map.on("click", async e=>{
   catch(err){ $("hint").textContent="column unavailable: "+(err&&err.message||err); }
 });
 document.querySelectorAll('input[name="model"]').forEach(r=>r.addEventListener("change",e=>loadModel(e.target.value)));
-map.on("load", ()=>loadModel("hrrr"));
+map.on("load", ()=>loadModel("nam"));
 </script>
 </body>
 </html>
