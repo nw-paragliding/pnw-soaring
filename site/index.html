@@ -35,7 +35,7 @@
       -webkit-font-smoothing: antialiased;
     }
 
-    #app { display: flex; height: 100vh; overflow: hidden; }
+    #app { display: flex; height: 100vh; height: 100dvh; overflow: hidden; }
 
     /* ── Sidebar ───────────────────────────────────────────────── */
     #sidebar {
@@ -215,11 +215,17 @@
 
     /* ── Mobile: stack, give the map a small fixed share ───────── */
     @media (max-width: 720px) {
-      #app { flex-direction: column; }
-      #sidebar { flex: 1 1 auto; min-width: 0; max-width: none; width: 100%; height: auto; border-right: none; border-bottom: 1px solid var(--line-2); }
-      #map { flex: 0 0 38vh; min-height: 0; }
-      .brand { padding: 16px 18px 14px; }
+      /* Natural page scroll with the map pinned at the top as the site picker;
+         the windgram scrolls beneath it. */
+      html, body { height: auto; }
+      #app { flex-direction: column; height: auto; min-height: 100dvh; overflow: visible; }
+      #map { order: -1; flex: none; height: 42vh; position: sticky; top: 0; z-index: 2;
+             border-bottom: 1px solid var(--line-2); }
+      #sidebar { flex: none; width: 100%; height: auto; max-width: none; min-width: 0;
+                 overflow: visible; border-right: none; }
+      .brand { padding: 14px 18px 12px; }
       .controls, .panel { padding-left: 18px; padding-right: 18px; }
+      .panel { padding-bottom: 32px; }
     }
     @media (prefers-reduced-motion: reduce) {
       * { animation: none !important; transition: none !important; }
