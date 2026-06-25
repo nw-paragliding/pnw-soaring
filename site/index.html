@@ -1,93 +1,296 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>PNW Soaring Forecasts</title>
+  <title>PNW Soaring Forecast</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta charset="utf-8">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9/dist/leaflet.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --ink:       #1c2622;   /* deep evergreen-black text */
+      --ink-soft:  #4a554f;
+      --paper:     #f3efe6;   /* warm topo paper */
+      --paper-2:   #e9e2cf00; /* (unused placeholder) */
+      --panel:     #fbf9f4;
+      --evergreen: #1f5240;   /* primary */
+      --evergreen-d:#163a2d;
+      --thermal:   #e0662a;   /* lift / accent */
+      --sky:       #3d7ea6;
+      --line:      rgba(28,38,34,0.12);
+      --line-2:    rgba(28,38,34,0.18);
+      --stale:     #b67410;
+      --fresh:     #2f8f5b;
+      --shadow:    0 1px 2px rgba(28,38,34,.06), 0 8px 24px -12px rgba(28,38,34,.28);
+    }
+
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { height: 100%; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+    body {
+      font-family: 'Bricolage Grotesque', system-ui, sans-serif;
+      color: var(--ink);
+      background: var(--paper);
+      -webkit-font-smoothing: antialiased;
+    }
 
-    #app { display: flex; height: 100vh; }
+    #app { display: flex; height: 100vh; overflow: hidden; }
 
-    /* Left sidebar holds the controls + the selected site's windgram.
-       It takes a generous share so the windgram is large; the map fills
-       the rest. */
+    /* ── Sidebar ───────────────────────────────────────────────── */
     #sidebar {
       flex: 0 0 40%;
       min-width: 380px;
       max-width: 640px;
       height: 100%;
       overflow-y: auto;
-      background: #fff;
-      border-right: 1px solid #ddd;
-      padding: 16px;
+      position: relative;
+      background: var(--paper);
+      /* faint topographic contour wash for atmosphere */
+      background-image:
+        radial-gradient(120% 80% at 100% 0%, rgba(31,82,64,.06), transparent 60%),
+        repeating-radial-gradient(circle at 18% -10%, transparent 0 22px, rgba(28,38,34,.025) 22px 23px);
+      border-right: 1px solid var(--line-2);
       display: flex;
       flex-direction: column;
-      gap: 12px;
     }
 
-    #map { flex: 1; height: 100%; }
-
-    .title { font-weight: 600; font-size: 18px; }
-    .model-toggle label { margin-right: 14px; cursor: pointer; font-size: 14px; }
-    .meta { font-size: 12px; color: #666; }
-    .meta.stale { color: #b8860b; }
-
-    .windgram-panel { margin-top: 4px; }
-    .windgram-panel h3 { font-size: 16px; margin-bottom: 6px; }
-    .windgram-panel img {
-      width: 100%; border-radius: 4px; border: 1px solid #ddd; cursor: zoom-in;
-      display: block;
+    /* Brand header */
+    .brand {
+      padding: 22px 24px 18px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(31,82,64,.05), transparent);
+      animation: rise .5s cubic-bezier(.2,.7,.2,1) both;
     }
-    .windgram-panel .empty {
-      color: #999; font-size: 14px; text-align: center;
-      padding: 40px 16px; border: 1px dashed #ddd; border-radius: 8px;
+    .brand .wordmark {
+      display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
     }
-    .windgram-panel .no-data { color: #999; padding: 24px 0; text-align: center; }
-    .windgram-panel .open-link {
-      display: inline-block; margin-top: 8px; font-size: 12px;
-      color: #0066cc; text-decoration: none;
+    .brand h1 {
+      font-weight: 800;
+      font-size: clamp(26px, 3.4vw, 38px);
+      letter-spacing: -0.025em;
+      line-height: .95;
+      color: var(--ink);
     }
-    .windgram-panel .open-link:hover { text-decoration: underline; }
+    .brand h1 .lift { color: var(--thermal); }
+    .brand .kicker {
+      margin-top: 10px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px; font-weight: 500;
+      letter-spacing: .18em; text-transform: uppercase;
+      color: var(--ink-soft);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .brand .kicker .glyph { color: var(--evergreen); font-size: 13px; }
 
-    /* Marker emphasis for the currently selected site */
-    .site-marker { transition: transform 0.1s; text-align: center; line-height: 24px; }
-    .site-marker.selected { transform: scale(1.5); filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5)); }
+    /* Controls block */
+    .controls { padding: 18px 24px 6px; display: flex; flex-direction: column; gap: 14px;
+      animation: rise .5s cubic-bezier(.2,.7,.2,1) .06s both; }
 
-    /* Stack on narrow screens so it isn't a desktop-only layout. The map
-       gets a small fixed share so the windgram (in the sidebar above) has
-       most of the screen. */
+    /* Segmented model toggle */
+    .segmented {
+      position: relative;
+      display: grid; grid-template-columns: 1fr 1fr;
+      background: var(--panel);
+      border: 1px solid var(--line-2);
+      border-radius: 11px;
+      padding: 4px;
+      box-shadow: inset 0 1px 2px rgba(28,38,34,.04);
+    }
+    .segmented .indicator {
+      position: absolute; top: 4px; left: 4px; bottom: 4px;
+      width: calc(50% - 4px);
+      background: var(--evergreen);
+      border-radius: 8px;
+      box-shadow: 0 2px 8px -2px rgba(22,58,45,.5);
+      transition: transform .28s cubic-bezier(.5,.1,.1,1);
+      z-index: 0;
+    }
+    .segmented:has(input[value="nam"]:checked) .indicator { transform: translateX(100%); }
+    .segmented label {
+      position: relative; z-index: 1;
+      display: flex; flex-direction: column; align-items: center; gap: 1px;
+      padding: 8px 4px; cursor: pointer; user-select: none;
+      border-radius: 8px;
+      transition: color .2s;
+    }
+    .segmented label .name { font-weight: 600; font-size: 14px; letter-spacing: -.01em; }
+    .segmented label .res {
+      font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: .04em;
+      color: var(--ink-soft);
+    }
+    .segmented input { position: absolute; opacity: 0; pointer-events: none; }
+    .segmented input:checked ~ .name,
+    .segmented label:has(input:checked) .name { color: #fff; }
+    .segmented label:has(input:checked) .res { color: rgba(255,255,255,.7); }
+
+    /* Status strip */
+    .status {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11.5px; line-height: 1.5;
+      color: var(--ink-soft);
+      display: flex; align-items: center; gap: 8px;
+      padding: 9px 12px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 9px;
+    }
+    .status .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--fresh); flex: none;
+      box-shadow: 0 0 0 3px rgba(47,143,91,.18);
+    }
+    .status.stale { color: var(--stale); }
+    .status.stale .dot { background: var(--stale); box-shadow: 0 0 0 3px rgba(182,116,16,.18); }
+    .status.none .dot { background: var(--ink-soft); box-shadow: none; }
+
+    /* Windgram panel */
+    .panel { padding: 14px 24px 28px; flex: 1;
+      animation: rise .5s cubic-bezier(.2,.7,.2,1) .12s both; }
+
+    .empty {
+      margin-top: 6px;
+      border: 1px dashed var(--line-2);
+      border-radius: 14px;
+      padding: 48px 24px;
+      text-align: center;
+      color: var(--ink-soft);
+      background: rgba(251,249,244,.5);
+    }
+    .empty .mark { font-size: 34px; display: block; margin-bottom: 12px; filter: grayscale(.2); opacity:.85; }
+    .empty .lead { font-weight: 600; font-size: 15px; color: var(--ink); }
+    .empty .hint { font-size: 13px; margin-top: 4px; }
+
+    .site-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+    .site-head h2 {
+      font-weight: 800; font-size: 22px; letter-spacing: -.02em; line-height: 1.05;
+    }
+    .site-head .coords {
+      font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: var(--ink-soft);
+      white-space: nowrap; padding-top: 4px;
+    }
+
+    .wg-frame {
+      border: 1px solid var(--line-2);
+      border-radius: 14px;
+      overflow: hidden;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+    .wg-frame img { width: 100%; display: block; cursor: zoom-in; }
+    .no-data { padding: 40px 20px; text-align: center; color: var(--ink-soft); font-size: 14px; }
+
+    .actions { margin-top: 12px; display: flex; align-items: center; justify-content: space-between; }
+    .open-link {
+      font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 500;
+      color: var(--evergreen); text-decoration: none;
+      border-bottom: 1px solid transparent; transition: border-color .15s;
+    }
+    .open-link:hover { border-color: var(--evergreen); }
+    .reveal { animation: wgIn .4s cubic-bezier(.2,.7,.2,1) both; }
+
+    /* ── Map ───────────────────────────────────────────────────── */
+    #map { flex: 1; height: 100%; background: #dfe6d8; }
+
+    /* Custom paraglider markers */
+    .site-marker {
+      text-align: center; line-height: 26px; font-size: 19px;
+      transition: transform .12s cubic-bezier(.2,.7,.2,1);
+      cursor: pointer;
+      filter: drop-shadow(0 1px 1px rgba(0,0,0,.35));
+    }
+    .site-marker:hover { transform: scale(1.25); }
+    .site-marker.selected {
+      transform: scale(1.65);
+      filter: drop-shadow(0 2px 3px rgba(224,102,42,.55));
+    }
+    /* thermal ring under the selected marker */
+    .site-marker.selected::after {
+      content: ""; position: absolute; left: 50%; top: 56%;
+      width: 30px; height: 30px; transform: translate(-50%,-50%);
+      border: 2px solid var(--thermal); border-radius: 50%;
+      animation: ring 1.6s ease-out infinite;
+    }
+    @keyframes ring {
+      0% { width: 18px; height: 18px; opacity: .8; }
+      100% { width: 46px; height: 46px; opacity: 0; }
+    }
+
+    /* Leaflet chrome to match */
+    .leaflet-bar a {
+      background: var(--panel); color: var(--ink); border-color: var(--line-2) !important;
+    }
+    .leaflet-bar a:hover { background: #fff; }
+    .leaflet-tooltip {
+      font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 500;
+      background: var(--evergreen-d); color: #fff; border: none; box-shadow: var(--shadow);
+      padding: 3px 8px; border-radius: 6px;
+    }
+    .leaflet-tooltip-top::before { border-top-color: var(--evergreen-d); }
+    .leaflet-container { font-family: 'IBM Plex Mono', monospace; }
+
+    @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+    @keyframes wgIn { from { opacity: 0; transform: translateY(8px) scale(.99); } to { opacity: 1; transform: none; } }
+
+    /* ── Mobile: stack, give the map a small fixed share ───────── */
     @media (max-width: 720px) {
       #app { flex-direction: column; }
-      #sidebar { flex: 1 1 auto; min-width: 0; max-width: none; width: 100%; height: auto; border-right: none; border-bottom: 1px solid #ddd; }
+      #sidebar { flex: 1 1 auto; min-width: 0; max-width: none; width: 100%; height: auto; border-right: none; border-bottom: 1px solid var(--line-2); }
       #map { flex: 0 0 38vh; min-height: 0; }
+      .brand { padding: 16px 18px 14px; }
+      .controls, .panel { padding-left: 18px; padding-right: 18px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      * { animation: none !important; transition: none !important; }
     }
   </style>
 </head>
 <body>
   <div id="app">
     <aside id="sidebar">
-      <div class="title">PNW Soaring Forecast</div>
-      <div class="model-toggle">
-        <label><input type="radio" name="model" value="hrrr" checked> HRRR (1km)</label>
-        <label><input type="radio" name="model" value="nam"> NAM (1.3km)</label>
-      </div>
-      <div class="meta" id="meta"></div>
+      <header class="brand">
+        <div class="wordmark">
+          <h1>PNW <span class="lift">Soaring</span></h1>
+        </div>
+        <div class="kicker"><span class="glyph">▲</span> Cascades · thermal forecast</div>
+      </header>
 
-      <div class="windgram-panel">
-        <div class="empty" id="windgram-empty">Select a site on the map to see its forecast.</div>
+      <div class="controls">
+        <div class="segmented" role="radiogroup" aria-label="Forecast model">
+          <span class="indicator" aria-hidden="true"></span>
+          <label>
+            <input type="radio" name="model" value="hrrr" checked>
+            <span class="name">HRRR</span><span class="res">1 km · hourly</span>
+          </label>
+          <label>
+            <input type="radio" name="model" value="nam">
+            <span class="name">NAM</span><span class="res">1.3 km · 4×/day</span>
+          </label>
+        </div>
+        <div class="status" id="status"><span class="dot"></span><span id="status-text">Loading…</span></div>
+      </div>
+
+      <section class="panel">
+        <div class="empty" id="windgram-empty">
+          <span class="mark">🪂</span>
+          <div class="lead">Pick a launch on the map</div>
+          <div class="hint">Tap a site to read its thermal &amp; wind forecast.</div>
+        </div>
+
         <div id="windgram-content" style="display:none">
-          <h3 id="site-name"></h3>
-          <a id="windgram-link" href="#" target="_blank">
+          <div class="site-head">
+            <h2 id="site-name"></h2>
+            <span class="coords" id="site-coords"></span>
+          </div>
+          <a class="wg-frame" id="windgram-link" href="#" target="_blank" rel="noopener">
             <img id="windgram-img" alt="" />
           </a>
           <div class="no-data" id="windgram-nodata" style="display:none"></div>
-          <div><a class="open-link" id="open-full" href="#" target="_blank">Open full size ↗</a></div>
+          <div class="actions">
+            <a class="open-link" id="open-full" href="#" target="_blank" rel="noopener">Open full size ↗</a>
+          </div>
         </div>
-      </div>
+      </section>
     </aside>
 
     <div id="map"></div>
@@ -95,37 +298,34 @@
 
   <script src="https://unpkg.com/leaflet@1.9/dist/leaflet.js"></script>
   <script>
-    const map = L.map('map').setView([47.50, -121.85], 12);
+    const map = L.map('map', { zoomControl: true }).setView([47.55, -121.80], 11);
 
     L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
       maxZoom: 17,
-      attribution: '&copy; OpenTopoMap'
+      attribution: '&copy; OpenTopoMap (CC-BY-SA)'
     }).addTo(map);
 
-    // Site names come in two styles: snake_case (Poo_Poo_Point) and smushed
-    // CamelCase (TigerHikeLookout, MtSi). Render both as spaced words.
+    // Site names arrive snake_case (Poo_Poo_Point) or smushed CamelCase
+    // (TigerHikeLookout, MtSi). Render both as spaced words.
     function prettyName(name) {
       return name
-        .replace(/_/g, ' ')                      // snake_case -> spaces
-        .replace(/([a-z0-9])([A-Z])/g, '$1 $2')  // CamelCase boundary -> space
+        .replace(/_/g, ' ')
+        .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
         .replace(/\s+/g, ' ')
         .trim();
     }
 
     let currentModel = 'hrrr';
-    let currentSite = null;      // {name, lat, lon}
+    let currentSite = null;
     let selectedMarker = null;
     let markers = [];
     let metadata = {};
 
     async function loadSites() {
       try {
-        const resp = await fetch('sites.json');
-        const sites = await resp.json();
+        const sites = await (await fetch('sites.json')).json();
         updateMarkers(sites);
-      } catch (e) {
-        console.error('Failed to load sites:', e);
-      }
+      } catch (e) { console.error('Failed to load sites:', e); }
     }
 
     async function loadMetadata() {
@@ -135,33 +335,39 @@
           if (resp.ok) metadata[model] = await resp.json();
         } catch (e) {}
       }
-      updateMeta();
+      updateStatus();
     }
 
-    function updateMeta() {
+    function timeAgo(d) {
+      const h = (Date.now() - d.getTime()) / 3.6e6;
+      if (h < 1) return `${Math.round(h * 60)}m ago`;
+      if (h < 24) return `${Math.round(h)}h ago`;
+      return `${Math.round(h / 24)}d ago`;
+    }
+
+    function updateStatus() {
       const m = metadata[currentModel];
-      const el = document.getElementById('meta');
+      const el = document.getElementById('status');
+      const txt = document.getElementById('status-text');
+      el.classList.remove('stale', 'none');
       if (m) {
         const updated = new Date(m.generated);
         const ageH = (Date.now() - updated.getTime()) / 3.6e6;
-        el.textContent = `${m.model.toUpperCase()} ${m.date} — updated ${updated.toLocaleString()}`;
-        el.classList.toggle('stale', ageH > 12);
+        if (ageH > 12) el.classList.add('stale');
+        txt.textContent = `${m.model.toUpperCase()} · ${m.date} · updated ${timeAgo(updated)}`;
       } else {
-        el.textContent = 'No forecast data yet';
-        el.classList.remove('stale');
+        el.classList.add('none');
+        txt.textContent = 'No forecast data yet';
       }
     }
 
     function updateWindgram() {
       const empty = document.getElementById('windgram-empty');
       const content = document.getElementById('windgram-content');
-      if (!currentSite) {
-        empty.style.display = '';
-        content.style.display = 'none';
-        return;
-      }
+      if (!currentSite) { empty.style.display = ''; content.style.display = 'none'; return; }
       empty.style.display = 'none';
       content.style.display = '';
+      content.classList.remove('reveal'); void content.offsetWidth; content.classList.add('reveal');
 
       const img = document.getElementById('windgram-img');
       const nodata = document.getElementById('windgram-nodata');
@@ -170,14 +376,15 @@
       const src = `forecasts/latest/${currentModel}/${currentSite.name}_windgram.png`;
 
       document.getElementById('site-name').textContent = prettyName(currentSite.name);
-      nodata.textContent = `No ${currentModel.toUpperCase()} forecast available for this site.`;
+      document.getElementById('site-coords').textContent =
+        `${currentSite.lat.toFixed(4)}, ${currentSite.lon.toFixed(4)}`;
+      nodata.textContent = `No ${currentModel.toUpperCase()} forecast for this site yet.`;
       nodata.style.display = 'none';
       img.style.display = '';
-      img.alt = currentSite.name;
+      img.alt = `${prettyName(currentSite.name)} windgram`;
       img.onerror = () => { img.style.display = 'none'; nodata.style.display = ''; };
       img.src = src;
-      link.href = src;
-      openFull.href = src;
+      link.href = src; openFull.href = src;
     }
 
     function selectSite(site, marker) {
@@ -191,17 +398,11 @@
     function updateMarkers(sites) {
       markers.forEach(m => map.removeLayer(m));
       markers = [];
-
-      const icon = L.divIcon({
-        html: '🪂',
-        className: 'site-marker',
-        iconSize: [24, 24],
-        iconAnchor: [12, 12],
-      });
-
+      const icon = L.divIcon({ html: '🪂', className: 'site-marker', iconSize: [26, 26], iconAnchor: [13, 13] });
       sites.forEach(site => {
-        const marker = L.marker([site.lat, site.lon], { icon, title: prettyName(site.name) }).addTo(map);
-        marker.bindTooltip(prettyName(site.name), { direction: 'top', offset: [0, -10] });
+        const label = prettyName(site.name);
+        const marker = L.marker([site.lat, site.lon], { icon, title: label }).addTo(map);
+        marker.bindTooltip(label, { direction: 'top', offset: [0, -12] });
         marker.on('click', () => selectSite(site, marker));
         markers.push(marker);
       });
@@ -210,14 +411,13 @@
     document.querySelectorAll('input[name="model"]').forEach(r => {
       r.addEventListener('change', e => {
         currentModel = e.target.value;
-        updateMeta();
+        updateStatus();
         updateWindgram();
       });
     });
 
     loadSites();
     loadMetadata();
-    // Map shares the viewport with the sidebar; make sure Leaflet measures correctly.
     setTimeout(() => map.invalidateSize(), 0);
   </script>
 </body>
