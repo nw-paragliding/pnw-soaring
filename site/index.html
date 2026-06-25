@@ -173,6 +173,9 @@
     /* ── Map ───────────────────────────────────────────────────── */
     #map { flex: 1; height: 100%; background: #dfe6d8; }
 
+    /* Bottom-sheet affordances — mobile only (hidden on desktop) */
+    .sheet-grip, .sheet-close { display: none; }
+
     /* Custom paraglider markers */
     .site-marker {
       text-align: center; line-height: 26px; font-size: 19px;
@@ -215,17 +218,39 @@
 
     /* ── Mobile: stack, give the map a small fixed share ───────── */
     @media (max-width: 720px) {
-      /* Natural page scroll with the map pinned at the top as the site picker;
-         the windgram scrolls beneath it. */
-      html, body { height: auto; }
-      #app { flex-direction: column; height: auto; min-height: 100dvh; overflow: visible; }
-      #map { order: -1; flex: none; height: 42vh; position: sticky; top: 0; z-index: 2;
-             border-bottom: 1px solid var(--line-2); }
-      #sidebar { flex: none; width: 100%; height: auto; max-width: none; min-width: 0;
-                 overflow: visible; border-right: none; }
-      .brand { padding: 14px 18px 12px; }
-      .controls, .panel { padding-left: 18px; padding-right: 18px; }
-      .panel { padding-bottom: 32px; }
+      /* Full-screen map; the forecast slides up as a dismissible bottom sheet. */
+      html, body { height: 100%; }
+      #app { display: block; height: 100dvh; }
+      #map { position: absolute; inset: 0; width: 100%; height: 100dvh; }
+
+      #sidebar {
+        position: fixed; left: 0; right: 0; bottom: 0;
+        width: 100%; min-width: 0; max-width: none; height: auto;
+        max-height: 80dvh;
+        border: 1px solid var(--line-2); border-bottom: none;
+        border-radius: 18px 18px 0 0;
+        box-shadow: 0 -10px 34px rgba(28,38,34,.28);
+        transform: translateY(101%);
+        transition: transform .34s cubic-bezier(.2,.7,.2,1);
+        z-index: 1000;
+        overflow-y: auto; overscroll-behavior: contain;
+      }
+      #sidebar.open { transform: translateY(0); }
+
+      .sheet-grip {
+        display: block; width: 40px; height: 4px; border-radius: 3px;
+        background: var(--line-2); margin: 9px auto 2px; cursor: pointer;
+      }
+      .sheet-close {
+        display: flex; align-items: center; justify-content: center;
+        position: absolute; top: 10px; right: 12px; width: 30px; height: 30px;
+        border: none; border-radius: 50%; background: var(--panel);
+        color: var(--ink-soft); font-size: 13px; cursor: pointer;
+        box-shadow: 0 1px 3px rgba(28,38,34,.18); z-index: 2;
+      }
+      .brand { display: none; }
+      .controls { padding: 4px 18px 6px; }
+      .panel { padding: 4px 18px 30px; }
     }
     @media (prefers-reduced-motion: reduce) {
       * { animation: none !important; transition: none !important; }
@@ -235,6 +260,8 @@
 <body>
   <div id="app">
     <aside id="sidebar">
+      <div class="sheet-grip" id="sheetGrip" aria-hidden="true"></div>
+      <button class="sheet-close" id="sheetClose" aria-label="Close forecast">✕</button>
       <header class="brand">
         <div class="wordmark">
           <h1>PNW <span class="lift">Soaring</span></h1>
@@ -371,6 +398,10 @@
       link.href = src; openFull.href = src;
     }
 
+    const sheet = document.getElementById('sidebar');
+    const openSheet  = () => sheet.classList.add('open');     // no-op on desktop (CSS)
+    const closeSheet = () => sheet.classList.remove('open');
+
     function selectSite(site, marker) {
       currentSite = site;
       if (selectedMarker && selectedMarker._icon) selectedMarker._icon.classList.remove('selected');
@@ -388,11 +419,12 @@
         const label = prettyName(site.name);
         const marker = L.marker([site.lat, site.lon], { icon, title: label }).addTo(map);
         marker.bindTooltip(label, { direction: 'top', offset: [0, -12] });
-        marker.on('click', () => selectSite(site, marker));
+        marker.on('click', () => { selectSite(site, marker); openSheet(); });
         markers.push(marker);
         if (site.name === DEFAULT_SITE) dflt = { site, marker };
       });
-      // Open on the default site so the windgram shows immediately.
+      // Pre-select the default site (renders the windgram) but leave the sheet
+      // closed on mobile — the map opens full-screen; tapping a site reveals it.
       if (dflt && !currentSite) selectSite(dflt.site, dflt.marker);
     }
 
@@ -402,6 +434,11 @@
         updateWindgram();
       });
     });
+
+    // Dismiss the sheet: close button, grip tap, or tapping the open map.
+    document.getElementById('sheetClose').addEventListener('click', closeSheet);
+    document.getElementById('sheetGrip').addEventListener('click', closeSheet);
+    map.on('click', closeSheet);   // empty-map taps (marker clicks don't propagate)
 
     loadSites();
     loadMetadata();
