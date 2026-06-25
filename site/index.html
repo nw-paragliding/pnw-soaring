@@ -173,8 +173,8 @@
     /* ── Map ───────────────────────────────────────────────────── */
     #map { flex: 1; height: 100%; background: #dfe6d8; }
 
-    /* Bottom-sheet affordances — mobile only (hidden on desktop) */
-    .sheet-grip, .sheet-close { display: none; }
+    /* Bottom-sheet affordances + floating brand — mobile only */
+    .sheet-grip, .sheet-close, .map-header { display: none; }
 
     /* Custom paraglider markers */
     .site-marker {
@@ -251,6 +251,22 @@
       .brand { display: none; }
       .controls { padding: 4px 18px 6px; }
       .panel { padding: 4px 18px 30px; }
+
+      /* Floating brand pill over the map */
+      .map-header {
+        display: flex; flex-direction: column; gap: 1px;
+        position: fixed; top: 10px; left: 10px; z-index: 500;
+        padding: 7px 12px; border-radius: 12px;
+        background: rgba(243,239,230,.92); backdrop-filter: blur(3px);
+        border: 1px solid var(--line); box-shadow: var(--shadow);
+        pointer-events: none;
+      }
+      .map-header h1 { font-weight: 800; font-size: 17px; letter-spacing: -.02em;
+        line-height: 1; color: var(--ink); }
+      .map-header h1 .lift { color: var(--thermal); }
+      .map-header .kicker { font-family: 'IBM Plex Mono', monospace; font-size: 8.5px;
+        letter-spacing: .1em; text-transform: uppercase; color: var(--ink-soft); }
+      .map-header .glyph { color: var(--evergreen); }
     }
     @media (prefers-reduced-motion: reduce) {
       * { animation: none !important; transition: none !important; }
@@ -307,11 +323,17 @@
     </aside>
 
     <div id="map"></div>
+    <!-- Floating brand over the full-screen map (mobile only) -->
+    <div class="map-header">
+      <h1>PNW <span class="lift">Soaring</span></h1>
+      <span class="kicker"><span class="glyph">▲</span> Cascades · thermal forecast</span>
+    </div>
   </div>
 
   <script src="https://unpkg.com/leaflet@1.9/dist/leaflet.js"></script>
   <script>
-    const map = L.map('map', { zoomControl: true }).setView([47.55, -121.80], 11);
+    const map = L.map('map', { zoomControl: false }).setView([47.55, -121.80], 11);
+    L.control.zoom({ position: 'topright' }).addTo(map);   // clear of the brand pill
 
     L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
       maxZoom: 17,
