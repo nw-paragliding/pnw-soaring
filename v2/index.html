@@ -25,10 +25,10 @@
     text-transform:uppercase;color:var(--ink-soft)}
 
   /* ── Floating instrument cards over the map ───────────────────────── */
-  .bar{position:absolute;top:14px;left:14px;z-index:2;min-width:236px;
+  .bar{position:absolute;top:12px;left:12px;z-index:2;width:180px;
     background:var(--glass);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
-    border:1px solid var(--line);border-radius:var(--r);padding:11px 14px 14px;box-shadow:var(--shadow)}
-  .bar .val{display:block;font-weight:700;font-size:18px;letter-spacing:-.01em;margin:4px 0 10px}
+    border:1px solid var(--line);border-radius:var(--r-sm);padding:8px 11px 10px;box-shadow:var(--shadow-sm)}
+  .bar .val{display:block;font-weight:700;font-size:13px;letter-spacing:-.01em;margin:2px 0 7px}
   #tslider{-webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:3px;
     background:linear-gradient(90deg,var(--evergreen),#caa12a,var(--thermal));outline:none;cursor:pointer}
   #tslider::-webkit-slider-thumb{-webkit-appearance:none;width:17px;height:17px;border-radius:50%;
@@ -38,14 +38,14 @@
   #tslider:active::-webkit-slider-thumb{cursor:grabbing}
 
   /* TOL legend — same instrument card; color bar at the overlay's opacity */
-  .legend{position:absolute;left:14px;top:50%;transform:translateY(-50%);z-index:1;pointer-events:none;
+  .legend{position:absolute;left:12px;top:50%;transform:translateY(-50%);z-index:1;pointer-events:none;
     background:var(--glass);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
-    border:1px solid var(--line);border-radius:var(--r);padding:12px 13px;box-shadow:var(--shadow-sm)}
-  .legend-title{margin-bottom:10px}
-  .legend-body{display:flex;gap:9px}
-  .legend-bar{width:13px;height:clamp(260px,55vh,460px);border-radius:4px;opacity:.6;
+    border:1px solid var(--line);border-radius:var(--r-sm);padding:9px 10px;box-shadow:var(--shadow-sm)}
+  .legend-title{margin-bottom:7px}
+  .legend-body{display:flex;gap:7px}
+  .legend-bar{width:11px;height:clamp(150px,32vh,260px);border-radius:4px;opacity:.6;
     box-shadow:inset 0 0 0 1px rgba(0,0,0,.16)}
-  .legend-ticks{position:relative;width:36px;font:500 10.5px/1 'IBM Plex Mono',monospace;color:var(--ink-soft)}
+  .legend-ticks{position:relative;width:32px;font:500 9.5px/1 'IBM Plex Mono',monospace;color:var(--ink-soft)}
   .legend-ticks span{position:absolute;transform:translateY(-50%);white-space:nowrap}
 
   /* cursor-following Top-of-lift readout */
@@ -88,6 +88,9 @@
   .site-name{font-weight:800;font-size:17px;letter-spacing:-.01em}
   .coords{font:500 10.5px 'IBM Plex Mono',monospace;color:var(--ink-soft);text-align:right;flex:0 0 auto}
   #wg{width:100%;border:1px solid var(--line);border-radius:11px;background:#fff;box-shadow:var(--shadow-sm)}
+  .wg-disclaimer{font:500 11px/1.45 'IBM Plex Mono',monospace;color:#9a6212;background:#fff7ec;
+    border:1px solid #f0d9b8;border-radius:9px;padding:9px 12px;margin-top:9px}
+  .wg-disclaimer b{font-weight:700}
 
   .note{font:500 12px/1.5 'IBM Plex Mono',monospace;background:#fff7ec;
     border:1px solid #f0d9b8;border-radius:10px;padding:11px 13px;margin-top:2px;color:#9a6212}
@@ -128,6 +131,7 @@
         <span class="coords" id="coords"></span>
       </div>
       <canvas id="wg" width="540" height="430"></canvas>
+      <div class="wg-disclaimer"><b>⚠ Experimental</b> — these windgrams aren't validated yet. Don't use them for flight planning.</div>
     </div>
     <div class="hint" id="hint" style="display:none">Click anywhere on the map for a windgram — generated in your browser from the forecast cube.</div>
   </div>
