@@ -13,6 +13,12 @@ name = "pnw-soaring-trigger"
 main = "src/worker.js"
 compatibility_date = "2026-01-01"
 
+# This Worker is cron-only — it needs no public HTTP route, so we don't publish
+# to workers.dev (which would require registering an account subdomain). The
+# scheduled handler fires regardless. To use the GET / health endpoint, register
+# a workers.dev subdomain in the Cloudflare dashboard and set this to true.
+workers_dev = false
+
 # Forecast cadence. Crons are UTC. We fire a little before NOAA publishes each
 # cycle; the pipeline then polls NOMADS and runs the instant data lands.
 [triggers]
