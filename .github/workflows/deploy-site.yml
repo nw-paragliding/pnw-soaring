@@ -1,0 +1,62 @@
+name: Deploy site frontend
+
+# Publishes the static frontend (index.html + generated sites.json) to the
+# gh-pages branch whenever it changes on main — so site/site-list edits go live
+# on merge, instead of waiting for the next forecast run to copy them over.
+# Only touches index.html and sites.json; the forecasts/ data on gh-pages
+# (written by the forecast workflows) is left untouched.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'site/**'
+      - 'sites/**'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Publish frontend to gh-pages
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Check out gh-pages into a worktree (orphan fallback for first deploy)
+          git fetch origin gh-pages || true
+          git worktree add pages origin/gh-pages 2>/dev/null || {
+            git worktree add pages --orphan gh-pages-new
+            cd pages && git checkout --orphan gh-pages && cd ..
+          }
+
+          cp site/index.html pages/index.html
+          python3 site/generate-sites-json.py sites/issaquah-sites.csv > pages/sites.json
+
+          cd pages
+          git add index.html sites.json
+          if git diff --cached --quiet; then
+            echo "No frontend changes to publish."
+            exit 0
+          fi
+          git commit -m "Deploy site frontend (${GITHUB_SHA::7})"
+
+          # Push with rebase-retry: forecast workflows also push to gh-pages,
+          # so the branch can move under us. We only touch index.html/sites.json,
+          # which they overwrite identically, so a rebase never conflicts.
+          for attempt in 1 2 3 4 5; do
+            if git push origin HEAD:gh-pages; then
+              echo "Pushed on attempt $attempt"
+              exit 0
+            fi
+            echo "Push rejected (attempt $attempt); rebasing on latest gh-pages..."
+            git fetch origin gh-pages
+            git rebase origin/gh-pages || { git rebase --abort; exit 1; }
+            sleep $((RANDOM % 5 + 1))
+          done
+          echo "Failed to push after 5 attempts" >&2
+          exit 1
