@@ -55,36 +55,34 @@
       flex-direction: column;
     }
 
-    /* Brand header */
+    /* Brand header — compact: wordmark + kicker share one row */
     .brand {
-      padding: 22px 24px 18px;
+      padding: 13px 24px 11px;
       border-bottom: 1px solid var(--line);
       background: linear-gradient(180deg, rgba(31,82,64,.05), transparent);
       animation: rise .5s cubic-bezier(.2,.7,.2,1) both;
-    }
-    .brand .wordmark {
-      display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+      display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
     }
     .brand h1 {
       font-weight: 800;
-      font-size: clamp(26px, 3.4vw, 38px);
+      font-size: clamp(20px, 2.4vw, 26px);
       letter-spacing: -0.025em;
-      line-height: .95;
+      line-height: 1;
       color: var(--ink);
     }
     .brand h1 .lift { color: var(--thermal); }
     .brand .kicker {
-      margin-top: 10px;
       font-family: 'IBM Plex Mono', monospace;
-      font-size: 11px; font-weight: 500;
-      letter-spacing: .18em; text-transform: uppercase;
+      font-size: 10px; font-weight: 500;
+      letter-spacing: .14em; text-transform: uppercase;
       color: var(--ink-soft);
-      display: flex; align-items: center; gap: 8px;
+      white-space: nowrap;
+      display: flex; align-items: center; gap: 6px;
     }
-    .brand .kicker .glyph { color: var(--evergreen); font-size: 13px; }
+    .brand .kicker .glyph { color: var(--evergreen); font-size: 11px; }
 
     /* Controls block */
-    .controls { padding: 18px 24px 6px; display: flex; flex-direction: column; gap: 14px;
+    .controls { padding: 13px 24px 3px; display: flex; flex-direction: column; gap: 9px;
       animation: rise .5s cubic-bezier(.2,.7,.2,1) .06s both; }
 
     /* Segmented model toggle */
@@ -122,27 +120,10 @@
     .segmented input { position: absolute; opacity: 0; pointer-events: none; }
     .segmented input:checked ~ .name,
     .segmented label:has(input:checked) .name { color: #fff; }
-    .segmented label:has(input:checked) .res { color: rgba(255,255,255,.7); }
-
-    /* Status strip */
-    .status {
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 11.5px; line-height: 1.5;
-      color: var(--ink-soft);
-      display: flex; align-items: center; gap: 8px;
-      padding: 9px 12px;
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: 9px;
-    }
-    .status .dot {
-      width: 8px; height: 8px; border-radius: 50%;
-      background: var(--fresh); flex: none;
-      box-shadow: 0 0 0 3px rgba(47,143,91,.18);
-    }
-    .status.stale { color: var(--stale); }
-    .status.stale .dot { background: var(--stale); box-shadow: 0 0 0 3px rgba(182,116,16,.18); }
-    .status.none .dot { background: var(--ink-soft); box-shadow: none; }
+    .segmented label:has(input:checked) .res { color: rgba(255,255,255,.72); }
+    /* Stale data: make the model's age stand out (amber + bold). */
+    .segmented label .res.stale { color: var(--stale); font-weight: 600; }
+    .segmented label:has(input:checked) .res.stale { color: #f4b860; }
 
     /* Windgram panel */
     .panel { padding: 14px 24px 28px; flex: 1;
@@ -260,14 +241,13 @@
           <span class="indicator" aria-hidden="true"></span>
           <label>
             <input type="radio" name="model" value="hrrr" checked>
-            <span class="name">HRRR</span><span class="res">1 km · hourly</span>
+            <span class="name">HRRR</span><span class="res" data-model="hrrr" data-res="1 km">1 km</span>
           </label>
           <label>
             <input type="radio" name="model" value="nam">
-            <span class="name">NAM</span><span class="res">1.3 km · 4×/day</span>
+            <span class="name">NAM</span><span class="res" data-model="nam" data-res="1.3 km">1.3 km</span>
           </label>
         </div>
-        <div class="status" id="status"><span class="dot"></span><span id="status-text">Loading…</span></div>
       </div>
 
       <section class="panel">
@@ -315,6 +295,7 @@
         .trim();
     }
 
+    const DEFAULT_SITE = 'Poo_Poo_Point';   // auto-selected on load
     let currentModel = 'hrrr';
     let currentSite = null;
     let selectedMarker = null;
@@ -335,7 +316,7 @@
           if (resp.ok) metadata[model] = await resp.json();
         } catch (e) {}
       }
-      updateStatus();
+      renderToggleMeta();
     }
 
     function timeAgo(d) {
@@ -345,20 +326,17 @@
       return `${Math.round(h / 24)}d ago`;
     }
 
-    function updateStatus() {
-      const m = metadata[currentModel];
-      const el = document.getElementById('status');
-      const txt = document.getElementById('status-text');
-      el.classList.remove('stale', 'none');
-      if (m) {
+    // Each toggle option shows that model's resolution + when it last ran,
+    // and flags the age (amber + bold) when the data is stale (>12h old).
+    function renderToggleMeta() {
+      document.querySelectorAll('.res[data-model]').forEach(el => {
+        const m = metadata[el.dataset.model];
+        if (!m) { el.textContent = el.dataset.res; el.classList.remove('stale'); return; }
         const updated = new Date(m.generated);
-        const ageH = (Date.now() - updated.getTime()) / 3.6e6;
-        if (ageH > 12) el.classList.add('stale');
-        txt.textContent = `${m.model.toUpperCase()} · ${m.date} · updated ${timeAgo(updated)}`;
-      } else {
-        el.classList.add('none');
-        txt.textContent = 'No forecast data yet';
-      }
+        const stale = (Date.now() - updated.getTime()) / 3.6e6 > 12;
+        el.textContent = `${el.dataset.res} · ${timeAgo(updated)}`;
+        el.classList.toggle('stale', stale);
+      });
     }
 
     function updateWindgram() {
@@ -399,19 +377,22 @@
       markers.forEach(m => map.removeLayer(m));
       markers = [];
       const icon = L.divIcon({ html: '🪂', className: 'site-marker', iconSize: [26, 26], iconAnchor: [13, 13] });
+      let dflt = null;
       sites.forEach(site => {
         const label = prettyName(site.name);
         const marker = L.marker([site.lat, site.lon], { icon, title: label }).addTo(map);
         marker.bindTooltip(label, { direction: 'top', offset: [0, -12] });
         marker.on('click', () => selectSite(site, marker));
         markers.push(marker);
+        if (site.name === DEFAULT_SITE) dflt = { site, marker };
       });
+      // Open on the default site so the windgram shows immediately.
+      if (dflt && !currentSite) selectSite(dflt.site, dflt.marker);
     }
 
     document.querySelectorAll('input[name="model"]').forEach(r => {
       r.addEventListener('change', e => {
         currentModel = e.target.value;
-        updateStatus();
         updateWindgram();
       });
     });
