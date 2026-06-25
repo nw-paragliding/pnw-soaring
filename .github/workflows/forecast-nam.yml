@@ -1,13 +1,12 @@
 name: Forecast (NAM)
 
 on:
-  schedule:
-    # NOAA publishes NAM data ~2h after cycle init (00z ready ~02:05z, 12z ready
-    # ~13:54z). We fire a few hours BEFORE that and let the pipeline poll NOMADS,
-    # so the job is already awake and runs the instant data lands.
-    # Off-the-top-of-the-hour minutes dodge GitHub's worst schedule-dispatch lag.
-    - cron: '37 0 * * *'      # Target 00z NAM cycle (evening planning); data ~02:05z
-    - cron: '12 11 * * *'     # Target 12z NAM cycle (morning refresh); data ~13:54z
+  # Fired by the Cloudflare trigger Worker (cloudflare-trigger/), which carries
+  # the target cycle in client_payload.cycle. repository_dispatch starts within
+  # seconds — unlike GitHub's throttled `schedule` events, which were running
+  # these forecasts ~5h late. The schedule lives in the Worker now.
+  repository_dispatch:
+    types: [run-forecast]
   workflow_dispatch:
     inputs:
       target_date:
@@ -74,21 +73,19 @@ jobs:
       - name: Run forecast
         run: |
           mkdir -p output
-          TARGET_DATE="${{ inputs.target_date }}"
+          # Cycle + date come from the Cloudflare dispatch (client_payload) or a
+          # manual workflow_dispatch input. Only one source is set per event, so
+          # concatenation yields the single value (or empty = auto-detect).
+          TARGET_DATE="${{ inputs.target_date }}${{ github.event.client_payload.target_date }}"
           TARGET_FLAG=""
           if [ -n "$TARGET_DATE" ]; then
             TARGET_FLAG="--target-date $TARGET_DATE"
           fi
 
-          # Pass --target-cycle from workflow_dispatch input or based on which cron fired.
+          CYCLE="${{ github.event.client_payload.cycle }}${{ inputs.target_cycle }}"
           CYCLE_FLAG=""
-          if [ -n "${{ inputs.target_cycle }}" ]; then
-            CYCLE_FLAG="--target-cycle ${{ inputs.target_cycle }}"
-          else
-            case "${{ github.event.schedule }}" in
-              '37 0 * * *')   CYCLE_FLAG="--target-cycle 0" ;;   # evening: 00z cycle
-              '12 11 * * *')  CYCLE_FLAG="--target-cycle 12" ;;  # morning: 12z cycle
-            esac
+          if [ -n "$CYCLE" ]; then
+            CYCLE_FLAG="--target-cycle $CYCLE"
           fi
 
           docker run --rm \
