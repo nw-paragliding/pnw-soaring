@@ -40,7 +40,41 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check HRRR reach (day ${{ matrix.day }})
+        id: reach
+        run: |
+          # Cheap upfront 48h-horizon test, so an out-of-reach day (next-day in
+          # the evening run) exits in seconds instead of running a full WRF sim
+          # it would only discard. The post-render Guard below still backstops
+          # the publish-lag borderline case.
+          BASE="${{ inputs.target_date }}${{ github.event.client_payload.target_date }}"
+          [ -z "$BASE" ] && BASE=$(date -u +%F)
+          TARGET_DATE=$(date -u -d "$BASE +${{ matrix.day }} days" +%F)
+          echo "TARGET_DATE=$TARGET_DATE" >> "$GITHUB_ENV"
+
+          # Soaring window for TARGET_DATE ends 8pm local (PDT=UTC-7) = 03:00z
+          # the next day.
+          END_DATE=$(date -u -d "$TARGET_DATE +1 day" +%F)
+          END_EPOCH=$(date -u -d "$END_DATE 03:00:00Z" +%s)
+
+          # Best case: the newest HRRR cycle already initialized (00/06/12/18z
+          # today) minimizes the forecast hour to the window end — if even it
+          # can't reach, no cycle can. HRRR tops out at 48h.
+          H=$(( 10#$(date -u +%H) ))
+          CYC=$(printf '%02d' $(( (H / 6) * 6 )))
+          CYCLE_EPOCH=$(date -u -d "$(date -u +%F) ${CYC}:00:00Z" +%s)
+          FHR_END=$(( (END_EPOCH - CYCLE_EPOCH) / 3600 ))
+
+          echo "Day ${{ matrix.day }} → $TARGET_DATE: window ends ${FHR_END}h past newest cycle (${CYC}z); HRRR reach 48h."
+          if [ "$FHR_END" -gt 48 ]; then
+            echo "::notice::HRRR can't reach $TARGET_DATE (${FHR_END}h > 48h horizon). Skipping this day — NAM carries it."
+            echo "reachable=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "reachable=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Free up disk space
+        if: steps.reach.outputs.reachable == 'true'
         run: |
           echo "Disk before cleanup:"; df -h /
           sudo rm -rf \
@@ -54,6 +88,7 @@ jobs:
 
       - name: Restore geo_em cache
         id: cache
+        if: steps.reach.outputs.reachable == 'true'
         uses: actions/cache/restore@v4
         with:
           path: geo_em/
@@ -64,7 +99,7 @@ jobs:
           key: geo-em-cascades-hrrr-1km-v2
 
       - name: Download geo_em from release (cache miss fallback)
-        if: steps.cache.outputs.cache-hit != 'true'
+        if: steps.reach.outputs.reachable == 'true' && steps.cache.outputs.cache-hit != 'true'
         run: |
           mkdir -p geo_em
           gh release download geo-em-v1 --pattern 'geo_em_hrrr-1km.tar.gz' --dir .
@@ -76,22 +111,20 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: docker/login-action@v3
+        if: steps.reach.outputs.reachable == 'true'
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Pull image
+        if: steps.reach.outputs.reachable == 'true'
         run: docker pull $IMAGE
 
       - name: Run forecast (day ${{ matrix.day }})
+        if: steps.reach.outputs.reachable == 'true'
         run: |
           mkdir -p output
-          # Per-day target date: base (manual input, else today UTC) + matrix offset.
-          BASE="${{ inputs.target_date }}${{ github.event.client_payload.target_date }}"
-          [ -z "$BASE" ] && BASE=$(date -u +%F)
-          TARGET_DATE=$(date -u -d "$BASE +${{ matrix.day }} days" +%F)
-          echo "TARGET_DATE=$TARGET_DATE" >> "$GITHUB_ENV"
           echo "Day ${{ matrix.day }} → soaring date $TARGET_DATE (auto-cycle)"
 
           docker run --rm \
@@ -111,6 +144,7 @@ jobs:
 
       - name: Guard — did HRRR actually reach this day?
         id: guard
+        if: steps.reach.outputs.reachable == 'true'
         run: |
           # The renderer dates each windgram to the valid date of its first
           # (8am-local) timestep. If HRRR couldn't reach $TARGET_DATE (next-day
@@ -133,7 +167,7 @@ jobs:
           fi
 
       - name: Save geo_em cache
-        if: matrix.day == 0 && hashFiles('geo_em/geo_em.d01.nc') != ''
+        if: steps.reach.outputs.reachable == 'true' && matrix.day == 0 && hashFiles('geo_em/geo_em.d01.nc') != ''
         uses: actions/cache/save@v4
         with:
           path: geo_em/
