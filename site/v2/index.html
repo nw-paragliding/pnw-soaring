@@ -67,7 +67,7 @@ const maplibregl = window.maplibregl;
 
 // Cube hosting: Cloudflare R2 (per-model "latest"). Override for testing with ?cube=<base>.
 const CUBE_BASE = new URLSearchParams(location.search).get("cube")
-  || "https://cubes.nwparagliding.com";   // TODO: real R2 public base
+  || "https://pub-de96e47b1e91464bb2959747602c1914.r2.dev";   // R2 public (r2.dev) bucket: nw-paragliding-forecasts
 const cubeUrl = m => `${CUBE_BASE}/${m}/latest/soaring.zarr`;
 const TOL_CMAP = ["#9e3b2e","#d97b34","#e6c34a","#5fa84a","#2f7fb0","#3a4fa0"];
 
