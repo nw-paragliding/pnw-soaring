@@ -14,10 +14,15 @@ from a single chunked Zarr.
 - ✅ **Dual chunking** — 3D profile arrays chunked column-friendly `(T,L,16,16)`;
   2D overlay arrays chunked plane-friendly `(1,Y,X)`. One store, both access
   patterns.
-- ⏳ **MapLibre base + `@carbonplan/zarr-layer` overlay** — wired but not yet
-  rendering: needs the MapLibre base sorted and the cube laid out the way
-  zarr-layer expects (multiscales? coord/dim convention? CRS). See open
-  questions below.
+- ✅ **MapLibre + `@carbonplan/zarr-layer` overlay** — renders the TOL field as
+  a smooth GPU-colormapped, georeferenced layer, single-resolution (no
+  pyramid), driven by a time slider. Required: GeoZarr/CF layout **and
+  consolidated metadata** (`.zmetadata`) — zarr-layer's `loadLevel` throws
+  "reading 'index'" without it.
+
+**The whole "one cube, both stories" architecture is proven** end to end with
+synthetic data: one GeoZarr cube → zarr-layer map overlay + zarrita
+click-windgram, no Worker.
 
 ## Run
 

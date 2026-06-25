@@ -179,6 +179,9 @@ g.attrs.update({
     'model': 'SYNTH', 'cycle': '00', 'dx_km': 1.0,
 })
 
+# Consolidated metadata (.zmetadata) — many zarrita/zarr-layer paths expect it.
+zarr.consolidate_metadata(store)
+
 # report
 import os
 def du(p):
