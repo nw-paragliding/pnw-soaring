@@ -39,11 +39,9 @@ jobs:
         run: |
           case "${{ inputs.domain }}" in
             hrrr)
-              echo "CONFIG=domains/cascades-hrrr-d01.yaml" >> $GITHUB_ENV
-              echo "CACHE_KEY=geo-em-cascades-hrrr-v1" >> $GITHUB_ENV
-              ;;
-            hrrr-1km)
-              echo "CONFIG=domains/cascades-hrrr-1km.yaml" >> $GITHUB_ENV
+              echo "CONFIG=domains/cascades-hrrr.yaml" >> $GITHUB_ENV
+              # Cache key keeps the hrrr-1km name (matches the release asset and
+              # the forecast workflow's restore key); see forecast-hrrr.yml.
               echo "CACHE_KEY=geo-em-cascades-hrrr-1km-v1" >> $GITHUB_ENV
               ;;
             *)

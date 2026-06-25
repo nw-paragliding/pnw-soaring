@@ -6,8 +6,9 @@ on:
     # ready ~13:10z). We fire a few hours BEFORE that and let the pipeline poll
     # NOMADS, so the job is already awake and runs the instant data lands.
     # Off-the-top-of-the-hour minutes dodge GitHub's worst schedule-dispatch lag.
-    - cron: '17 0 * * *'      # Target 00z cycle (evening planning); data ~01:25z
-    - cron: '7 10 * * *'      # Target 12z cycle (morning refresh); data ~13:10z
+    # The 1km nest adds ~2h25 of compute, so the morning run fires earliest.
+    - cron: '27 0 * * *'      # Target 00z cycle (evening planning); data ~01:25z
+    - cron: '52 9 * * *'      # Target 12z cycle (morning refresh); data ~13:10z
   workflow_dispatch:
     inputs:
       target_date:
@@ -21,7 +22,7 @@ jobs:
   forecast:
     runs-on: ubuntu-24.04-arm
     # Budget: up to 4h sleep (from --not-before compensation) + ~15 min runtime
-    timeout-minutes: 300
+    timeout-minutes: 360
     permissions:
       contents: write
       packages: read
@@ -45,15 +46,19 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: geo_em/
-          key: geo-em-cascades-hrrr-v1
+          # NB: geo_em cache key + release asset keep the "hrrr-1km" name on
+          # purpose — the release also holds the old 3km geo_em_hrrr.tar.gz, so
+          # renaming this to "hrrr" would fetch the wrong grids. Don't "finish"
+          # the rename here without re-bootstrapping + re-uploading the asset.
+          key: geo-em-cascades-hrrr-1km-v2
 
       - name: Download geo_em from release (cache miss fallback)
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
           mkdir -p geo_em
-          gh release download geo-em-v1 --pattern 'geo_em_hrrr.tar.gz' --dir .
-          tar xzf geo_em_hrrr.tar.gz -C geo_em
-          rm geo_em_hrrr.tar.gz
+          gh release download geo-em-v1 --pattern 'geo_em_hrrr-1km.tar.gz' --dir .
+          tar xzf geo_em_hrrr-1km.tar.gz -C geo_em
+          rm geo_em_hrrr-1km.tar.gz
           echo "Downloaded geo_em from release:"
           ls -lh geo_em/
         env:
@@ -78,17 +83,16 @@ jobs:
           fi
 
           # Pass --target-cycle based on which cron fired (no-op for manual dispatch).
-          # Pipeline polls NOMADS until that cycle's needed fhrs are published.
           CYCLE_FLAG=""
           case "${{ github.event.schedule }}" in
-            '17 0 * * *')  CYCLE_FLAG="--target-cycle 0" ;;   # evening: 00z cycle
-            '7 10 * * *')  CYCLE_FLAG="--target-cycle 12" ;;  # morning: 12z cycle
+            '27 0 * * *')  CYCLE_FLAG="--target-cycle 0" ;;   # evening: 00z cycle
+            '52 9 * * *')  CYCLE_FLAG="--target-cycle 12" ;;  # morning: 12z cycle
           esac
 
           docker run --rm \
             -v ${{ github.workspace }}/geo_em:/mnt/geo_em:ro \
             -v ${{ github.workspace }}/output:/mnt/output:rw \
-            -v ${{ github.workspace }}/domains/cascades-hrrr-d01.yaml:/opt/rasp/domain.yaml:ro \
+            -v ${{ github.workspace }}/domains/cascades-hrrr.yaml:/opt/rasp/domain.yaml:ro \
             -v ${{ github.workspace }}/sites/issaquah-sites.csv:/opt/rasp/sites.csv:ro \
             --entrypoint bash \
             $IMAGE -c "
@@ -115,7 +119,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: geo_em/
-          key: geo-em-cascades-hrrr-v1
+          key: geo-em-cascades-hrrr-1km-v2
 
       - name: Upload windgrams
         uses: actions/upload-artifact@v4
