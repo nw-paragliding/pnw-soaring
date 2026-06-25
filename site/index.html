@@ -7,39 +7,85 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9/dist/leaflet.css" />
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
-    #map { width: 100%; height: 100vh; }
-    .controls {
-      position: absolute; top: 10px; right: 10px; z-index: 1000;
-      background: white; padding: 10px 14px; border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-      font-size: 14px;
+
+    #app { display: flex; height: 100vh; }
+
+    /* Left sidebar holds the controls + the selected site's windgram */
+    #sidebar {
+      flex: 0 0 420px;
+      max-width: 420px;
+      height: 100%;
+      overflow-y: auto;
+      background: #fff;
+      border-right: 1px solid #ddd;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
     }
-    .controls label { margin-right: 12px; cursor: pointer; }
-    .controls .title { font-weight: 600; margin-bottom: 6px; font-size: 15px; }
-    .controls .meta { font-size: 11px; color: #666; margin-top: 6px; }
-    .windgram-popup { text-align: center; }
-    .windgram-popup img {
-      max-width: 700px; width: 100%;
-      border-radius: 4px; border: 1px solid #ddd;
-      cursor: pointer;
+
+    #map { flex: 1; height: 100%; }
+
+    .title { font-weight: 600; font-size: 18px; }
+    .model-toggle label { margin-right: 14px; cursor: pointer; font-size: 14px; }
+    .meta { font-size: 12px; color: #666; }
+    .meta.stale { color: #b8860b; }
+
+    .windgram-panel { margin-top: 4px; }
+    .windgram-panel h3 { font-size: 16px; margin-bottom: 6px; }
+    .windgram-panel img {
+      width: 100%; border-radius: 4px; border: 1px solid #ddd; cursor: zoom-in;
+      display: block;
     }
-    .windgram-popup h3 { margin: 0 0 4px 0; font-size: 16px; }
-    .windgram-popup .open-link {
-      display: inline-block; margin-top: 6px; font-size: 12px;
+    .windgram-panel .empty {
+      color: #999; font-size: 14px; text-align: center;
+      padding: 40px 16px; border: 1px dashed #ddd; border-radius: 8px;
+    }
+    .windgram-panel .no-data { color: #999; padding: 24px 0; text-align: center; }
+    .windgram-panel .open-link {
+      display: inline-block; margin-top: 8px; font-size: 12px;
       color: #0066cc; text-decoration: none;
     }
-    .windgram-popup .open-link:hover { text-decoration: underline; }
-    .windgram-popup .no-data { color: #999; padding: 20px; }
+    .windgram-panel .open-link:hover { text-decoration: underline; }
+
+    /* Marker emphasis for the currently selected site */
+    .site-marker { transition: transform 0.1s; text-align: center; line-height: 24px; }
+    .site-marker.selected { transform: scale(1.5); filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5)); }
+
+    /* Stack on narrow screens so it isn't a desktop-only layout */
+    @media (max-width: 720px) {
+      #app { flex-direction: column; }
+      #sidebar { flex: 0 0 auto; max-width: none; width: 100%; max-height: 50vh; border-right: none; border-bottom: 1px solid #ddd; }
+      #map { flex: 1 1 auto; min-height: 0; }
+    }
   </style>
 </head>
 <body>
-  <div id="map"></div>
-  <div class="controls">
-    <div class="title">PNW Soaring Forecast</div>
-    <label><input type="radio" name="model" value="hrrr" checked> HRRR (1km)</label>
-    <label><input type="radio" name="model" value="nam"> NAM (1.3km)</label>
-    <div class="meta" id="meta"></div>
+  <div id="app">
+    <aside id="sidebar">
+      <div class="title">PNW Soaring Forecast</div>
+      <div class="model-toggle">
+        <label><input type="radio" name="model" value="hrrr" checked> HRRR (1km)</label>
+        <label><input type="radio" name="model" value="nam"> NAM (1.3km)</label>
+      </div>
+      <div class="meta" id="meta"></div>
+
+      <div class="windgram-panel">
+        <div class="empty" id="windgram-empty">Select a site on the map to see its forecast.</div>
+        <div id="windgram-content" style="display:none">
+          <h3 id="site-name"></h3>
+          <a id="windgram-link" href="#" target="_blank">
+            <img id="windgram-img" alt="" />
+          </a>
+          <div class="no-data" id="windgram-nodata" style="display:none"></div>
+          <div><a class="open-link" id="open-full" href="#" target="_blank">Open full size ↗</a></div>
+        </div>
+      </div>
+    </aside>
+
+    <div id="map"></div>
   </div>
 
   <script src="https://unpkg.com/leaflet@1.9/dist/leaflet.js"></script>
@@ -52,6 +98,8 @@
     }).addTo(map);
 
     let currentModel = 'hrrr';
+    let currentSite = null;      // {name, lat, lon}
+    let selectedMarker = null;
     let markers = [];
     let metadata = {};
 
@@ -79,10 +127,50 @@
       const m = metadata[currentModel];
       const el = document.getElementById('meta');
       if (m) {
-        el.textContent = `${m.model.toUpperCase()} ${m.date} — updated ${new Date(m.generated).toLocaleString()}`;
+        const updated = new Date(m.generated);
+        const ageH = (Date.now() - updated.getTime()) / 3.6e6;
+        el.textContent = `${m.model.toUpperCase()} ${m.date} — updated ${updated.toLocaleString()}`;
+        el.classList.toggle('stale', ageH > 12);
       } else {
         el.textContent = 'No forecast data yet';
+        el.classList.remove('stale');
       }
+    }
+
+    function updateWindgram() {
+      const empty = document.getElementById('windgram-empty');
+      const content = document.getElementById('windgram-content');
+      if (!currentSite) {
+        empty.style.display = '';
+        content.style.display = 'none';
+        return;
+      }
+      empty.style.display = 'none';
+      content.style.display = '';
+
+      const img = document.getElementById('windgram-img');
+      const nodata = document.getElementById('windgram-nodata');
+      const link = document.getElementById('windgram-link');
+      const openFull = document.getElementById('open-full');
+      const src = `forecasts/latest/${currentModel}/${currentSite.name}_windgram.png`;
+
+      document.getElementById('site-name').textContent = currentSite.name.replace(/_/g, ' ');
+      nodata.textContent = `No ${currentModel.toUpperCase()} forecast available for this site.`;
+      nodata.style.display = 'none';
+      img.style.display = '';
+      img.alt = currentSite.name;
+      img.onerror = () => { img.style.display = 'none'; nodata.style.display = ''; };
+      img.src = src;
+      link.href = src;
+      openFull.href = src;
+    }
+
+    function selectSite(site, marker) {
+      currentSite = site;
+      if (selectedMarker && selectedMarker._icon) selectedMarker._icon.classList.remove('selected');
+      selectedMarker = marker;
+      if (marker && marker._icon) marker._icon.classList.add('selected');
+      updateWindgram();
     }
 
     function updateMarkers(sites) {
@@ -97,19 +185,9 @@
       });
 
       sites.forEach(site => {
-        const marker = L.marker([site.lat, site.lon], { icon, title: site.name }).addTo(map);
-        marker.bindPopup(() => {
-          const img = `forecasts/latest/${currentModel}/${site.name}_windgram.png`;
-          return `<div class="windgram-popup">
-            <h3>${site.name}</h3>
-            <a href="${img}" target="_blank">
-              <img src="${img}" alt="${site.name}"
-                   onerror="this.style.display='none'; this.closest('.windgram-popup').querySelector('.no-data').style.display='block'" />
-            </a>
-            <div class="no-data" style="display:none">No ${currentModel.toUpperCase()} forecast available</div>
-            <a class="open-link" href="${img}" target="_blank">Open full size ↗</a>
-          </div>`;
-        }, { maxWidth: 750, minWidth: 400 });
+        const marker = L.marker([site.lat, site.lon], { icon, title: site.name.replace(/_/g, ' ') }).addTo(map);
+        marker.bindTooltip(site.name.replace(/_/g, ' '), { direction: 'top', offset: [0, -10] });
+        marker.on('click', () => selectSite(site, marker));
         markers.push(marker);
       });
     }
@@ -118,28 +196,14 @@
       r.addEventListener('change', e => {
         currentModel = e.target.value;
         updateMeta();
-        // Update the image in any open popup without closing it
-        const popup = document.querySelector('.windgram-popup');
-        if (popup) {
-          const img = popup.querySelector('img');
-          const link = popup.querySelector('a');
-          const openLink = popup.querySelector('.open-link');
-          const noData = popup.querySelector('.no-data');
-          if (img) {
-            const site = popup.querySelector('h3').textContent;
-            const newSrc = `forecasts/latest/${currentModel}/${site}_windgram.png`;
-            img.style.display = '';
-            noData.style.display = 'none';
-            img.src = newSrc;
-            if (link) link.href = newSrc;
-            if (openLink) openLink.href = newSrc;
-          }
-        }
+        updateWindgram();
       });
     });
 
     loadSites();
     loadMetadata();
+    // Map shares the viewport with the sidebar; make sure Leaflet measures correctly.
+    setTimeout(() => map.invalidateSize(), 0);
   </script>
 </body>
 </html>
