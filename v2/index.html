@@ -35,6 +35,20 @@
   .note{font:12px/1.5 'IBM Plex Mono',monospace;color:#8a7;background:#fff7ec;
     border:1px solid #f0d9b8;border-radius:8px;padding:10px 12px;margin-top:10px;color:#9a6212}
   .hint{color:#888;font-size:13px;margin-top:14px}
+  /* TOL legend — overlays the map, color bar at the overlay's opacity */
+  .legend{position:absolute;left:12px;top:50%;transform:translateY(-50%);z-index:1;
+    pointer-events:none;font:600 11px/1.3 'IBM Plex Mono',monospace;color:#1c2622;
+    text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 3px #fff}
+  .legend-title{margin-bottom:6px;letter-spacing:.02em}
+  .legend-body{display:flex;gap:7px}
+  .legend-bar{width:14px;height:190px;border-radius:3px;opacity:.6;
+    box-shadow:0 0 0 1px rgba(0,0,0,.2)}
+  .legend-ticks{position:relative;width:30px}
+  .legend-ticks span{position:absolute;transform:translateY(-50%);white-space:nowrap}
+  /* cursor-following Top-of-lift readout */
+  .tolhover{position:absolute;z-index:2;pointer-events:none;display:none;
+    background:rgba(28,38,34,.9);color:#fff;padding:3px 7px;border-radius:6px;
+    font:600 11px 'IBM Plex Mono',monospace;transform:translate(12px,-50%);white-space:nowrap}
 </style>
 </head>
 <body>
@@ -43,6 +57,14 @@
     <div id="map"></div>
     <div class="bar"><b>Top of lift</b> <span id="tlabel">—</span><br>
       <input id="tslider" type="range" min="0" max="0" value="0" style="width:190px"></div>
+    <div class="legend" id="legend" style="display:none">
+      <div class="legend-title">Top of lift</div>
+      <div class="legend-body">
+        <div class="legend-bar" id="legendBar"></div>
+        <div class="legend-ticks" id="legendTicks"></div>
+      </div>
+    </div>
+    <div class="tolhover" id="tolhover"></div>
   </div>
   <div id="panel">
     <div class="brand"><h1>PNW <span class="lift">Soaring</span></h1><span class="beta">v2 beta</span></div>
@@ -70,14 +92,53 @@ const CUBE_BASE = new URLSearchParams(location.search).get("cube")
   || "https://pub-de96e47b1e91464bb2959747602c1914.r2.dev";   // R2 public (r2.dev) bucket: nw-paragliding-forecasts
 const cubeUrl = m => `${CUBE_BASE}/${m}/latest/soaring.zarr`;
 const TOL_CMAP = ["#9e3b2e","#d97b34","#e6c34a","#5fa84a","#2f7fb0","#3a4fa0"];
+const TOL_CLIM = [1500, 10500];   // ft ASL — overlay color limits + legend range
 
+// Basemap: the DEM + labels combo from glide-range — OpenFreeMap Positron base,
+// an AWS terrarium hillshade for terrain relief, and peak/water labels pulled
+// from the OpenMapTiles vector source on top.
 const map = new maplibregl.Map({ container:"map",
-  style:{version:8,sources:{topo:{type:"raster",
-    tiles:["https://a.tile.opentopomap.org/{z}/{x}/{y}.png"],tileSize:256,attribution:"© OpenTopoMap"}},
-    layers:[{id:"topo",type:"raster",source:"topo"}]},
+  style:"https://tiles.openfreemap.org/styles/positron",
   center:[-121.8,47.55], zoom:8 });
 
-let model="nam", cube=null, zlayer=null, tIdx=0;
+let model="nam", cube=null, zlayer=null, tIdx=6, beforeLabelId;   // default ~2pm local (peak thermals)
+
+function setupBasemap(){
+  // Keep our raster layers under the style's labels so place names stay legible.
+  const firstSymbol = map.getStyle().layers.find(l=>l.type==="symbol");
+  beforeLabelId = firstSymbol ? firstSymbol.id : undefined;
+
+  map.addSource("terrain-dem", { type:"raster-dem",
+    tiles:["https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"],
+    encoding:"terrarium", tileSize:256, maxzoom:15,
+    attribution:'Terrain © <a href="https://registry.opendata.aws/terrain-tiles/">AWS Terrain Tiles</a>' });
+  map.addLayer({ id:"hillshade", type:"hillshade", source:"terrain-dem", paint:{
+    "hillshade-exaggeration":0.55, "hillshade-shadow-color":"#4a3e28",
+    "hillshade-highlight-color":"#ffffff", "hillshade-accent-color":"#000000",
+    "hillshade-illumination-direction":335 } }, beforeLabelId);
+
+  // Extra peak + water-name labels from the OpenMapTiles source (Positron is
+  // sparse with these). Added on top so they read over the TOL overlay.
+  if(map.getSource("openmaptiles")){
+    const sym = map.getStyle().layers.find(l=>l.type==="symbol" && l.layout && l.layout["text-font"]);
+    const fontStack = sym ? sym.layout["text-font"] : ["Noto Sans Regular"];
+    map.addLayer({ id:"peak-labels", type:"symbol", source:"openmaptiles",
+      "source-layer":"mountain_peak", minzoom:7, filter:["has","name"], layout:{
+        "text-field":["concat",["coalesce",["get","name_en"],["get","name"],""],
+          ["case",["has","ele"],["concat","\n",["to-string",["get","ele"]]," m"],""]],
+        "text-font":fontStack, "text-size":["interpolate",["linear"],["zoom"],8,10,14,13],
+        "text-anchor":"top", "text-offset":[0,0.3], "text-max-width":8,
+        "symbol-sort-key":["-",10000,["coalesce",["get","ele"],0]] },
+      paint:{ "text-color":"#3c2f14", "text-halo-color":"#ffffff", "text-halo-width":1.5 } });
+    map.addLayer({ id:"water-name-labels", type:"symbol", source:"openmaptiles",
+      "source-layer":"water_name", minzoom:7,
+      filter:["all",["has","name"],["==",["geometry-type"],"Point"]], layout:{
+        "text-field":["coalesce",["get","name_en"],["get","name"]], "text-font":fontStack,
+        "text-size":["interpolate",["linear"],["zoom"],8,10,14,13], "text-max-width":8,
+        "text-letter-spacing":0.05 },
+      paint:{ "text-color":"#2a5b7a", "text-halo-color":"#ffffff", "text-halo-width":1.3 } });
+  }
+}
 const $ = id => document.getElementById(id);
 const status = (msg,warn) => { $("status").innerHTML = msg ? `<div class="note">${msg}</div>` : ""; };
 
@@ -123,10 +184,12 @@ async function loadModel(m){
         });
       }
     } catch(e){ /* fall back to UTC labels */ }
-    setupTime(); await setOverlay(tIdx); status("");
+    setupTime(); await setOverlay(tIdx); await refreshHoverSlice(); status("");
+    $("legend").style.display = "";                              // TOL scale for the overlay
     $("hint").textContent = HINT; $("hint").style.display = "";   // cube ready → invite a click
   } catch(e){
     status(`No <b>${m.toUpperCase()}</b> forecast cube published yet — v2 is in beta and waiting on the data pipeline.<br><small>${(e&&e.message||e)}</small>`);
+    $("legend").style.display = "none";
     if(zlayer && map.getLayer("tol")) map.removeLayer("tol");   // hint stays hidden — nothing to click
   }
 }
@@ -142,6 +205,7 @@ function setupTime(){
   s.oninput=()=>{
     tIdx=+s.value; $("tlabel").textContent = timeLabel(tIdx);
     if(zlayer) zlayer.setSelector({ time:{ selected: tIdx, type:"index" } });
+    refreshHoverSlice();
   };
 }
 
@@ -153,9 +217,19 @@ async function setOverlay(ti){
     zlayer = new ZarrLayer({ id:"tol", source:cubeUrl(model), variable:"tol_ft",
       zarrVersion:3, proj4:cube.crs, bounds:cube.bounds, spatialDimensions:{lat:"y",lon:"x"},
       selector:{ time: { selected: ti, type:"index" } },   // ti is an index, not a UTC-hour value
-      clim:[1500,10500], colormap:TOL_CMAP, opacity:0.6 });
-    if(map.loaded()) map.addLayer(zlayer); else map.on("load",()=>map.addLayer(zlayer));
+      clim:TOL_CLIM, colormap:TOL_CMAP, opacity:0.6 });
+    // Add unconditionally — setOverlay only runs after the style is loaded, and
+    // map.loaded() can read false while the DEM tiles are still streaming, which
+    // would wrongly defer this to a one-shot 'load' that already fired.
+    map.addLayer(zlayer, map.getLayer(beforeLabelId) ? beforeLabelId : undefined);
   } catch(e){ console.error("[overlay] failed:", e); }
+}
+
+function buildLegend(){
+  $("legendBar").style.background = `linear-gradient(to top, ${TOL_CMAP.join(",")})`;
+  const [lo,hi]=TOL_CLIM;
+  $("legendTicks").innerHTML = [10000,8000,6000,4000,2000].map(v=>
+    `<span style="top:${(100*(1-(v-lo)/(hi-lo))).toFixed(1)}%">${v/1000}k ft</span>`).join("");
 }
 
 const acc = v => (...ix) => v.data[ix.reduce((s,k,i)=>s+k*v.stride[i],0)];
@@ -165,6 +239,28 @@ function nearest(lng,la){
     const d=(lat(j,i)-la)**2+(lon(j,i)-lng)**2; if(d<best){best=d;by=j;bx=i;} }
   return [by,bx,lat(by,bx),lon(by,bx)];
 }
+
+// Top-of-lift hover readout — cache the current time's TOL slice in JS so a
+// mousemove is a fast in-memory lookup, not a fetch.
+let hoverTol = null;
+async function refreshHoverSlice(){
+  hoverTol = null;
+  try {
+    cube.tolCache = cube.tolCache || {};
+    if(!cube.tolCache[tIdx]) cube.tolCache[tIdx] = acc(await zarr.get(await cube.open("tol_ft"),[tIdx,null,null]));
+    hoverTol = cube.tolCache[tIdx];
+  } catch(e){ /* hover unavailable */ }
+}
+map.on("mousemove", e=>{
+  const el=$("tolhover");
+  if(!cube || !hoverTol){ el.style.display="none"; return; }
+  const [yi,xi,la,lo]=nearest(e.lngLat.lng,e.lngLat.lat);
+  if(Math.abs(la-e.lngLat.lat)>0.02 || Math.abs(lo-e.lngLat.lng)>0.02){ el.style.display="none"; return; }   // outside the cube
+  const v=hoverTol(yi,xi);
+  el.style.left=e.point.x+"px"; el.style.top=e.point.y+"px"; el.style.display="block";
+  el.textContent = isFinite(v) ? `${Math.round(v).toLocaleString()} ft` : "—";
+});
+map.on("mouseout", ()=>{ $("tolhover").style.display="none"; });
 async function column(yi,xi){
   const g3=async n=>acc(await zarr.get(await cube.open(n),[null,null,yi,xi]));
   const s2=async n=>acc(await zarr.get(await cube.open(n),[null,yi,xi]));
@@ -214,7 +310,7 @@ map.on("click", async e=>{
   catch(err){ $("hint").textContent="column unavailable: "+(err&&err.message||err); }
 });
 document.querySelectorAll('input[name="model"]').forEach(r=>r.addEventListener("change",e=>loadModel(e.target.value)));
-map.on("load", ()=>loadModel("nam"));
+map.on("load", ()=>{ setupBasemap(); buildLegend(); loadModel("nam"); });
 </script>
 </body>
 </html>
