@@ -1,0 +1,29 @@
+# Cloudflare Worker that triggers the forecast pipelines on time.
+#
+# WHY THIS EXISTS: GitHub's `schedule` (cron) events are heavily throttled and
+# were firing our forecasts ~5h late in the 00z/12z windows — sometimes dropped
+# entirely. Cloudflare cron triggers fire promptly, and a `repository_dispatch`
+# API call (unlike `schedule`) starts the GitHub workflow within seconds.
+#
+# THE SCHEDULE BELOW IS THE SINGLE SOURCE OF TRUTH for forecast timing. It is
+# version-controlled here and deployed to Cloudflare by CI on every push to main
+# (.github/workflows/deploy-trigger.yml) — never hand-edited in the dashboard.
+
+name = "pnw-soaring-trigger"
+main = "src/worker.js"
+compatibility_date = "2026-01-01"
+
+# Forecast cadence. Crons are UTC. We fire a little before NOAA publishes each
+# cycle; the pipeline then polls NOMADS and runs the instant data lands.
+[triggers]
+crons = [
+  "15 1 * * *",   # Evening run -> 00z cycle (HRRR data ~01:25z, NAM ~02:05z)
+  "0 13 * * *",   # Morning run -> 12z cycle (HRRR data ~13:10z, NAM ~13:54z)
+]
+
+# Non-secret config (the GitHub token is injected as an encrypted Worker secret
+# by the deploy workflow, not stored here).
+[vars]
+GH_OWNER = "nw-paragliding"
+GH_REPO = "pnw-soaring"
+DISPATCH_EVENT_TYPE = "run-forecast"

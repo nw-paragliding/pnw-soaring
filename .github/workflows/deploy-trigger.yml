@@ -1,0 +1,42 @@
+name: Deploy Cloudflare trigger
+
+# Deploys the forecast-trigger Worker (code + cron schedule) to Cloudflare.
+# The schedule lives in cloudflare-trigger/wrangler.toml and is applied here, so
+# the Cloudflare cron schedule is fully managed by this CI/CD pipeline rather
+# than hand-edited in the Cloudflare dashboard.
+#
+# Required repository secrets:
+#   CLOUDFLARE_API_TOKEN   - token with "Workers Scripts: Edit" on the account
+#   CLOUDFLARE_ACCOUNT_ID  - the Cloudflare account ID
+#   DISPATCH_PAT           - fine-grained GitHub PAT for nw-paragliding/pnw-soaring
+#                            with "Contents: Read and write" (the permission the
+#                            POST /dispatches repository_dispatch endpoint needs;
+#                            NOT "Actions" — that's for workflow_dispatch).
+#                            Injected as the Worker secret GH_DISPATCH_TOKEN below.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'cloudflare-trigger/**'
+      - '.github/workflows/deploy-trigger.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy Worker (schedule + code + secret)
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: cloudflare-trigger
+          # Push the GitHub PAT into the Worker as an encrypted secret on deploy,
+          # so the runtime token is also managed by CI (never set by hand).
+          secrets: |
+            GH_DISPATCH_TOKEN
+        env:
+          GH_DISPATCH_TOKEN: ${{ secrets.DISPATCH_PAT }}
