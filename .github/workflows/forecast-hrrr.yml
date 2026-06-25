@@ -10,10 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       target_date:
-        description: 'Target date YYYY-MM-DD (blank = auto)'
-        required: false
-      target_cycle:
-        description: 'Force a cycle (0 or 12). Blank = auto-detect.'
+        description: 'Base date YYYY-MM-DD for the 2-day window (blank = today UTC)'
         required: false
 
 env:
@@ -21,6 +18,19 @@ env:
 
 jobs:
   forecast:
+    # Two-day forecast, mirroring the NAM workflow: one windgram set per day,
+    # rendered by independent parallel runs (day 0 = today UTC, day 1 = tomorrow
+    # UTC). Unlike NAM (84h reach), HRRR only reaches 48h — so the *evening* run
+    # cannot reach next-day's full 8am–8pm window (its 8pm is ~51h out). When a
+    # day is beyond reach the pipeline falls back to near-term data, which the
+    # renderer dates to *today*, not the requested day; the "Guard" step below
+    # detects that filename/date mismatch and skips the deploy for that day. So
+    # HRRR shows today+tomorrow during the day, and just tomorrow in the evening
+    # (NAM, the default model, carries the full two days).
+    strategy:
+      fail-fast: false
+      matrix:
+        day: [0, 1]
     runs-on: ubuntu-24.04-arm
     # Budget: up to 4h sleep (from --not-before compensation) + ~15 min runtime
     timeout-minutes: 360
@@ -74,24 +84,15 @@ jobs:
       - name: Pull image
         run: docker pull $IMAGE
 
-      - name: Run forecast
+      - name: Run forecast (day ${{ matrix.day }})
         run: |
           mkdir -p output
-          # Cycle + date come from the Cloudflare dispatch (client_payload) or a
-          # manual workflow_dispatch input. Only one source is set per event, so
-          # concatenation yields the single value (or empty = auto-detect).
-          TARGET_DATE="${{ inputs.target_date }}${{ github.event.client_payload.target_date }}"
-          TARGET_FLAG=""
-          if [ -n "$TARGET_DATE" ]; then
-            TARGET_FLAG="--target-date $TARGET_DATE"
-          fi
-
-          # Pipeline polls NOMADS until that cycle's needed fhrs are published.
-          CYCLE="${{ github.event.client_payload.cycle }}${{ inputs.target_cycle }}"
-          CYCLE_FLAG=""
-          if [ -n "$CYCLE" ]; then
-            CYCLE_FLAG="--target-cycle $CYCLE"
-          fi
+          # Per-day target date: base (manual input, else today UTC) + matrix offset.
+          BASE="${{ inputs.target_date }}${{ github.event.client_payload.target_date }}"
+          [ -z "$BASE" ] && BASE=$(date -u +%F)
+          TARGET_DATE=$(date -u -d "$BASE +${{ matrix.day }} days" +%F)
+          echo "TARGET_DATE=$TARGET_DATE" >> "$GITHUB_ENV"
+          echo "Day ${{ matrix.day }} → soaring date $TARGET_DATE (auto-cycle)"
 
           docker run --rm \
             -v ${{ github.workspace }}/geo_em:/mnt/geo_em:ro \
@@ -105,34 +106,77 @@ jobs:
                 --sites sites.csv \
                 --output-dir /mnt/output \
                 --num-procs 4 \
-                $CYCLE_FLAG \
-                $TARGET_FLAG
+                --target-date $TARGET_DATE
             "
 
-      - name: Check forecast output
+      - name: Guard — did HRRR actually reach this day?
+        id: guard
         run: |
+          # The renderer dates each windgram to the valid date of its first
+          # (8am-local) timestep. If HRRR couldn't reach $TARGET_DATE (next-day
+          # in the evening run is ~51h out, past the 48h limit), the pipeline
+          # falls back to near-term data dated to *today* — so the rendered date
+          # won't match what we asked for. Detect that and skip the deploy/upload
+          # for this day rather than publishing today's data under tomorrow.
           count=$(ls output/*.png 2>/dev/null | wc -l)
           if [ "$count" -eq 0 ]; then
             echo "::error::No windgrams rendered — model produced no usable output (likely bad/NaN model data)."
             exit 1
           fi
-          echo "Rendered $count windgrams."
+          RENDERED=$(ls output/*.png | head -1 | xargs basename | cut -d_ -f1)
+          if [ "$RENDERED" != "$TARGET_DATE" ]; then
+            echo "::notice::HRRR did not reach $TARGET_DATE (rendered $RENDERED — beyond the 48h horizon). Skipping deploy for this day."
+            echo "deploy=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Rendered $count windgrams for $RENDERED."
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Save geo_em cache
-        if: hashFiles('geo_em/geo_em.d01.nc') != ''
+        if: matrix.day == 0 && hashFiles('geo_em/geo_em.d01.nc') != ''
         uses: actions/cache/save@v4
         with:
           path: geo_em/
           key: geo-em-cascades-hrrr-1km-v2
 
       - name: Upload windgrams
+        if: steps.guard.outputs.deploy == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: hrrr-windgrams
+          name: hrrr-windgrams-day${{ matrix.day }}
           path: output/*.png
           retention-days: 7
 
       - name: Deploy to Pages
+        if: steps.guard.outputs.deploy == 'true'
         uses: ./.github/actions/deploy-forecast
         with:
           model: hrrr
+          # Only the nearest reachable day updates /latest; tomorrow lives in its
+          # own date dir and the day-picker UI surfaces it.
+          update_latest: ${{ matrix.day == 0 }}
+
+      - name: Upload soaring cube to R2 (v2)
+        if: steps.guard.outputs.deploy == 'true'
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: nw-paragliding-forecasts
+          MODEL: hrrr
+        run: |
+          # The pipeline writes output/soaring.zarr on the 24.04 image; older
+          # images don't. Both this and missing R2 secrets skip cleanly.
+          if [ ! -d output/soaring.zarr ]; then echo "No cube produced — skipping R2 upload."; exit 0; fi
+          if [ -z "$R2_ACCOUNT_ID" ]; then echo "R2 secrets unset — skipping cube upload."; exit 0; fi
+          curl -fsSL https://rclone.org/install.sh | sudo bash >/dev/null 2>&1 || sudo apt-get install -y -q rclone
+          export RCLONE_S3_PROVIDER=Cloudflare \
+                 RCLONE_S3_ENDPOINT="https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com" \
+                 RCLONE_S3_ACCESS_KEY_ID="$R2_ACCESS_KEY_ID" \
+                 RCLONE_S3_SECRET_ACCESS_KEY="$R2_SECRET_ACCESS_KEY"
+          DATE=$(ls output/*.png 2>/dev/null | head -1 | xargs basename | cut -d_ -f1)
+          rclone sync output/soaring.zarr ":s3:${R2_BUCKET}/${MODEL}/${DATE}/soaring.zarr" --s3-no-check-bucket
+          if [ "${{ matrix.day }}" = "0" ]; then
+            rclone sync output/soaring.zarr ":s3:${R2_BUCKET}/${MODEL}/latest/soaring.zarr" --s3-no-check-bucket
+          fi
+          echo "Uploaded cube → R2 ${R2_BUCKET}/${MODEL}/${DATE}$([ "${{ matrix.day }}" = "0" ] && echo ' (+latest)')"
