@@ -10,10 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       target_date:
-        description: 'Target date YYYY-MM-DD (blank = auto)'
-        required: false
-      target_cycle:
-        description: 'Force a specific cycle (e.g. 0 or 12). Blank = latest available.'
+        description: 'Base date YYYY-MM-DD for the 2-day window (blank = today UTC)'
         required: false
 
 env:
@@ -21,8 +18,16 @@ env:
 
 jobs:
   forecast:
+    # Two-day forecast: one windgram set per day, rendered by independent
+    # parallel runs (day 0 = today UTC, day 1 = tomorrow UTC). Both the evening
+    # (00z) and morning (12z) dispatches fire on the same UTC date, so
+    # {today, tomorrow} covers "tomorrow+next-day" (evening) and "today+tomorrow"
+    # (morning) alike. --target-date auto-selects the freshest covering cycle.
+    strategy:
+      fail-fast: false
+      matrix:
+        day: [0, 1]
     runs-on: ubuntu-24.04-arm
-    # Budget: up to 4h sleep (from --not-before compensation) + ~1.5h runtime
     timeout-minutes: 360
     permissions:
       contents: write
@@ -70,23 +75,14 @@ jobs:
       - name: Pull image
         run: docker pull $IMAGE
 
-      - name: Run forecast
+      - name: Run forecast (day ${{ matrix.day }})
         run: |
           mkdir -p output
-          # Cycle + date come from the Cloudflare dispatch (client_payload) or a
-          # manual workflow_dispatch input. Only one source is set per event, so
-          # concatenation yields the single value (or empty = auto-detect).
-          TARGET_DATE="${{ inputs.target_date }}${{ github.event.client_payload.target_date }}"
-          TARGET_FLAG=""
-          if [ -n "$TARGET_DATE" ]; then
-            TARGET_FLAG="--target-date $TARGET_DATE"
-          fi
-
-          CYCLE="${{ github.event.client_payload.cycle }}${{ inputs.target_cycle }}"
-          CYCLE_FLAG=""
-          if [ -n "$CYCLE" ]; then
-            CYCLE_FLAG="--target-cycle $CYCLE"
-          fi
+          # Per-day target date: base (manual input, else today UTC) + matrix offset.
+          BASE="${{ inputs.target_date }}${{ github.event.client_payload.target_date }}"
+          [ -z "$BASE" ] && BASE=$(date -u +%F)
+          TARGET_DATE=$(date -u -d "$BASE +${{ matrix.day }} days" +%F)
+          echo "Day ${{ matrix.day }} → soaring date $TARGET_DATE (auto-cycle)"
 
           docker run --rm \
             -v ${{ github.workspace }}/geo_em:/mnt/geo_em:ro \
@@ -100,8 +96,7 @@ jobs:
                 --sites sites.csv \
                 --output-dir /mnt/output \
                 --num-procs 4 \
-                $CYCLE_FLAG \
-                $TARGET_FLAG
+                --target-date $TARGET_DATE
             "
 
       - name: Check forecast output
@@ -114,7 +109,7 @@ jobs:
           echo "Rendered $count windgrams."
 
       - name: Save geo_em cache
-        if: hashFiles('geo_em/geo_em.d01.nc') != ''
+        if: matrix.day == 0 && hashFiles('geo_em/geo_em.d01.nc') != ''
         uses: actions/cache/save@v4
         with:
           path: geo_em/
@@ -123,7 +118,7 @@ jobs:
       - name: Upload windgrams
         uses: actions/upload-artifact@v4
         with:
-          name: nam-windgrams
+          name: nam-windgrams-day${{ matrix.day }}
           path: output/*.png
           retention-days: 7
 
@@ -131,3 +126,6 @@ jobs:
         uses: ./.github/actions/deploy-forecast
         with:
           model: nam
+          # Only the nearest day (today) updates /latest, so v1 keeps showing
+          # today until the day-picker UI lands; tomorrow lives in its date dir.
+          update_latest: ${{ matrix.day == 0 }}
