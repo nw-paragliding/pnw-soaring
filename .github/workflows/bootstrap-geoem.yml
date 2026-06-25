@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       domain:
-        description: 'Domain config (nam or hrrr-1km)'
+        description: 'Domain config (nam or hrrr)'
         required: true
         default: 'nam'
 
@@ -38,8 +38,10 @@ jobs:
       - name: Select domain config
         run: |
           case "${{ inputs.domain }}" in
-            hrrr-1km)
-              echo "CONFIG=domains/cascades-hrrr-1km.yaml" >> $GITHUB_ENV
+            hrrr)
+              echo "CONFIG=domains/cascades-hrrr.yaml" >> $GITHUB_ENV
+              # Cache key keeps the hrrr-1km name (matches the release asset and
+              # the forecast workflow's restore key); see forecast-hrrr.yml.
               echo "CACHE_KEY=geo-em-cascades-hrrr-1km-v1" >> $GITHUB_ENV
               ;;
             *)

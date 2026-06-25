@@ -5,7 +5,7 @@ description: >-
 
 inputs:
   model:
-    description: Model slug, used as the forecasts/<date>/<model> subdir (e.g. nam, hrrr, hrrr-1km)
+    description: Model slug, used as the forecasts/<date>/<model> subdir (e.g. nam, hrrr)
     required: true
 
 runs:

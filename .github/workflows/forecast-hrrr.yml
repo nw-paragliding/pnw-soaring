@@ -1,4 +1,4 @@
-name: Forecast (HRRR 1km)
+name: Forecast (HRRR)
 
 on:
   schedule:
@@ -46,6 +46,10 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: geo_em/
+          # NB: geo_em cache key + release asset keep the "hrrr-1km" name on
+          # purpose — the release also holds the old 3km geo_em_hrrr.tar.gz, so
+          # renaming this to "hrrr" would fetch the wrong grids. Don't "finish"
+          # the rename here without re-bootstrapping + re-uploading the asset.
           key: geo-em-cascades-hrrr-1km-v2
 
       - name: Download geo_em from release (cache miss fallback)
@@ -88,7 +92,7 @@ jobs:
           docker run --rm \
             -v ${{ github.workspace }}/geo_em:/mnt/geo_em:ro \
             -v ${{ github.workspace }}/output:/mnt/output:rw \
-            -v ${{ github.workspace }}/domains/cascades-hrrr-1km.yaml:/opt/rasp/domain.yaml:ro \
+            -v ${{ github.workspace }}/domains/cascades-hrrr.yaml:/opt/rasp/domain.yaml:ro \
             -v ${{ github.workspace }}/sites/issaquah-sites.csv:/opt/rasp/sites.csv:ro \
             --entrypoint bash \
             $IMAGE -c "
@@ -120,11 +124,11 @@ jobs:
       - name: Upload windgrams
         uses: actions/upload-artifact@v4
         with:
-          name: hrrr-1km-windgrams
+          name: hrrr-windgrams
           path: output/*.png
           retention-days: 7
 
       - name: Deploy to Pages
         uses: ./.github/actions/deploy-forecast
         with:
-          model: hrrr-1km
+          model: hrrr

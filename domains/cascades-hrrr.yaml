@@ -3,7 +3,7 @@
 # d02 extent 120km gives all sites >30km buffer from boundaries
 # (avoids NaN issues observed when sites were within 7 cells of edge).
 # d01 extent 240km provides clean boundary forcing for the nest.
-name: cascades-hrrr-1km
+name: cascades-hrrr
 model: hrrr
 center_lat: 47.44
 center_lon: -121.80
