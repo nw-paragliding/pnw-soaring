@@ -57,7 +57,7 @@
       <div class="coords" id="coords"></div>
       <canvas id="wg" width="540" height="430"></canvas>
     </div>
-    <div class="hint" id="hint">Click anywhere on the map for a windgram — generated in your browser from the forecast cube.</div>
+    <div class="hint" id="hint" style="display:none">Click anywhere on the map for a windgram — generated in your browser from the forecast cube.</div>
   </div>
 </div>
 
@@ -81,8 +81,10 @@ let model="hrrr", cube=null, zlayer=null, tIdx=0;
 const $ = id => document.getElementById(id);
 const status = (msg,warn) => { $("status").innerHTML = msg ? `<div class="note">${msg}</div>` : ""; };
 
+const HINT = "Click anywhere on the map for a windgram — generated in your browser from the forecast cube.";
 async function loadModel(m){
-  model = m; $("wgwrap").style.display="none"; status("Loading "+m.toUpperCase()+" cube…");
+  model = m; $("wgwrap").style.display="none"; $("hint").style.display="none";
+  status("Loading "+m.toUpperCase()+" cube…");
   try {
     const store = new zarr.FetchStore(cubeUrl(m));
     const root = zarr.root(store);
@@ -94,9 +96,10 @@ async function loadModel(m){
     cube.Y = cube.lat.shape[0]; cube.X = cube.lat.shape[1];
     cube.T = cube.hours.length; cube.L = cube.pres.length;
     setupTime(); await setOverlay(tIdx); status("");
+    $("hint").textContent = HINT; $("hint").style.display = "";   // cube ready → invite a click
   } catch(e){
     status(`No <b>${m.toUpperCase()}</b> forecast cube published yet — v2 is in beta and waiting on the data pipeline.<br><small>${(e&&e.message||e)}</small>`);
-    if(zlayer && map.getLayer("tol")) map.removeLayer("tol");
+    if(zlayer && map.getLayer("tol")) map.removeLayer("tol");   // hint stays hidden — nothing to click
   }
 }
 
