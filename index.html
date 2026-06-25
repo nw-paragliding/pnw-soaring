@@ -424,6 +424,10 @@
       for (let off = 0; off <= 2; off++) {
         const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + off));
         const ds = d.toISOString().slice(0, 10);
+        // Skip a day once its soaring window (~8pm local, PDT) has ended — so an
+        // evening visit shows "tomorrow + next-day", not a spent "today". This is
+        // what makes the night-before case read correctly.
+        if (Date.now() > Date.parse(ds + 'T20:00:00-07:00')) continue;
         try {
           const r = await fetch(`forecasts/${ds}/${model}/metadata.json`, { cache: 'no-cache' });
           if (r.ok) out.push({ date: ds, off, label: dayLabel(off, ds), sub: ds.slice(5) });
