@@ -55,8 +55,8 @@
     transform:translate(14px,-50%);white-space:nowrap}
   .tolhover::before{content:"TOL ";font-weight:500;font-size:9px;letter-spacing:.12em;opacity:.55}
 
-  /* ── Right panel ───────────────────────────────────────────────────── */
-  #panel{flex:0 0 408px;max-width:46vw;border-left:1px solid var(--line);overflow:auto;
+  /* ── Left sidebar (matches v1: left side, flex 0 0 40%, 380–640px) ───── */
+  #panel{order:-1;flex:0 0 40%;min-width:380px;max-width:640px;border-right:1px solid var(--line);overflow:auto;
     padding:24px 24px 30px;
     background:linear-gradient(180deg,#f5f0e6,var(--paper) 240px)}
   #panel>*{animation:rise .5s both}
