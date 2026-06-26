@@ -136,6 +136,45 @@
     border:1px solid #f0d9b8;border-radius:10px;padding:11px 13px;margin-top:2px;color:#9a6212}
   .hint{font:500 12.5px/1.55 'Bricolage Grotesque',sans-serif;color:var(--ink-soft);margin-top:16px;
     padding:12px 14px;background:rgba(31,82,64,.05);border:1px dashed var(--line);border-radius:10px}
+
+  /* ── Bottom-sheet affordances + floating brand — mobile only (mirrors v1) ── */
+  .sheet-grip,.sheet-close,.map-header{display:none}
+  @media (max-width:720px){
+    /* Full-screen map; the panel slides up as a dismissible bottom sheet. */
+    #wrap{display:block;height:100dvh}
+    #left{position:absolute;inset:0}
+    #map{position:absolute;inset:0}
+    #panel{order:0;flex:none;position:fixed;left:0;right:0;bottom:0;
+      width:100%;min-width:0;max-width:none;height:auto;max-height:82dvh;
+      border:1px solid var(--line-2);border-right:none;border-bottom:none;
+      border-radius:18px 18px 0 0;box-shadow:0 -10px 34px rgba(28,38,34,.28);
+      transform:translateY(101%);transition:transform .34s cubic-bezier(.2,.7,.2,1);
+      z-index:1000;overflow-y:auto;overscroll-behavior:contain}
+    #panel.open{transform:translateY(0)}
+    .sheet-grip{display:block;width:40px;height:4px;border-radius:3px;
+      background:var(--line-2);margin:9px auto 2px;cursor:pointer}
+    .sheet-close{display:flex;align-items:center;justify-content:center;position:absolute;
+      top:10px;right:12px;width:30px;height:30px;border:none;border-radius:50%;
+      background:var(--panel);color:var(--ink-soft);font-size:13px;cursor:pointer;
+      box-shadow:0 1px 3px rgba(28,38,34,.18);z-index:2}
+    .brand{display:none}
+    .controls{padding:4px 18px 6px}
+    .panel-body{padding:4px 18px 26px}
+    /* Floating brand pill over the map */
+    .map-header{display:flex;flex-direction:column;gap:1px;position:fixed;top:10px;left:10px;
+      z-index:500;padding:7px 12px;border-radius:12px;background:rgba(243,239,230,.92);
+      backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);
+      border:1px solid var(--line);box-shadow:var(--shadow);pointer-events:none}
+    .map-header h1{font-weight:800;font-size:17px;letter-spacing:-.02em;line-height:1;color:var(--ink)}
+    .map-header h1 .lift{color:var(--thermal)}
+    .map-header .kicker{font-family:'IBM Plex Mono',monospace;font-size:8.5px;
+      letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft)}
+    .map-header .glyph{color:var(--evergreen)}
+    /* Declutter map overlays: drop the tall legend, keep the time slider top-right */
+    .legend{display:none}
+    .bar{top:10px;right:10px;left:auto;width:170px}
+  }
+  @media (prefers-reduced-motion:reduce){ *{animation:none!important;transition:none!important} }
 </style>
 </head>
 <body>
@@ -155,8 +194,14 @@
       </div>
     </div>
     <div class="tolhover" id="tolhover"></div>
+    <div class="map-header">
+      <h1>PNW <span class="lift">Soaring</span></h1>
+      <div class="kicker"><span class="glyph">▲</span> Soaring cube · beta</div>
+    </div>
   </div>
   <div id="panel">
+    <div class="sheet-grip" id="sheetGrip" aria-hidden="true"></div>
+    <button class="sheet-close" id="sheetClose" aria-label="Close forecast">✕</button>
     <header class="brand">
       <div class="wordmark"><h1>PNW <span class="lift">Soaring</span></h1></div>
       <div class="kicker"><span class="glyph">▲</span> Beta · soaring cube · <a href="/">← v1</a></div>
@@ -337,7 +382,7 @@ async function loadModel(m, date){
     $("legend").style.display = "";                              // TOL scale for the overlay
     $("hint").textContent = HINT; $("hint").style.display = "";   // cube ready → invite a click
     goodModel = m;                                               // remember the last model that loaded
-    showWindgram(lastSite.lng, lastSite.lat, lastSite.name);     // default windgram (Poo Poo Point on first load)
+    showWindgram(lastSite.lng, lastSite.lat, lastSite.name, false); // default windgram; keep the mobile sheet closed (map opens full-screen)
   } catch(e){
     // No warning box — just log and snap the toggle back to the model that's
     // currently up (the failed model's cube isn't published yet).
@@ -439,7 +484,11 @@ async function column(yi,xi){
 // The site shown on initial load and re-rendered when the model is switched.
 let lastSite = { lng:-122.00819, lat:47.49927, name:"Poo Poo Point" };
 
-async function showWindgram(lng, lat, name){
+// Mobile bottom-sheet (no-op on desktop, where .open does nothing in CSS).
+const openSheet = ()=> $("panel").classList.add("open");
+const closeSheet = ()=> $("panel").classList.remove("open");
+
+async function showWindgram(lng, lat, name, reveal=true){
   if(!cube) return;
   lastSite = { lng, lat, name };
   const [yi,xi,la,lo]=nearest(lng,lat);
@@ -450,6 +499,7 @@ async function showWindgram(lng, lat, name){
     $("site-name").textContent = name || `${la.toFixed(3)}, ${lo.toFixed(3)}`;
     $("coords").textContent = `${la.toFixed(3)}, ${lo.toFixed(3)} · terrain ${Math.round(data.terrainFt)} ft`;
     renderWindgram($("wg"), data);
+    if(reveal) openSheet();   // a tap on the map/a marker raises the sheet on mobile
   } catch(err){ $("hint").textContent="column unavailable: "+(err&&err.message||err); }
 }
 
@@ -518,10 +568,14 @@ async function loadSites(){
 
 map.on("click", e=> showWindgram(e.lngLat.lng, e.lngLat.lat));
 document.querySelectorAll('input[name="model"]').forEach(r=>r.addEventListener("change",e=>{ if(!e.target.disabled) loadModel(e.target.value, currentDate); }));
+// Dismiss the mobile sheet via the grip or the close button.
+$("sheetGrip").addEventListener("click", closeSheet);
+$("sheetClose").addEventListener("click", closeSheet);
 map.on("load", ()=>{
   setupBasemap(); buildLegend(); loadSites(); loadModel("nam");
   refreshToggleMeta();                                            // resolution · run age in both toggle buttons
   probeModel("hrrr").then(ok=> setModelAvailable("hrrr", ok));   // dim HRRR if its cube isn't published yet
+  setTimeout(()=>map.resize(), 0);                                // ensure MapLibre fills the full-screen container on mobile
 });
 </script>
 </body>
