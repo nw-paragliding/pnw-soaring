@@ -107,6 +107,16 @@
   .segmented input{position:absolute;opacity:0;pointer-events:none}
   .segmented label:has(input:checked) .name{color:#fff}
   .segmented label:has(input:checked) .res{color:rgba(255,255,255,.72)}
+  /* Day picker — one button per available forecast day (hidden if 0/1 day) */
+  .days{display:flex;gap:6px;margin:-4px 0 14px}
+  .days:empty,.days.single{display:none}
+  .days button{flex:1;min-width:64px;cursor:pointer;font:700 13px/1 'Bricolage Grotesque',system-ui,sans-serif;
+    padding:7px 8px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--ink-soft);
+    transition:background .15s,color .15s,border-color .15s}
+  .days button:hover:not(.active){background:rgba(28,38,34,.05)}
+  .days button .sub{display:block;font:500 9px/1.4 'IBM Plex Mono',monospace;opacity:.65;margin-top:1px}
+  .days button.active{background:var(--evergreen);color:#fff;border-color:var(--evergreen)}
+  .days button.active .sub{opacity:.85}
   /* Unavailable model (cube not published) — dim + not clickable */
   .segmented label.disabled{cursor:not-allowed;opacity:.45}
   .segmented label.disabled .res{color:var(--thermal);font-weight:600}
@@ -155,6 +165,7 @@
         <span class="name">HRRR</span><span class="res" data-model="hrrr" data-res="1 km">1 km</span>
       </label>
     </div>
+    <div class="days" id="days"></div>
     <div id="status"></div>
     <div id="wgwrap" style="display:none">
       <div class="micro">Windgram</div>
@@ -176,7 +187,7 @@ const maplibregl = window.maplibregl;
 // Cube hosting: Cloudflare R2 (per-model "latest"). Override for testing with ?cube=<base>.
 const CUBE_BASE = new URLSearchParams(location.search).get("cube")
   || "https://pub-de96e47b1e91464bb2959747602c1914.r2.dev";   // R2 public (r2.dev) bucket: nw-paragliding-forecasts
-const cubeUrl = m => `${CUBE_BASE}/${m}/latest/soaring.zarr`;
+const cubeUrl = (m, d) => `${CUBE_BASE}/${m}/${d || "latest"}/soaring.zarr`;
 const TOL_CMAP = ["#3a4fa0","#2f7fb0","#5fa84a","#e6c34a","#d97b34","#9e3b2e"];
 const TOL_CLIM = [1500, 10500];   // ft ASL — overlay color limits + legend range
 
@@ -187,7 +198,7 @@ const map = new maplibregl.Map({ container:"map",
   style:"https://tiles.openfreemap.org/styles/positron",
   center:[-121.86,47.46], zoom:10.4 });   // framed on the Tiger / Rattlesnake cluster
 
-let model="nam", goodModel="nam", cube=null, zlayer=null, tIdx=6, beforeLabelId;   // default ~2pm local (peak thermals)
+let model="nam", goodModel="nam", currentDate=null, daysCache={}, cube=null, zlayer=null, tIdx=6, beforeLabelId;   // default ~2pm local (peak thermals)
 
 function setupBasemap(){
   // Keep our raster layers under the style's labels so place names stay legible.
@@ -229,11 +240,51 @@ const $ = id => document.getElementById(id);
 const status = (msg,warn) => { $("status").innerHTML = msg ? `<div class="note">${msg}</div>` : ""; };
 
 const HINT = "Click anywhere on the map for a windgram — generated in your browser from the forecast cube.";
-async function loadModel(m){
+
+// ── Day picker — probe which dated cubes exist on R2 (today/tomorrow), ───────
+// anchored to the forecast zone (PDT) like v1, skipping a spent day past 8pm.
+function dayLabel(off, ds){
+  if(off===0) return "Today";
+  if(off===1) return "Tomorrow";
+  return new Date(ds+"T12:00:00Z").toLocaleDateString(undefined, {weekday:"short"});
+}
+async function discoverDays(m){
+  if(daysCache[m]) return daysCache[m];
+  const [by,bm,bd] = new Date().toLocaleDateString("en-CA",{timeZone:"America/Los_Angeles"}).split("-").map(Number);
+  const out=[];
+  for(let off=0; off<=2; off++){
+    const d=new Date(Date.UTC(by,bm-1,bd+off));
+    const ds=d.toISOString().slice(0,10);
+    if(Date.now() > Date.parse(ds+"T20:00:00-07:00")) continue;   // skip a day once its soaring window is spent
+    let ok=false;
+    try{ let r=await fetch(cubeUrl(m,ds)+"/zarr.json",{method:"HEAD"}); if(r.status===405) r=await fetch(cubeUrl(m,ds)+"/zarr.json"); ok=r.ok; }catch(e){}
+    if(ok) out.push({ date:ds, off, label:dayLabel(off,ds), sub:ds.slice(5) });
+  }
+  daysCache[m]=out;
+  return out;
+}
+function renderDays(days){
+  const el=$("days"); el.innerHTML="";
+  el.classList.toggle("single", days.length<2);   // hide the picker when there's only one day
+  days.forEach(d=>{
+    const b=document.createElement("button");
+    b.innerHTML=`${d.label}<span class="sub">${d.sub}</span>`;
+    b.classList.toggle("active", d.date===currentDate);
+    b.onclick=()=>{ if(d.date!==currentDate) loadModel(model, d.date); };
+    el.appendChild(b);
+  });
+}
+
+async function loadModel(m, date){
   model = m; $("wgwrap").style.display="none"; $("hint").style.display="none";
   status("Loading "+m.toUpperCase()+" cube…");
+  // Resolve which forecast day to load + render the day picker.
+  const days = await discoverDays(m);
+  if(!date || !days.find(d=>d.date===date)) date = days.length ? days[0].date : "latest";
+  currentDate = date;
+  renderDays(days);
   try {
-    const store = new zarr.FetchStore(cubeUrl(m));
+    const store = new zarr.FetchStore(cubeUrl(m, currentDate));
     const root = zarr.root(store);
     const open = n => zarr.open(root.resolve(n), {kind:"array"});
     cube = { store, root, open,
@@ -247,7 +298,7 @@ async function loadModel(m){
     // edge bounds and which dims are spatial. Per-cube so NAM/HRRR each project
     // correctly. (zarr-layer ≥0.5.1 handles the spherical-earth WKT correctly.)
     try {
-      const gm = (await (await fetch(cubeUrl(m)+"/spatial_ref/zarr.json")).json()).attributes;
+      const gm = (await (await fetch(cubeUrl(m, currentDate)+"/spatial_ref/zarr.json")).json()).attributes;
       cube.crs = gm.crs_wkt;
       const xa=(await zarr.get(await open("x"))).data, ya=(await zarr.get(await open("y"))).data;
       const xs=xa[1]-xa[0], ys=ya[1]-ya[0];
@@ -258,7 +309,7 @@ async function loadModel(m){
     // on its soaring date (wrapping past midnight); render each in the viewer's
     // local zone (machine TZ — for PNW users that's PDT, the forecast zone).
     try {
-      const rootAttrs = (await (await fetch(cubeUrl(m)+"/zarr.json")).json()).attributes || {};
+      const rootAttrs = (await (await fetch(cubeUrl(m, currentDate)+"/zarr.json")).json()).attributes || {};
       const d0 = rootAttrs.date;
       cube.date = d0; cube.dxKm = rootAttrs.dx_km;   // for the windgram title (date + grid resolution)
       if (d0) {
