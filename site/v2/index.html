@@ -55,6 +55,23 @@
     transform:translate(14px,-50%);white-space:nowrap}
   .tolhover::before{content:"TOL ";font-weight:500;font-size:9px;letter-spacing:.12em;opacity:.55}
 
+  /* ── Launch / landing site markers ──────────────────────────────────── */
+  .ll-marker{position:relative;width:26px;height:26px;cursor:pointer;
+    transform-origin:bottom center;transition:transform .12s}
+  .ll-marker:hover{transform:scale(1.18);z-index:6}
+  .ll-ico{display:flex;align-items:center;justify-content:center;width:26px;height:26px;
+    border-radius:50% 50% 50% 2px;transform:rotate(45deg);border:2px solid #fff;
+    box-shadow:0 2px 7px rgba(0,0,0,.42)}
+  .ll-ico svg{width:15px;height:15px;display:block;transform:rotate(-45deg)}
+  .ll-marker.launch  .ll-ico{background:var(--evergreen)}
+  .ll-marker.landing .ll-ico{background:#2f6f93}
+  .ll-name{position:absolute;left:32px;top:3px;white-space:nowrap;
+    font:600 11px 'IBM Plex Mono',monospace;color:var(--ink);
+    background:var(--glass);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+    padding:2px 7px;border-radius:6px;border:1px solid var(--line);box-shadow:var(--shadow-sm);
+    opacity:0;pointer-events:none;transition:opacity .12s}
+  .ll-marker:hover .ll-name{opacity:1}
+
   /* ── Left sidebar (matches v1: left side, flex 0 0 40%, 380–640px) ───── */
   #panel{order:-1;flex:0 0 40%;min-width:380px;max-width:640px;border-right:1px solid var(--line);overflow:auto;
     padding:24px 24px 30px;
@@ -400,10 +417,31 @@ async function probeModel(m){
   }catch(e){ return false; }
 }
 
+// ── Launch / landing site markers (./sites.json) — click to drop a windgram ──
+const SITE_GLYPH = {
+  // paraglider canopy + lines = launch
+  launch:`<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13c3-5 15-5 18 0"/><path d="M7 13l5 5 5-5"/></svg>`,
+  // target = landing zone
+  landing:`<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.4" fill="#fff" stroke="none"/></svg>`,
+};
+async function loadSites(){
+  let sites;
+  try { sites = await (await fetch("./sites.json",{cache:"no-cache"})).json(); }
+  catch(e){ console.warn("[sites] list unavailable:", e); return; }
+  for(const s of sites){
+    const el=document.createElement("div");
+    el.className="ll-marker "+(s.type==="landing"?"landing":"launch");
+    el.innerHTML=`<span class="ll-ico">${SITE_GLYPH[s.type]||SITE_GLYPH.launch}</span><span class="ll-name">${s.name}</span>`;
+    el.title=`${s.name} (${s.type})`;
+    el.addEventListener("click", ev=>{ ev.stopPropagation(); showWindgram(s.lon, s.lat, s.name); });
+    new maplibregl.Marker({element:el, anchor:"bottom"}).setLngLat([s.lon,s.lat]).addTo(map);
+  }
+}
+
 map.on("click", e=> showWindgram(e.lngLat.lng, e.lngLat.lat));
 document.querySelectorAll('input[name="model"]').forEach(r=>r.addEventListener("change",e=>{ if(!e.target.disabled) loadModel(e.target.value); }));
 map.on("load", ()=>{
-  setupBasemap(); buildLegend(); loadModel("nam");
+  setupBasemap(); buildLegend(); loadSites(); loadModel("nam");
   probeModel("hrrr").then(ok=> setModelAvailable("hrrr", ok));   // dim HRRR if its cube isn't published yet
 });
 </script>
