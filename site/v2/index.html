@@ -9,8 +9,8 @@
 <style>
   :root{
     --ink:#1c2622; --ink-soft:#566159; --paper:#f1ece1; --panel:#fbf9f4;
-    --evergreen:#1f5240; --thermal:#e0662a; --line:rgba(28,38,34,.12);
-    --glass:rgba(248,245,238,.80);
+    --evergreen:#1f5240; --thermal:#e0662a; --line:rgba(28,38,34,.12); --line-2:rgba(28,38,34,.18);
+    --stale:#b67410; --glass:rgba(248,245,238,.80);
     --shadow:0 6px 24px -8px rgba(28,38,34,.45); --shadow-sm:0 2px 10px -3px rgba(28,38,34,.3);
     --r:13px; --r-sm:8px;
   }
@@ -77,7 +77,6 @@
 
   /* ── Left sidebar (matches v1: left side, flex 0 0 40%, 380–640px) ───── */
   #panel{order:-1;flex:0 0 40%;min-width:380px;max-width:640px;border-right:1px solid var(--line);overflow:auto;
-    padding:24px 24px 30px;
     background:linear-gradient(180deg,#f5f0e6,var(--paper) 240px)}
   #panel>*{animation:rise .5s both}
   #panel>*:nth-child(2){animation-delay:.05s} #panel>*:nth-child(3){animation-delay:.1s}
@@ -85,41 +84,44 @@
   @keyframes rise{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:none}}
   .bar,.legend{animation:rise .55s both .12s}
 
-  .brand{display:flex;align-items:baseline;gap:9px}
-  .brand h1{font-weight:800;font-size:24px;letter-spacing:-.025em;line-height:1}
+  /* Header — mirrors v1: full-width bordered brand + kicker, same padding/height */
+  .brand{padding:13px 24px 11px;border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg,rgba(31,82,64,.05),transparent);
+    display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+  .brand h1{font-weight:800;font-size:clamp(20px,2.4vw,26px);letter-spacing:-.025em;line-height:1;color:var(--ink)}
   .brand .lift{color:var(--thermal)}
-  .beta{font:600 9px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;
-    color:#fff;background:var(--thermal);padding:3px 6px;border-radius:5px}
-  .kick{font:500 11px/1.4 'IBM Plex Mono',monospace;color:var(--ink-soft);
-    margin:8px 0 16px;padding-bottom:16px;border-bottom:1px solid var(--line)}
-  .kick a{color:var(--evergreen);text-decoration:none;border-bottom:1px solid rgba(31,82,64,.35)}
-  .kick a:hover{border-bottom-color:var(--evergreen)}
+  .kicker{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:500;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--ink-soft);white-space:nowrap;display:flex;align-items:center;gap:6px}
+  .kicker .glyph{color:var(--evergreen);font-size:11px}
+  .kicker a{color:var(--thermal);text-decoration:none}
+  .controls{padding:13px 24px 3px;display:flex;flex-direction:column;gap:9px}
+  .panel-body{padding:8px 24px 30px}
 
-  /* Segmented model toggle — matches v1: stacked name + resolution, sliding indicator */
+  /* Segmented model toggle — identical to v1 (NAM left, HRRR slides right) */
   .segmented{position:relative;display:grid;grid-template-columns:1fr 1fr;background:var(--panel);
-    border:1px solid var(--line);border-radius:11px;padding:4px;margin-bottom:14px;
-    box-shadow:inset 0 1px 2px rgba(28,38,34,.04)}
+    border:1px solid var(--line-2);border-radius:11px;padding:4px;box-shadow:inset 0 1px 2px rgba(28,38,34,.04)}
   .segmented .indicator{position:absolute;top:4px;left:4px;bottom:4px;width:calc(50% - 4px);
     background:var(--evergreen);border-radius:8px;box-shadow:0 2px 8px -2px rgba(22,58,45,.5);
     transition:transform .28s cubic-bezier(.5,.1,.1,1);z-index:0}
   .segmented:has(input[value="hrrr"]:checked) .indicator{transform:translateX(100%)}
   .segmented label{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:1px;
     padding:8px 4px;cursor:pointer;user-select:none;border-radius:8px;transition:color .2s}
-  .segmented label .name{font-weight:700;font-size:14px;letter-spacing:-.01em}
+  .segmented label .name{font-weight:600;font-size:14px;letter-spacing:-.01em}
   .segmented label .res{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.04em;color:var(--ink-soft)}
   .segmented input{position:absolute;opacity:0;pointer-events:none}
   .segmented label:has(input:checked) .name{color:#fff}
   .segmented label:has(input:checked) .res{color:rgba(255,255,255,.72)}
-  /* Day picker — one button per available forecast day (hidden if 0/1 day) */
-  .days{display:flex;gap:6px;margin:-4px 0 14px}
+  .segmented label .res.stale{color:var(--stale);font-weight:600}
+  .segmented label:has(input:checked) .res.stale{color:#f4b860}
+  /* Day picker — identical to v1 */
+  .days{display:flex;gap:6px}
   .days:empty,.days.single{display:none}
-  .days button{flex:1;min-width:64px;cursor:pointer;font:700 13px/1 'Bricolage Grotesque',system-ui,sans-serif;
-    padding:7px 8px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--ink-soft);
+  .days button{flex:1;min-width:64px;cursor:pointer;font:600 13px/1 'Bricolage Grotesque',system-ui,sans-serif;
+    padding:6px 8px;border-radius:8px;border:1px solid var(--line-2);background:var(--panel);color:var(--ink-soft);
     transition:background .15s,color .15s,border-color .15s}
-  .days button:hover:not(.active){background:rgba(28,38,34,.05)}
-  .days button .sub{display:block;font:500 9px/1.4 'IBM Plex Mono',monospace;opacity:.65;margin-top:1px}
+  .days button .sub{display:block;font:500 9px/1.4 'IBM Plex Mono',monospace;opacity:.65}
   .days button.active{background:var(--evergreen);color:#fff;border-color:var(--evergreen)}
-  .days button.active .sub{opacity:.85}
+  .days button.active .sub{opacity:.8}
   /* Unavailable model (cube not published) — dim + not clickable */
   .segmented label.disabled{cursor:not-allowed;opacity:.45}
   .segmented label.disabled .res{color:var(--thermal);font-weight:600}
@@ -155,30 +157,36 @@
     <div class="tolhover" id="tolhover"></div>
   </div>
   <div id="panel">
-    <div class="brand"><h1>PNW <span class="lift">Soaring</span></h1><span class="beta">v2 beta</span></div>
-    <div class="kick">Interactive cube · <a href="/">← back to v1</a></div>
-    <div class="segmented" role="radiogroup" aria-label="Forecast model">
-      <span class="indicator" aria-hidden="true"></span>
-      <label>
-        <input type="radio" name="model" value="nam" checked>
-        <span class="name">NAM</span><span class="res" data-model="nam" data-res="1.3 km">1.3 km</span>
-      </label>
-      <label id="hrrr-opt">
-        <input type="radio" name="model" value="hrrr">
-        <span class="name">HRRR</span><span class="res" data-model="hrrr" data-res="1 km">1 km</span>
-      </label>
-    </div>
-    <div class="days" id="days"></div>
-    <div id="status"></div>
-    <div id="wgwrap" style="display:none">
-      <div class="micro">Windgram</div>
-      <div class="wg-head">
-        <span class="site-name" id="site-name"></span>
-        <span class="coords" id="coords"></span>
+    <header class="brand">
+      <div class="wordmark"><h1>PNW <span class="lift">Soaring</span></h1></div>
+      <div class="kicker"><span class="glyph">▲</span> Beta · soaring cube · <a href="/">← v1</a></div>
+    </header>
+    <div class="controls">
+      <div class="segmented" role="radiogroup" aria-label="Forecast model">
+        <span class="indicator" aria-hidden="true"></span>
+        <label>
+          <input type="radio" name="model" value="nam" checked>
+          <span class="name">NAM</span><span class="res" data-model="nam" data-res="1.3 km">1.3 km</span>
+        </label>
+        <label id="hrrr-opt">
+          <input type="radio" name="model" value="hrrr">
+          <span class="name">HRRR</span><span class="res" data-model="hrrr" data-res="1 km">1 km</span>
+        </label>
       </div>
-      <canvas id="wg" width="540" height="430"></canvas>
+      <div class="days" id="days"></div>
     </div>
-    <div class="hint" id="hint" style="display:none">Click anywhere on the map for a windgram — generated in your browser from the forecast cube.</div>
+    <div class="panel-body">
+      <div id="status"></div>
+      <div id="wgwrap" style="display:none">
+        <div class="micro">Windgram</div>
+        <div class="wg-head">
+          <span class="site-name" id="site-name"></span>
+          <span class="coords" id="coords"></span>
+        </div>
+        <canvas id="wg" width="540" height="430"></canvas>
+      </div>
+      <div class="hint" id="hint" style="display:none">Click anywhere on the map for a windgram — generated in your browser from the forecast cube.</div>
+    </div>
   </div>
 </div>
 
@@ -329,7 +337,6 @@ async function loadModel(m, date){
     $("legend").style.display = "";                              // TOL scale for the overlay
     $("hint").textContent = HINT; $("hint").style.display = "";   // cube ready → invite a click
     goodModel = m;                                               // remember the last model that loaded
-    setModelMeta(m);                                             // refresh the toggle sublabel (resolution · date)
     showWindgram(lastSite.lng, lastSite.lat, lastSite.name);     // default windgram (Poo Poo Point on first load)
   } catch(e){
     // No warning box — just log and snap the toggle back to the model that's
@@ -447,12 +454,29 @@ async function showWindgram(lng, lat, name){
 }
 
 // Toggle-button helpers ───────────────────────────────────────────────────
-// Resolution + run date in each button's sublabel (the v1 style).
-function setModelMeta(m){
-  const el = document.querySelector(`.res[data-model="${m}"]`);
-  if(!el || !cube) return;
-  const res = cube.dxKm ? (cube.dxKm>=1?`${cube.dxKm.toFixed(1)} km`:`${Math.round(cube.dxKm*1000)} m`) : el.dataset.res;
-  el.textContent = cube.date ? `${res} · ${cube.date}` : res;
+// Resolution + run age in each button's sublabel (the v1 style: "1.3 km · 5h ago",
+// amber when stale). Age is per-model run freshness, read from <model>/latest.
+function timeAgo(ms){
+  const h = ms/3.6e6;
+  if(h < 1) return Math.max(1,Math.round(h*60))+"m ago";
+  if(h < 24) return Math.round(h)+"h ago";
+  return Math.round(h/24)+"d ago";
+}
+async function refreshToggleMeta(){
+  for(const m of ["nam","hrrr"]){
+    const el = document.querySelector(`.res[data-model="${m}"]`);
+    if(!el) continue;
+    try{
+      const a = (await (await fetch(cubeUrl(m,"latest")+"/zarr.json")).json()).attributes || {};
+      const res = a.dx_km ? (a.dx_km>=1?`${a.dx_km.toFixed(1)} km`:`${Math.round(a.dx_km*1000)} m`) : el.dataset.res;
+      if(a.date){
+        const [Y,M,D] = a.date.split("-").map(Number);
+        const age = Date.now() - Date.UTC(Y,M-1,D, parseInt(a.cycle,10)||0);
+        el.textContent = age>0 ? `${res} · ${timeAgo(age)}` : res;
+        el.classList.toggle("stale", age/3.6e6 > 12);
+      } else el.textContent = res;
+    }catch(e){ /* unavailable model handled by probeModel/setModelAvailable */ }
+  }
 }
 // Gracefully disable a model's button when its cube isn't published.
 function setModelAvailable(m, ok){
@@ -493,9 +517,10 @@ async function loadSites(){
 }
 
 map.on("click", e=> showWindgram(e.lngLat.lng, e.lngLat.lat));
-document.querySelectorAll('input[name="model"]').forEach(r=>r.addEventListener("change",e=>{ if(!e.target.disabled) loadModel(e.target.value); }));
+document.querySelectorAll('input[name="model"]').forEach(r=>r.addEventListener("change",e=>{ if(!e.target.disabled) loadModel(e.target.value, currentDate); }));
 map.on("load", ()=>{
   setupBasemap(); buildLegend(); loadSites(); loadModel("nam");
+  refreshToggleMeta();                                            // resolution · run age in both toggle buttons
   probeModel("hrrr").then(ok=> setModelAvailable("hrrr", ok));   // dim HRRR if its cube isn't published yet
 });
 </script>
