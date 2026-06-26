@@ -139,6 +139,7 @@
 
 <script type="module">
 import * as zarr from "https://esm.sh/zarrita@0.4.0";
+import { renderWindgram } from "./windgram.js";   // faithful TS port of rasp-windgram/windgram.py (built from windgram-ts/)
 const maplibregl = window.maplibregl;
 
 // Cube hosting: Cloudflare R2 (per-model "latest"). Override for testing with ?cube=<base>.
@@ -228,6 +229,7 @@ async function loadModel(m){
     try {
       const rootAttrs = (await (await fetch(cubeUrl(m)+"/zarr.json")).json()).attributes || {};
       const d0 = rootAttrs.date;
+      cube.date = d0; cube.dxKm = rootAttrs.dx_km;   // for the windgram title (date + grid resolution)
       if (d0) {
         const [Y,M,D] = d0.split("-").map(Number);
         let dayOff=0, prev=-1;
@@ -315,53 +317,47 @@ map.on("mousemove", e=>{
   el.textContent = isFinite(v) ? `${Math.round(v).toLocaleString()} ft` : "—";
 });
 map.on("mouseout", ()=>{ $("tolhover").style.display="none"; });
+// Pull a single grid column out of the cube and materialise it into the plain
+// [time][level] / [time] arrays the windgram library expects (WindgramData).
 async function column(yi,xi){
-  const g3=async n=>acc(await zarr.get(await cube.open(n),[null,null,yi,xi]));
-  const s2=async n=>acc(await zarr.get(await cube.open(n),[null,yi,xi]));
+  const g3=async n=>{ const v=await zarr.get(await cube.open(n),[null,null,yi,xi]);   // (T,L)
+    const a=[]; for(let t=0;t<cube.T;t++){ const r=[]; for(let k=0;k<cube.L;k++) r.push(v.data[t*v.stride[0]+k*v.stride[1]]); a.push(r); } return a; };
+  const s2=async n=>{ const v=await zarr.get(await cube.open(n),[null,yi,xi]);          // (T,)
+    const a=[]; for(let t=0;t<cube.T;t++) a.push(v.data[t*v.stride[0]]); return a; };
   // All-integer selection returns a bare scalar (no .data) in zarrita — read it directly.
   const t0=async n=>{ const v=await zarr.get(await cube.open(n),[yi,xi]); return typeof v==="number"?v:v.data[0]; };
-  return { gh:await g3("gh_ft"),tc:await g3("tc"),u:await g3("u_kt"),v:await g3("v_kt"),
-    pblh:await s2("pblh_m"),hfx:await s2("hfx"),lh:await s2("lh"),t2:await s2("t2_k"),
-    terr:await t0("terrain_ft") };
+  return {
+    hoursUtc: Array.from(cube.hours).map(h=>h|0),
+    terrainFt: await t0("terrain_ft"),
+    ghFt: await g3("gh_ft"), tc: await g3("tc"), td: await g3("td"), rh: await g3("rh"),
+    uKt: await g3("u_kt"), vKt: await g3("v_kt"),
+    pblhM: await s2("pblh_m"), hfx: await s2("hfx"), lh: await s2("lh"),
+    t2K: await s2("t2_k"), sfcpMb: await s2("sfcp_mb"),
+  };
 }
-const wstar=(h,l,p,t)=>{const vhf=Math.max(h+0.000245268*t*Math.max(l,0),0);const a=(9.81/t)*p*(vhf/1200);return a>0?Math.cbrt(a):0;};
-const hcrit=(w,ter,p)=>{const f=w*196.85;if(f<=225)return ter;const inr=1.3674*(0.4549-0.463*(225/f))+0.01267;return Math.max(0,ter+(Math.sqrt(Math.max(inr,0))+0.1126)*p);};
-function barb(c,x,y,u,v){const s=Math.hypot(u,v);if(s<1){c.beginPath();c.arc(x,y,2,0,7);c.stroke();return;}
-  const dx=-u/s,dy=v/s,ex=x+dx*18,ey=y+dy*18;c.beginPath();c.moveTo(x,y);c.lineTo(ex,ey);c.stroke();
-  let r=Math.round(s/5)*5,p=0;const px=-dy,py=dx;for(let f=0;f<(r/10|0);f++){const bx=ex-dx*p,by=ey-dy*p;c.beginPath();c.moveTo(bx,by);c.lineTo(bx+px*7,by+py*7);c.stroke();p+=4;}
-  if(r%10>=5){const bx=ex-dx*p,by=ey-dy*p;c.beginPath();c.moveTo(bx,by);c.lineTo(bx+px*4,by+py*4);c.stroke();}}
 
-function renderWindgram(col, latv, lonv){
-  $("wgwrap").style.display=""; $("hint").style.display="none";
-  $("site-name").textContent = `${latv.toFixed(3)}, ${lonv.toFixed(3)}`;
-  $("coords").textContent = `terrain ${Math.round(col.terr)} ft · cube column`;
-  const cv=$("wg"),ctx=cv.getContext("2d"),W=cv.width,H=cv.height;ctx.clearRect(0,0,W,H);
-  const T=cube.T,L=cube.L,m={l:44,r:12,t:40,b:24},pw=W-m.l-m.r,ph=H-m.t-m.b,zTop=12000,zB=col.terr;
-  const xT=t=>m.l+(T<2?0:t/(T-1))*pw, yZ=z=>m.t+(1-(z-zB)/(zTop-zB))*ph, cw=pw/T;
-  ctx.font="10px 'IBM Plex Mono',monospace";
-  for(let t=0;t<T;t++){const x0=m.l+t*cw,bl=col.terr+col.pblh(t),
-    w=wstar(col.hfx(t),col.lh(t),col.pblh(t),col.t2(t));
-    ctx.fillStyle="#eaf3fb";ctx.fillRect(x0,m.t,cw,yZ(bl)-m.t);
-    const g=ctx.createLinearGradient(0,yZ(bl),0,yZ(col.terr));g.addColorStop(0,"#ffe1b0");g.addColorStop(1,"#f5b06a");
-    ctx.fillStyle=g;ctx.fillRect(x0,yZ(bl),cw,yZ(col.terr)-yZ(bl));
-    ctx.fillStyle="#cdbfa6";ctx.fillRect(x0,yZ(col.terr),cw,H-m.b-yZ(col.terr));
-    ctx.fillStyle=w>2?"#1f7a3f":w>1?"#caa12a":"#b15";ctx.fillRect(x0+1,6,cw-2,15);
-    ctx.fillStyle="#fff";ctx.textAlign="center";ctx.fillText(w.toFixed(1),x0+cw/2,17);ctx.textAlign="left";
-    ctx.strokeStyle="#234";for(let l=0;l<L;l+=2){const z=col.gh(t,l);if(z<col.terr||z>zTop)continue;barb(ctx,x0+cw/2,yZ(z),col.u(t,l),col.v(t,l));}}
-  ctx.strokeStyle="#eee";ctx.fillStyle="#888";
-  for(let z=2000;z<=zTop;z+=2000){const y=yZ(z);ctx.beginPath();ctx.moveTo(m.l,y);ctx.lineTo(W-m.r,y);ctx.stroke();ctx.fillText((z/1000)+"k",4,y+3);}
-  ctx.strokeStyle="#1240a0";ctx.lineWidth=2;ctx.beginPath();
-  for(let t=0;t<T;t++){const w=wstar(col.hfx(t),col.lh(t),col.pblh(t),col.t2(t));const y=yZ(hcrit(w,col.terr,col.pblh(t)));t?ctx.lineTo(xT(t),y):ctx.moveTo(xT(t),y);}
-  ctx.stroke();ctx.lineWidth=1;ctx.fillStyle="#555";ctx.textAlign="center";
-  for(let t=0;t<T;t++)ctx.fillText((cube.hours[t]|0)+"z",xT(t),H-7);ctx.textAlign="left";
+// Title mirrors the Python windgram: "Sat 2026-06-25 · 47.46, -121.86 (NAM 1.3km)".
+function wgTitle(la,lo){
+  const res = cube.dxKm ? (cube.dxKm>=1?`${cube.dxKm.toFixed(1)}km`:`${Math.round(cube.dxKm*1000)}m`) : "";
+  const tag = `${model.toUpperCase()}${res?" "+res:""}`;
+  let pre="";
+  if(cube.date){ const [Y,M,D]=cube.date.split("-").map(Number);
+    const dow=new Date(Date.UTC(Y,M-1,D)).toLocaleDateString([], {weekday:"short", timeZone:"UTC"});
+    pre=`${dow} ${cube.date} · `; }
+  return `${pre}${la.toFixed(2)}, ${lo.toFixed(2)} (${tag})`;
 }
 
 map.on("click", async e=>{
   if(!cube) return;
   const [yi,xi,la,lo]=nearest(e.lngLat.lng,e.lngLat.lat);
   $("hint").textContent="loading column…"; $("hint").style.display="";
-  try { renderWindgram(await column(yi,xi), la, lo); }
-  catch(err){ $("hint").textContent="column unavailable: "+(err&&err.message||err); }
+  try {
+    const data = await column(yi,xi);
+    $("wgwrap").style.display=""; $("hint").style.display="none";
+    $("site-name").textContent = `${la.toFixed(3)}, ${lo.toFixed(3)}`;
+    $("coords").textContent = `terrain ${Math.round(data.terrainFt)} ft · cube column`;
+    renderWindgram($("wg"), data, { title: wgTitle(la,lo) });
+  } catch(err){ $("hint").textContent="column unavailable: "+(err&&err.message||err); }
 });
 document.querySelectorAll('input[name="model"]').forEach(r=>r.addEventListener("change",e=>loadModel(e.target.value)));
 map.on("load", ()=>{ setupBasemap(); buildLegend(); loadModel("nam"); });
