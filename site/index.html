@@ -156,13 +156,15 @@
     .empty .lead { font-weight: 600; font-size: 15px; color: var(--ink); }
     .empty .hint { font-size: 13px; margin-top: 4px; }
 
-    .site-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+    .micro { font: 500 9.5px/1 'IBM Plex Mono', monospace; letter-spacing: .16em;
+      text-transform: uppercase; color: var(--ink-soft); }
+    .site-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin: 7px 0 9px; }
     .site-head h2 {
-      font-weight: 800; font-size: 22px; letter-spacing: -.02em; line-height: 1.05;
+      font-weight: 800; font-size: 17px; letter-spacing: -.01em; line-height: 1.1;
     }
     .site-head .coords {
       font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: var(--ink-soft);
-      white-space: nowrap; padding-top: 4px;
+      white-space: nowrap; text-align: right; flex: 0 0 auto;
     }
 
     .wg-frame {
@@ -322,6 +324,7 @@
         </div>
 
         <div id="windgram-content" style="display:none">
+          <div class="micro">Windgram</div>
           <div class="site-head">
             <h2 id="site-name"></h2>
             <span class="coords" id="site-coords"></span>
