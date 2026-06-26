@@ -266,35 +266,46 @@ function drawBarb(ctx, x, y, uKt, vKt, style = {}) {
 }
 
 // src/render.ts
-var BG_COLOR = [128, 128, 230];
+var PAPER = [243, 239, 230];
+var SKY = [214, 226, 228];
+var INK = "#1c2622";
+var INK_SOFT = "#566159";
+var EVERGREEN = "#1f5240";
+var THERMAL = "#e0662a";
 var LAPSE_LEVELS = [-3, -2.5, -2, -1.5, -1.2, -0.5, 0, 0.5];
 var LAPSE_COLORS = [
-  [255, 61, 61],
-  // < -3 red (superadiabatic)
-  [255, 153, 0],
-  // orange
-  [255, 186, 255],
-  // pink
-  [204, 191, 255],
-  // purple
-  [250, 240, 230],
-  // cream
-  BG_COLOR,
-  // background
-  BG_COLOR,
-  // background
-  [204, 204, 204],
-  // grey (weak inversion)
-  [153, 153, 153]
-  // dark grey (strong inversion)
+  [176, 64, 24],
+  // < -3   superadiabatic — deep ember
+  [201, 86, 32],
+  // -3 … -2.5   burnt orange
+  [224, 102, 42],
+  // -2.5 … -2   thermal-orange (#e0662a)
+  [230, 150, 84],
+  // -2 … -1.5   warm amber
+  [233, 198, 150],
+  // -1.5 … -1.2 pale gold
+  [239, 231, 214],
+  // -1.2 … -0.5 warm cream — calm normal atmosphere
+  [228, 230, 222],
+  // -0.5 … 0    neutral paper
+  [199, 216, 222],
+  // 0 … 0.5     pale sky — weak inversion
+  [150, 184, 200]
+  // > 0.5       sky-slate — strong inversion cap
 ];
 function lapseColor(v) {
-  if (!isFinite(v)) return BG_COLOR;
+  if (!isFinite(v)) return SKY;
   if (v < LAPSE_LEVELS[0]) return LAPSE_COLORS[0];
   for (let i = 0; i < LAPSE_LEVELS.length - 1; i++) {
     if (v < LAPSE_LEVELS[i + 1]) return LAPSE_COLORS[i + 1];
   }
   return LAPSE_COLORS[LAPSE_COLORS.length - 1];
+}
+function climbColor(w) {
+  if (w < 0.5) return INK_SOFT;
+  if (w < 1.5) return "#c8881f";
+  if (w < 3) return THERMAL;
+  return "#b04018";
 }
 function drawWing(ctx, cx, cy, s) {
   ctx.save();
@@ -303,11 +314,12 @@ function drawWing(ctx, cx, cy, s) {
   ctx.bezierCurveTo(cx + -0.6 * s, cy - 0.7 * s, cx + 0.6 * s, cy - 0.7 * s, cx + 1.2 * s, cy - -0.1 * s);
   ctx.bezierCurveTo(cx + 0.6 * s, cy - 0.25 * s, cx + -0.6 * s, cy - 0.25 * s, cx + -1.2 * s, cy - -0.1 * s);
   ctx.closePath();
-  ctx.fillStyle = "#1f4ed8";
-  ctx.fill();
-  ctx.lineWidth = 0.8;
-  ctx.strokeStyle = "#0b2a8a";
+  ctx.lineJoin = "round";
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = "rgba(249,246,239,0.95)";
   ctx.stroke();
+  ctx.fillStyle = INK;
+  ctx.fill();
   ctx.restore();
 }
 var finiteMax = (a) => {
@@ -359,10 +371,10 @@ function renderWindgram(canvas, data, options = {}) {
   const ph = H - m.t - m.b;
   const xT = (t) => m.l + (T < 2 ? pw / 2 : t / (T - 1) * pw);
   const yZ = (z) => m.t + (1 - (z - zB) / (zTop - zB)) * ph;
-  ctx.fillStyle = `rgb(${BG_COLOR[0]},${BG_COLOR[1]},${BG_COLOR[2]})`;
+  ctx.fillStyle = `rgb(${PAPER[0]},${PAPER[1]},${PAPER[2]})`;
   ctx.fillRect(0, 0, W, H);
   if (T === 0 || L < 2) {
-    ctx.fillStyle = "#fff";
+    ctx.fillStyle = INK_SOFT;
     ctx.font = "13px 'IBM Plex Mono',monospace";
     ctx.textAlign = "center";
     ctx.fillText("no usable column data", W / 2, H / 2);
@@ -391,19 +403,19 @@ function renderWindgram(canvas, data, options = {}) {
   ctx.rect(m.l, m.t, pw, ph);
   ctx.clip();
   ctx.lineWidth = 0.8;
-  ctx.strokeStyle = "rgba(255,255,255,0.7)";
+  ctx.strokeStyle = "rgba(28,38,34,0.30)";
   for (let lev = -40; lev < 120; lev += 10) {
     const segs = isoSegments(tcfField, lev);
     if (!segs.length) continue;
     strokeSegs(ctx, segs, xT, yZ);
-    labelContour(ctx, segs, xT, yZ, `${lev}\xB0F`, "#0a1a4a", m);
+    labelContour(ctx, segs, xT, yZ, `${lev}\xB0F`, EVERGREEN, m);
   }
   const freeze = isoSegments(tcfField, 32);
   if (freeze.length) {
     ctx.lineWidth = 1.6;
-    ctx.strokeStyle = "rgba(0,229,255,0.9)";
+    ctx.strokeStyle = "rgba(47,111,147,0.95)";
     strokeSegs(ctx, freeze, xT, yZ);
-    labelContour(ctx, freeze, xT, yZ, "32\xB0F", "#06384a", m);
+    labelContour(ctx, freeze, xT, yZ, "32\xB0F", "#1d4d66", m);
   }
   ctx.restore();
   ctx.save();
@@ -416,7 +428,7 @@ function renderWindgram(canvas, data, options = {}) {
       if (!isFinite(z) || z < zB || z > zTop) continue;
       const spd = Math.hypot(u[t][k], v[t][k]);
       drawBarb(ctx, xT(t), yZ(z), u[t][k], v[t][k], {
-        color: spd < 9 ? "#00ff55" : "#ffffff",
+        color: spd < 9 ? "#2e6b4f" : INK,
         length: 20,
         lineWidth: 0.9
       });
@@ -434,9 +446,9 @@ function renderWindgram(canvas, data, options = {}) {
       const x = xT(t);
       const y = yZ(lcl);
       ctx.font = "30px sans-serif";
-      ctx.fillStyle = "rgba(90,90,90,0.5)";
+      ctx.fillStyle = "rgba(61,126,166,0.30)";
       ctx.fillText("\u2601", x + 1, y - 1);
-      ctx.fillStyle = "rgba(255,255,255,0.9)";
+      ctx.fillStyle = "rgba(255,255,255,0.95)";
       ctx.fillText("\u2601", x, y);
     }
   }
@@ -449,14 +461,12 @@ function renderWindgram(canvas, data, options = {}) {
     }
   }
   ctx.restore();
-  ctx.fillStyle = "#fff";
-  ctx.strokeStyle = "#fff";
   ctx.lineWidth = 1;
   ctx.font = "10px 'IBM Plex Mono',monospace";
   const step = zTop - zB > 9e3 ? 2e3 : 1e3;
   const yTer = yZ(zB);
   ctx.textAlign = "right";
-  ctx.strokeStyle = "rgba(255,255,255,0.18)";
+  ctx.strokeStyle = "rgba(28,38,34,0.09)";
   for (let z = Math.ceil(zB / step) * step; z <= zTop; z += step) {
     const y = yZ(z);
     ctx.beginPath();
@@ -464,27 +474,32 @@ function renderWindgram(canvas, data, options = {}) {
     ctx.lineTo(m.l + pw, y);
     ctx.stroke();
     if (yTer - y < 13) continue;
-    ctx.fillStyle = "#fff";
+    ctx.fillStyle = INK_SOFT;
     ctx.fillText(`${(z / 1e3).toFixed(z % 1e3 ? 1 : 0)}k`, m.l - 5, y + 3);
   }
-  ctx.strokeStyle = "rgba(0,0,0,0.45)";
-  ctx.lineWidth = 1.4;
+  ctx.strokeStyle = "rgba(28,38,34,0.22)";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(m.l + 0.5, m.t + 0.5, pw - 1, ph - 1);
+  ctx.strokeStyle = EVERGREEN;
+  ctx.lineWidth = 1.6;
   ctx.beginPath();
   ctx.moveTo(m.l, yTer);
   ctx.lineTo(m.l + pw, yTer);
   ctx.stroke();
   ctx.lineWidth = 1;
-  ctx.fillStyle = "#ffe9b0";
+  ctx.fillStyle = EVERGREEN;
+  ctx.font = "600 10px 'IBM Plex Mono',monospace";
   ctx.fillText(`${Math.round(zB)}'`, m.l - 5, Math.min(yTer + 3, m.t + ph));
+  ctx.font = "10px 'IBM Plex Mono',monospace";
   ctx.save();
   ctx.translate(12, m.t + ph / 2);
   ctx.rotate(-Math.PI / 2);
   ctx.textAlign = "center";
-  ctx.fillStyle = "#dfe7f5";
+  ctx.fillStyle = INK_SOFT;
   ctx.fillText("Altitude (ft MSL)", 0, 0);
   ctx.restore();
   ctx.textAlign = "center";
-  ctx.fillStyle = "#fff";
+  ctx.fillStyle = INK_SOFT;
   for (let t = 0; t < T; t++) {
     let h = ((hours[t] + utcOffset) % 24 + 24) % 24;
     const ap = h < 12 ? "a" : "p";
@@ -492,13 +507,14 @@ function renderWindgram(canvas, data, options = {}) {
     if (h === 0) h = 12;
     ctx.fillText(`${h}${ap}`, xT(t), H - 9);
   }
-  ctx.fillStyle = "#ffe000";
   ctx.font = "bold 12px 'IBM Plex Mono',monospace";
   ctx.textAlign = "center";
   for (let t = 0; t < T; t++) {
+    ctx.fillStyle = climbColor(wstar[t]);
     ctx.fillText(wstar[t].toFixed(1), xT(t), m.t - 8);
   }
   ctx.textAlign = "left";
+  ctx.fillStyle = INK_SOFT;
   ctx.font = "bold 8px 'IBM Plex Mono',monospace";
   ctx.fillText("Climb", 3, m.t - 15);
   ctx.fillText("m/s", 3, m.t - 6);
@@ -516,10 +532,12 @@ function drawBackground(ctx, dpr, m, pw, ph, zB, zTop, T, lapse, rhField) {
     for (let ii = 0; ii < pwD; ii++) {
       const t = ii / (pwD - 1 || 1) * (T - 1);
       let r, g, b;
-      if (z >= midYmin && z <= midYmax) {
-        [r, g, b] = lapseColor(sampleField(lapse, t, z));
+      if (z > midYmax) {
+        [r, g, b] = SKY;
+      } else if (z < midYmin) {
+        [r, g, b] = lapseColor(sampleField(lapse, t, midYmin));
       } else {
-        [r, g, b] = BG_COLOR;
+        [r, g, b] = lapseColor(sampleField(lapse, t, z));
       }
       const cf = z >= rhField.y[0] && z <= rhField.y[rhField.y.length - 1] ? cloudFraction(sampleField(rhField, t, z)) : 0;
       if (cf >= 0.1 && hatchHit(ii, jj, cf)) {
@@ -573,7 +591,7 @@ function labelContour(ctx, segs, xT, yZ, text, color, m) {
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   const w = ctx.measureText(text).width + 4;
-  ctx.fillStyle = "rgba(255,255,255,0.85)";
+  ctx.fillStyle = "rgba(243,239,230,0.92)";
   ctx.fillRect(x - w / 2, y - 6, w, 12);
   ctx.fillStyle = color;
   ctx.fillText(text, x, y);
