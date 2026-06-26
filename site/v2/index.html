@@ -25,7 +25,7 @@
     text-transform:uppercase;color:var(--ink-soft)}
 
   /* ── Floating instrument cards over the map ───────────────────────── */
-  .bar{position:absolute;top:12px;left:12px;z-index:2;width:180px;
+  .bar{position:absolute;top:12px;right:12px;z-index:2;width:180px;
     background:var(--glass);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
     border:1px solid var(--line);border-radius:var(--r-sm);padding:8px 11px 10px;box-shadow:var(--shadow-sm)}
   .bar .val{display:block;font-weight:700;font-size:13px;letter-spacing:-.01em;margin:2px 0 7px}
@@ -38,7 +38,7 @@
   #tslider:active::-webkit-slider-thumb{cursor:grabbing}
 
   /* TOL legend — same instrument card; color bar at the overlay's opacity */
-  .legend{position:absolute;left:12px;top:50%;transform:translateY(-50%);z-index:1;pointer-events:none;
+  .legend{position:absolute;right:12px;top:50%;transform:translateY(-50%);z-index:1;pointer-events:none;
     background:var(--glass);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
     border:1px solid var(--line);border-radius:var(--r-sm);padding:9px 10px;box-shadow:var(--shadow-sm)}
   .legend-title{margin-bottom:7px}
@@ -75,22 +75,16 @@
   .kick a{color:var(--evergreen);text-decoration:none;border-bottom:1px solid rgba(31,82,64,.35)}
   .kick a:hover{border-bottom-color:var(--evergreen)}
 
-  .seg{display:grid;grid-template-columns:1fr 1fr;gap:3px;background:var(--panel);
-    border:1px solid var(--line);border-radius:10px;padding:3px;margin-bottom:14px}
-  .seg label{text-align:center;padding:8px;font-weight:700;font-size:13px;letter-spacing:.02em;
-    cursor:pointer;border-radius:7px;color:var(--ink-soft);transition:background .18s,color .18s}
-  .seg input{position:absolute;opacity:0;pointer-events:none}
-  .seg label:hover:not(:has(input:checked)){background:rgba(28,38,34,.05)}
-  .seg label:has(input:checked){background:var(--evergreen);color:#fff;box-shadow:var(--shadow-sm)}
+  .modeltag{display:flex;align-items:center;gap:9px;margin-bottom:14px;
+    background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 12px}
+  .modeltag b{font-weight:800;font-size:13px;color:var(--evergreen);letter-spacing:.02em}
+  .modelnote{margin-left:auto;font:500 10.5px 'IBM Plex Mono',monospace;color:var(--ink-soft)}
 
   #wgwrap{margin-top:2px}
   .wg-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin:9px 0 7px}
   .site-name{font-weight:800;font-size:17px;letter-spacing:-.01em}
   .coords{font:500 10.5px 'IBM Plex Mono',monospace;color:var(--ink-soft);text-align:right;flex:0 0 auto}
   #wg{width:100%;border:1px solid var(--line);border-radius:11px;background:#fff;box-shadow:var(--shadow-sm)}
-  .wg-disclaimer{font:500 11px/1.45 'IBM Plex Mono',monospace;color:#9a6212;background:#fff7ec;
-    border:1px solid #f0d9b8;border-radius:9px;padding:9px 12px;margin-top:9px}
-  .wg-disclaimer b{font-weight:700}
 
   .note{font:500 12px/1.5 'IBM Plex Mono',monospace;background:#fff7ec;
     border:1px solid #f0d9b8;border-radius:10px;padding:11px 13px;margin-top:2px;color:#9a6212}
@@ -119,10 +113,7 @@
   <div id="panel">
     <div class="brand"><h1>PNW <span class="lift">Soaring</span></h1><span class="beta">v2 beta</span></div>
     <div class="kick">Interactive cube · <a href="/">← back to v1</a></div>
-    <div class="seg" role="radiogroup">
-      <label><input type="radio" name="model" value="hrrr"> HRRR</label>
-      <label><input type="radio" name="model" value="nam" checked> NAM</label>
-    </div>
+    <div class="modeltag"><span class="micro">Model</span><b>NAM</b><span class="modelnote" id="modelnote"></span></div>
     <div id="status"></div>
     <div id="wgwrap" style="display:none">
       <div class="micro">Windgram</div>
@@ -131,7 +122,6 @@
         <span class="coords" id="coords"></span>
       </div>
       <canvas id="wg" width="540" height="430"></canvas>
-      <div class="wg-disclaimer"><b>⚠ Experimental</b> — these windgrams aren't validated yet. Don't use them for flight planning.</div>
     </div>
     <div class="hint" id="hint" style="display:none">Click anywhere on the map for a windgram — generated in your browser from the forecast cube.</div>
   </div>
@@ -243,6 +233,9 @@ async function loadModel(m){
     setupTime(); await setOverlay(tIdx); await refreshHoverSlice(); status("");
     $("legend").style.display = "";                              // TOL scale for the overlay
     $("hint").textContent = HINT; $("hint").style.display = "";   // cube ready → invite a click
+    const res = cube.dxKm ? (cube.dxKm>=1?`${cube.dxKm.toFixed(1)} km`:`${Math.round(cube.dxKm*1000)} m`) : "";
+    $("modelnote").textContent = [cube.date, res].filter(Boolean).join(" · ");
+    showWindgram(lastSite.lng, lastSite.lat, lastSite.name);     // default windgram (Poo Poo Point on first load)
   } catch(e){
     status(`No <b>${m.toUpperCase()}</b> forecast cube published yet — v2 is in beta and waiting on the data pipeline.<br><small>${(e&&e.message||e)}</small>`);
     $("legend").style.display = "none";
@@ -336,31 +329,25 @@ async function column(yi,xi){
   };
 }
 
-// Title mirrors the Python windgram: "Sat 2026-06-25 · 47.46, -121.86 (NAM 1.3km)".
-function wgTitle(la,lo){
-  const res = cube.dxKm ? (cube.dxKm>=1?`${cube.dxKm.toFixed(1)}km`:`${Math.round(cube.dxKm*1000)}m`) : "";
-  const tag = `${model.toUpperCase()}${res?" "+res:""}`;
-  let pre="";
-  if(cube.date){ const [Y,M,D]=cube.date.split("-").map(Number);
-    const dow=new Date(Date.UTC(Y,M-1,D)).toLocaleDateString([], {weekday:"short", timeZone:"UTC"});
-    pre=`${dow} ${cube.date} · `; }
-  return `${pre}${la.toFixed(2)}, ${lo.toFixed(2)} (${tag})`;
-}
+// The site shown on initial load and re-rendered when the model is switched.
+let lastSite = { lng:-122.00819, lat:47.49927, name:"Poo Poo Point" };
 
-map.on("click", async e=>{
+async function showWindgram(lng, lat, name){
   if(!cube) return;
-  const [yi,xi,la,lo]=nearest(e.lngLat.lng,e.lngLat.lat);
+  lastSite = { lng, lat, name };
+  const [yi,xi,la,lo]=nearest(lng,lat);
   $("hint").textContent="loading column…"; $("hint").style.display="";
   try {
     const data = await column(yi,xi);
     $("wgwrap").style.display=""; $("hint").style.display="none";
-    $("site-name").textContent = `${la.toFixed(3)}, ${lo.toFixed(3)}`;
-    $("coords").textContent = `terrain ${Math.round(data.terrainFt)} ft · cube column`;
-    renderWindgram($("wg"), data, { title: wgTitle(la,lo) });
+    $("site-name").textContent = name || `${la.toFixed(3)}, ${lo.toFixed(3)}`;
+    $("coords").textContent = `${la.toFixed(3)}, ${lo.toFixed(3)} · terrain ${Math.round(data.terrainFt)} ft`;
+    renderWindgram($("wg"), data);
   } catch(err){ $("hint").textContent="column unavailable: "+(err&&err.message||err); }
-});
-document.querySelectorAll('input[name="model"]').forEach(r=>r.addEventListener("change",e=>loadModel(e.target.value)));
-map.on("load", ()=>{ setupBasemap(); buildLegend(); loadModel("nam"); });
+}
+
+map.on("click", e=> showWindgram(e.lngLat.lng, e.lngLat.lat));
+map.on("load", ()=>{ setupBasemap(); buildLegend(); loadModel("nam"); });   // NAM only (HRRR cube not published)
 </script>
 </body>
 </html>

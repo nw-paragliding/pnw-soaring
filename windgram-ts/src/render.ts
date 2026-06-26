@@ -120,7 +120,7 @@ export function renderWindgram(
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, W, H);
 
-  const m = { l: 48, r: 14, t: 52, b: 28 };
+  const m = { l: 48, r: 14, t: 30, b: 28 };
   const pw = W - m.l - m.r;
   const ph = H - m.t - m.b;
   const xT = (t: number) => m.l + (T < 2 ? pw / 2 : (t / (T - 1)) * pw);
@@ -240,6 +240,7 @@ export function renderWindgram(
 
   // Left: altitude (ft ASL)
   const step = zTop - zB > 9000 ? 2000 : 1000;
+  const yTer = yZ(zB);
   ctx.textAlign = "right";
   ctx.strokeStyle = "rgba(255,255,255,0.18)";
   for (let z = Math.ceil(zB / step) * step; z <= zTop; z += step) {
@@ -248,11 +249,12 @@ export function renderWindgram(
     ctx.moveTo(m.l, y);
     ctx.lineTo(m.l + pw, y);
     ctx.stroke();
+    // Skip the gridline label if it would collide with the terrain tick below.
+    if (yTer - y < 13) continue;
     ctx.fillStyle = "#fff";
     ctx.fillText(`${(z / 1000).toFixed(z % 1000 ? 1 : 0)}k`, m.l - 5, y + 3);
   }
   // terrain baseline
-  const yTer = yZ(zB);
   ctx.strokeStyle = "rgba(0,0,0,0.45)";
   ctx.lineWidth = 1.4;
   ctx.beginPath();
@@ -295,14 +297,6 @@ export function renderWindgram(
   ctx.font = "bold 8px 'IBM Plex Mono',monospace";
   ctx.fillText("Climb", 3, m.t - 15);
   ctx.fillText("m/s", 3, m.t - 6);
-
-  // --- title ---
-  if (options.title) {
-    ctx.fillStyle = "#fff";
-    ctx.font = "bold 13px 'Bricolage Grotesque','IBM Plex Mono',sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText(options.title, W / 2, 18);
-  }
 }
 
 // Device-pixel raster of the lapse-rate bands with graduated cloud hatching.

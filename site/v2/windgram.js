@@ -354,7 +354,7 @@ function renderWindgram(canvas, data, options = {}) {
   const ctx = canvas.getContext("2d");
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, W, H);
-  const m = { l: 48, r: 14, t: 52, b: 28 };
+  const m = { l: 48, r: 14, t: 30, b: 28 };
   const pw = W - m.l - m.r;
   const ph = H - m.t - m.b;
   const xT = (t) => m.l + (T < 2 ? pw / 2 : t / (T - 1) * pw);
@@ -454,6 +454,7 @@ function renderWindgram(canvas, data, options = {}) {
   ctx.lineWidth = 1;
   ctx.font = "10px 'IBM Plex Mono',monospace";
   const step = zTop - zB > 9e3 ? 2e3 : 1e3;
+  const yTer = yZ(zB);
   ctx.textAlign = "right";
   ctx.strokeStyle = "rgba(255,255,255,0.18)";
   for (let z = Math.ceil(zB / step) * step; z <= zTop; z += step) {
@@ -462,10 +463,10 @@ function renderWindgram(canvas, data, options = {}) {
     ctx.moveTo(m.l, y);
     ctx.lineTo(m.l + pw, y);
     ctx.stroke();
+    if (yTer - y < 13) continue;
     ctx.fillStyle = "#fff";
     ctx.fillText(`${(z / 1e3).toFixed(z % 1e3 ? 1 : 0)}k`, m.l - 5, y + 3);
   }
-  const yTer = yZ(zB);
   ctx.strokeStyle = "rgba(0,0,0,0.45)";
   ctx.lineWidth = 1.4;
   ctx.beginPath();
@@ -501,12 +502,6 @@ function renderWindgram(canvas, data, options = {}) {
   ctx.font = "bold 8px 'IBM Plex Mono',monospace";
   ctx.fillText("Climb", 3, m.t - 15);
   ctx.fillText("m/s", 3, m.t - 6);
-  if (options.title) {
-    ctx.fillStyle = "#fff";
-    ctx.font = "bold 13px 'Bricolage Grotesque','IBM Plex Mono',sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText(options.title, W / 2, 18);
-  }
 }
 function drawBackground(ctx, dpr, m, pw, ph, zB, zTop, T, lapse, rhField) {
   const pwD = Math.max(1, Math.round(pw * dpr));
