@@ -1,0 +1,8 @@
+{
+    "_ARRAY_DIMENSIONS": [
+        "time"
+    ],
+    "long_name": "forecast valid hour (local)",
+    "standard_name": "time",
+    "units": "hours since 2026-06-24 00:00:00 local"
+}

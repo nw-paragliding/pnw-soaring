@@ -1,0 +1,11 @@
+{
+    "_ARRAY_DIMENSIONS": [
+        "time",
+        "level",
+        "lat",
+        "lon"
+    ],
+    "grid_mapping": "spatial_ref",
+    "long_name": "relative humidity",
+    "units": "%"
+}

@@ -1,0 +1,7 @@
+{
+    "Conventions": "CF-1.8",
+    "cycle": "00",
+    "dx_km": 1.0,
+    "model": "SYNTH",
+    "title": "PNW soaring data cube (spike, synthetic)"
+}

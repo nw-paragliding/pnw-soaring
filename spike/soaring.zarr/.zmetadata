@@ -1,0 +1,641 @@
+{
+    "metadata": {
+        ".zattrs": {
+            "Conventions": "CF-1.8",
+            "cycle": "00",
+            "dx_km": 1.0,
+            "model": "SYNTH",
+            "title": "PNW soaring data cube (spike, synthetic)"
+        },
+        ".zgroup": {
+            "zarr_format": 2
+        },
+        "gh_ft/.zarray": {
+            "chunks": [
+                8,
+                20,
+                16,
+                16
+            ],
+            "compressor": {
+                "id": "gzip",
+                "level": 5
+            },
+            "dtype": "<f4",
+            "fill_value": 0.0,
+            "filters": null,
+            "order": "C",
+            "shape": [
+                8,
+                20,
+                64,
+                64
+            ],
+            "zarr_format": 2
+        },
+        "gh_ft/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "time",
+                "level",
+                "lat",
+                "lon"
+            ],
+            "grid_mapping": "spatial_ref",
+            "long_name": "geopotential height",
+            "units": "ft"
+        },
+        "hfx/.zarray": {
+            "chunks": [
+                8,
+                16,
+                16
+            ],
+            "compressor": {
+                "id": "gzip",
+                "level": 5
+            },
+            "dtype": "<f4",
+            "fill_value": 0.0,
+            "filters": null,
+            "order": "C",
+            "shape": [
+                8,
+                64,
+                64
+            ],
+            "zarr_format": 2
+        },
+        "hfx/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "time",
+                "lat",
+                "lon"
+            ],
+            "grid_mapping": "spatial_ref",
+            "units": "W m-2"
+        },
+        "lat/.zarray": {
+            "chunks": [
+                64
+            ],
+            "compressor": {
+                "id": "gzip",
+                "level": 5
+            },
+            "dtype": "<f4",
+            "fill_value": 0.0,
+            "filters": null,
+            "order": "C",
+            "shape": [
+                64
+            ],
+            "zarr_format": 2
+        },
+        "lat/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "lat"
+            ],
+            "axis": "Y",
+            "standard_name": "latitude",
+            "units": "degrees_north"
+        },
+        "level/.zarray": {
+            "chunks": [
+                20
+            ],
+            "compressor": {
+                "id": "gzip",
+                "level": 5
+            },
+            "dtype": "<f4",
+            "fill_value": 0.0,
+            "filters": null,
+            "order": "C",
+            "shape": [
+                20
+            ],
+            "zarr_format": 2
+        },
+        "level/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "level"
+            ],
+            "positive": "down",
+            "standard_name": "air_pressure",
+            "units": "hPa"
+        },
+        "lh/.zarray": {
+            "chunks": [
+                8,
+                16,
+                16
+            ],
+            "compressor": {
+                "id": "gzip",
+                "level": 5
+            },
+            "dtype": "<f4",
+            "fill_value": 0.0,
+            "filters": null,
+            "order": "C",
+            "shape": [
+                8,
+                64,
+                64
+            ],
+            "zarr_format": 2
+        },
+        "lh/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "time",
+                "lat",
+                "lon"
+            ],
+            "grid_mapping": "spatial_ref",
+            "units": "W m-2"
+        },
+        "lon/.zarray": {
+            "chunks": [
+                64
+            ],
+            "compressor": {
+                "id": "gzip",
+                "level": 5
+            },
+            "dtype": "<f4",
+            "fill_value": 0.0,
+            "filters": null,
+            "order": "C",
+            "shape": [
+                64
+            ],
+            "zarr_format": 2
+        },
+        "lon/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "lon"
+            ],
+            "axis": "X",
+            "standard_name": "longitude",
+            "units": "degrees_east"
+        },
+        "pblh_m/.zarray": {
+            "chunks": [
+                8,
+                16,
+                16
+            ],
+            "compressor": {
+                "id": "gzip",
+                "level": 5
+            },
+            "dtype": "<f4",
+            "fill_value": 0.0,
+            "filters": null,
+            "order": "C",
+            "shape": [
+                8,
+                64,
+                64
+            ],
+            "zarr_format": 2
+        },
+        "pblh_m/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "time",
+                "lat",
+                "lon"
+            ],
+            "grid_mapping": "spatial_ref",
+            "units": "m"
+        },
+        "rh/.zarray": {
+            "chunks": [
+                8,
+                20,
+                16,
+                16
+            ],
+            "compressor": {
+                "id": "gzip",
+                "level": 5
+            },
+            "dtype": "<f4",
+            "fill_value": 0.0,
+            "filters": null,
+            "order": "C",
+            "shape": [
+                8,
+                20,
+                64,
+                64
+            ],
+            "zarr_format": 2
+        },
+        "rh/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "time",
+                "level",
+                "lat",
+                "lon"
+            ],
+            "grid_mapping": "spatial_ref",
+            "long_name": "relative humidity",
+            "units": "%"
+        },
+        "sfcp_mb/.zarray": {
+            "chunks": [
+                8,
+                16,
+                16
+            ],
+            "compressor": {
+                "id": "gzip",
+                "level": 5
+            },
+            "dtype": "<f4",
+            "fill_value": 0.0,
+            "filters": null,
+            "order": "C",
+            "shape": [
+                8,
+                64,
+                64
+            ],
+            "zarr_format": 2
+        },
+        "sfcp_mb/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "time",
+                "lat",
+                "lon"
+            ],
+            "grid_mapping": "spatial_ref",
+            "units": "hPa"
+        },
+        "spatial_ref/.zarray": {
+            "chunks": [],
+            "compressor": null,
+            "dtype": "<i4",
+            "fill_value": 0,
+            "filters": null,
+            "order": "C",
+            "shape": [],
+            "zarr_format": 2
+        },
+        "spatial_ref/.zattrs": {
+            "_ARRAY_DIMENSIONS": [],
+            "crs_wkt": "GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84\",6378137,298.257223563]],PRIMEM[\"Greenwich\",0],UNIT[\"degree\",0.0174532925199433],AUTHORITY[\"EPSG\",\"4326\"]]",
+            "epsg_code": "EPSG:4326",
+            "grid_mapping_name": "latitude_longitude",
+            "inverse_flattening": 298.257223563,
+            "longitude_of_prime_meridian": 0.0,
+            "semi_major_axis": 6378137.0,
+            "spatial_ref": "GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84\",6378137,298.257223563]],PRIMEM[\"Greenwich\",0],UNIT[\"degree\",0.0174532925199433],AUTHORITY[\"EPSG\",\"4326\"]]"
+        },
+        "t2_k/.zarray": {
+            "chunks": [
+                8,
+                16,
+                16
+            ],
+            "compressor": {
+                "id": "gzip",
+                "level": 5
+            },
+            "dtype": "<f4",
+            "fill_value": 0.0,
+            "filters": null,
+            "order": "C",
+            "shape": [
+                8,
+                64,
+                64
+            ],
+            "zarr_format": 2
+        },
+        "t2_k/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "time",
+                "lat",
+                "lon"
+            ],
+            "grid_mapping": "spatial_ref",
+            "units": "K"
+        },
+        "tc/.zarray": {
+            "chunks": [
+                8,
+                20,
+                16,
+                16
+            ],
+            "compressor": {
+                "id": "gzip",
+                "level": 5
+            },
+            "dtype": "<f4",
+            "fill_value": 0.0,
+            "filters": null,
+            "order": "C",
+            "shape": [
+                8,
+                20,
+                64,
+                64
+            ],
+            "zarr_format": 2
+        },
+        "tc/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "time",
+                "level",
+                "lat",
+                "lon"
+            ],
+            "grid_mapping": "spatial_ref",
+            "long_name": "temperature",
+            "units": "degC"
+        },
+        "td/.zarray": {
+            "chunks": [
+                8,
+                20,
+                16,
+                16
+            ],
+            "compressor": {
+                "id": "gzip",
+                "level": 5
+            },
+            "dtype": "<f4",
+            "fill_value": 0.0,
+            "filters": null,
+            "order": "C",
+            "shape": [
+                8,
+                20,
+                64,
+                64
+            ],
+            "zarr_format": 2
+        },
+        "td/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "time",
+                "level",
+                "lat",
+                "lon"
+            ],
+            "grid_mapping": "spatial_ref",
+            "long_name": "dewpoint",
+            "units": "degC"
+        },
+        "terrain_ft/.zarray": {
+            "chunks": [
+                64,
+                64
+            ],
+            "compressor": {
+                "id": "gzip",
+                "level": 5
+            },
+            "dtype": "<f4",
+            "fill_value": 0.0,
+            "filters": null,
+            "order": "C",
+            "shape": [
+                64,
+                64
+            ],
+            "zarr_format": 2
+        },
+        "terrain_ft/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "lat",
+                "lon"
+            ],
+            "grid_mapping": "spatial_ref",
+            "long_name": "terrain height",
+            "units": "ft"
+        },
+        "time/.zarray": {
+            "chunks": [
+                8
+            ],
+            "compressor": {
+                "id": "gzip",
+                "level": 5
+            },
+            "dtype": "<f4",
+            "fill_value": 0.0,
+            "filters": null,
+            "order": "C",
+            "shape": [
+                8
+            ],
+            "zarr_format": 2
+        },
+        "time/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "time"
+            ],
+            "long_name": "forecast valid hour (local)",
+            "standard_name": "time",
+            "units": "hours since 2026-06-24 00:00:00 local"
+        },
+        "tol_ft/.zarray": {
+            "chunks": [
+                1,
+                64,
+                64
+            ],
+            "compressor": {
+                "id": "gzip",
+                "level": 5
+            },
+            "dtype": "<f4",
+            "fill_value": 0.0,
+            "filters": null,
+            "order": "C",
+            "shape": [
+                8,
+                64,
+                64
+            ],
+            "zarr_format": 2
+        },
+        "tol_ft/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "time",
+                "lat",
+                "lon"
+            ],
+            "grid_mapping": "spatial_ref",
+            "long_name": "top of lift",
+            "units": "ft"
+        },
+        "u_kt/.zarray": {
+            "chunks": [
+                8,
+                20,
+                16,
+                16
+            ],
+            "compressor": {
+                "id": "gzip",
+                "level": 5
+            },
+            "dtype": "<f4",
+            "fill_value": 0.0,
+            "filters": null,
+            "order": "C",
+            "shape": [
+                8,
+                20,
+                64,
+                64
+            ],
+            "zarr_format": 2
+        },
+        "u_kt/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "time",
+                "level",
+                "lat",
+                "lon"
+            ],
+            "grid_mapping": "spatial_ref",
+            "long_name": "u wind",
+            "units": "kt"
+        },
+        "ubl_kt/.zarray": {
+            "chunks": [
+                1,
+                64,
+                64
+            ],
+            "compressor": {
+                "id": "gzip",
+                "level": 5
+            },
+            "dtype": "<f4",
+            "fill_value": 0.0,
+            "filters": null,
+            "order": "C",
+            "shape": [
+                8,
+                64,
+                64
+            ],
+            "zarr_format": 2
+        },
+        "ubl_kt/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "time",
+                "lat",
+                "lon"
+            ],
+            "grid_mapping": "spatial_ref",
+            "long_name": "BL-top u wind",
+            "units": "kt"
+        },
+        "v_kt/.zarray": {
+            "chunks": [
+                8,
+                20,
+                16,
+                16
+            ],
+            "compressor": {
+                "id": "gzip",
+                "level": 5
+            },
+            "dtype": "<f4",
+            "fill_value": 0.0,
+            "filters": null,
+            "order": "C",
+            "shape": [
+                8,
+                20,
+                64,
+                64
+            ],
+            "zarr_format": 2
+        },
+        "v_kt/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "time",
+                "level",
+                "lat",
+                "lon"
+            ],
+            "grid_mapping": "spatial_ref",
+            "long_name": "v wind",
+            "units": "kt"
+        },
+        "vbl_kt/.zarray": {
+            "chunks": [
+                1,
+                64,
+                64
+            ],
+            "compressor": {
+                "id": "gzip",
+                "level": 5
+            },
+            "dtype": "<f4",
+            "fill_value": 0.0,
+            "filters": null,
+            "order": "C",
+            "shape": [
+                8,
+                64,
+                64
+            ],
+            "zarr_format": 2
+        },
+        "vbl_kt/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "time",
+                "lat",
+                "lon"
+            ],
+            "grid_mapping": "spatial_ref",
+            "long_name": "BL-top v wind",
+            "units": "kt"
+        },
+        "wstar_ms/.zarray": {
+            "chunks": [
+                1,
+                64,
+                64
+            ],
+            "compressor": {
+                "id": "gzip",
+                "level": 5
+            },
+            "dtype": "<f4",
+            "fill_value": 0.0,
+            "filters": null,
+            "order": "C",
+            "shape": [
+                8,
+                64,
+                64
+            ],
+            "zarr_format": 2
+        },
+        "wstar_ms/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "time",
+                "lat",
+                "lon"
+            ],
+            "grid_mapping": "spatial_ref",
+            "long_name": "w* convective velocity",
+            "units": "m s-1"
+        }
+    },
+    "zarr_consolidated_format": 1
+}

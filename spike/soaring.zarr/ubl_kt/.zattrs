@@ -1,0 +1,10 @@
+{
+    "_ARRAY_DIMENSIONS": [
+        "time",
+        "lat",
+        "lon"
+    ],
+    "grid_mapping": "spatial_ref",
+    "long_name": "BL-top u wind",
+    "units": "kt"
+}

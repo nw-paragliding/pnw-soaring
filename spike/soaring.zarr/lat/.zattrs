@@ -1,0 +1,8 @@
+{
+    "_ARRAY_DIMENSIONS": [
+        "lat"
+    ],
+    "axis": "Y",
+    "standard_name": "latitude",
+    "units": "degrees_north"
+}

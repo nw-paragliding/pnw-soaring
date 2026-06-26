@@ -599,6 +599,7 @@ function labelContour(ctx, segs, xT, yZ, text, color, m) {
   ctx.textBaseline = "alphabetic";
 }
 export {
+  drawBarb,
   math_exports as math,
   renderWindgram
 };

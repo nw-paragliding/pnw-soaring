@@ -24,7 +24,13 @@
   .micro{font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;
     text-transform:uppercase;color:var(--ink-soft)}
 
+  /* BL-wind barb overlay — a canvas synced to the map, under the UI cards */
+  .barbs{position:absolute;inset:0;z-index:1;pointer-events:none}
+
   /* ── Floating instrument cards over the map ───────────────────────── */
+  .barbtoggle{display:flex;align-items:center;gap:6px;margin-top:8px;cursor:pointer;
+    font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.04em;color:var(--ink-soft);user-select:none}
+  .barbtoggle input{accent-color:var(--evergreen);width:13px;height:13px;cursor:pointer}
   .bar{position:absolute;top:12px;right:12px;z-index:2;width:180px;
     background:var(--glass);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
     border:1px solid var(--line);border-radius:var(--r-sm);padding:8px 11px 10px;box-shadow:var(--shadow-sm)}
@@ -181,10 +187,12 @@
 <div id="wrap">
   <div id="left">
     <div id="map"></div>
+    <canvas class="barbs" id="barbs"></canvas>
     <div class="bar">
       <span class="micro">Top of lift</span>
       <span class="val" id="tlabel">—</span>
       <input id="tslider" type="range" min="0" max="0" value="0">
+      <label class="barbtoggle"><input type="checkbox" id="barbChk" checked> Surface wind</label>
     </div>
     <div class="legend" id="legend" style="display:none">
       <div class="legend-title micro">Top of lift</div>
@@ -237,7 +245,7 @@
 
 <script type="module">
 import * as zarr from "https://esm.sh/zarrita@0.4.0";
-import { renderWindgram } from "./windgram.js";   // faithful TS port of rasp-windgram/windgram.py (built from windgram-ts/)
+import { renderWindgram, drawBarb } from "./windgram.js";   // faithful TS port of rasp-windgram/windgram.py (built from windgram-ts/)
 const maplibregl = window.maplibregl;
 
 // Cube hosting: Cloudflare R2 (per-model "latest"). Override for testing with ?cube=<base>.
@@ -378,7 +386,7 @@ async function loadModel(m, date){
         });
       }
     } catch(e){ /* fall back to UTC labels */ }
-    setupTime(); await setOverlay(tIdx); await refreshHoverSlice(); status("");
+    setupTime(); await setOverlay(tIdx); await refreshHoverSlice(); refreshBarbs(); status("");
     $("legend").style.display = "";                              // TOL scale for the overlay
     $("hint").textContent = HINT; $("hint").style.display = "";   // cube ready → invite a click
     goodModel = m;                                               // remember the last model that loaded
@@ -407,6 +415,7 @@ function setupTime(){
     tIdx=+s.value; $("tlabel").textContent = timeLabel(tIdx);
     if(zlayer) zlayer.setSelector({ time:{ selected: tIdx, type:"index" } });
     refreshHoverSlice();
+    refreshBarbs();   // BL-wind barbs follow the time slider
   };
 }
 
@@ -462,6 +471,46 @@ map.on("mousemove", e=>{
   el.textContent = isFinite(v) ? `${Math.round(v).toLocaleString()} ft` : "—";
 });
 map.on("mouseout", ()=>{ $("tolhover").style.display="none"; });
+
+// ── Surface-wind barbs over the map (u_kt/v_kt at level 0), synced to time ───
+let barbsOn = true;
+async function cacheSfcSlice(){
+  if(!cube) return false;
+  cube.usfcCache = cube.usfcCache || {}; cube.vsfcCache = cube.vsfcCache || {};
+  try {
+    if(!cube.usfcCache[tIdx]) cube.usfcCache[tIdx] = acc(await zarr.get(await cube.open("u_kt"),[tIdx,0,null,null]));
+    if(!cube.vsfcCache[tIdx]) cube.vsfcCache[tIdx] = acc(await zarr.get(await cube.open("v_kt"),[tIdx,0,null,null]));
+    return true;
+  } catch(e){ console.warn("[barbs] surface wind unavailable:", e); return false; }
+}
+function drawMapBarbs(){
+  const c = $("barbs"); if(!c) return;
+  const dpr = window.devicePixelRatio || 1;
+  const cw = map.getCanvas().clientWidth, ch = map.getCanvas().clientHeight;
+  if(c.width !== cw*dpr || c.height !== ch*dpr){ c.width=cw*dpr; c.height=ch*dpr; c.style.width=cw+"px"; c.style.height=ch+"px"; }
+  const ctx = c.getContext("2d"); ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,cw,ch);
+  if(!barbsOn || !cube || !cube.usfcCache || !cube.usfcCache[tIdx]) return;
+  const usfc=cube.usfcCache[tIdx], vsfc=cube.vsfcCache[tIdx], lat=acc(cube.lat), lon=acc(cube.lon);
+  // Adaptive stride → roughly even ~52px barb spacing at any zoom.
+  const i1=Math.min(1,cube.X-1), j1=Math.min(1,cube.Y-1);
+  const p0=map.project([lon(0,0),lat(0,0)]);
+  const dx=Math.hypot(map.project([lon(0,i1),lat(0,i1)]).x-p0.x, map.project([lon(0,i1),lat(0,i1)]).y-p0.y)||1;
+  const dy=Math.hypot(map.project([lon(j1,0),lat(j1,0)]).x-p0.x, map.project([lon(j1,0),lat(j1,0)]).y-p0.y)||1;
+  const sx=Math.max(1,Math.round(52/dx)), sy=Math.max(1,Math.round(52/dy));
+  for(let j=0;j<cube.Y;j+=sy) for(let i=0;i<cube.X;i+=sx){
+    const p=map.project([lon(j,i),lat(j,i)]);
+    if(p.x<-16||p.x>cw+16||p.y<-16||p.y>ch+16) continue;
+    const uu=usfc(j,i), vv=vsfc(j,i);
+    if(!isFinite(uu)||!isFinite(vv)) continue;
+    const spd=Math.hypot(uu,vv);
+    drawBarb(ctx,p.x,p.y,uu,vv,{color:"rgba(249,246,239,0.9)",length:16,lineWidth:3});      // halo
+    drawBarb(ctx,p.x,p.y,uu,vv,{color:spd<9?"#1f5240":"#1c2622",length:16,lineWidth:1.2});    // body
+  }
+}
+async function refreshBarbs(){ if(await cacheSfcSlice()) drawMapBarbs(); }
+map.on("move", drawMapBarbs);
+map.on("resize", drawMapBarbs);
+$("barbChk").addEventListener("change", e=>{ barbsOn = e.target.checked; drawMapBarbs(); });
 // Pull a single grid column out of the cube and materialise it into the plain
 // [time][level] / [time] arrays the windgram library expects (WindgramData).
 async function column(yi,xi){
