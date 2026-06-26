@@ -6,6 +6,7 @@
   { "name": "5 Mile",         "type": "launch",  "lat": 47.6145,    "lon": -121.691243 },
   { "name": "Bandera",        "type": "launch",  "lat": 47.41984,   "lon": -121.55438 },
   { "name": "Granite",        "type": "launch",  "lat": 47.415878,  "lon": -121.477933 },
+  { "name": "Mailbox",        "type": "launch",  "lat": 47.46226,   "lon": -121.63947 },
   { "name": "Index",          "type": "launch",  "lat": 47.83572,   "lon": -121.53549 },
   { "name": "Rampart",        "type": "launch",  "lat": 47.38733,   "lon": -121.36333 },
   { "name": "Manastash Ridge","type": "launch",  "lat": 46.96015,   "lon": -120.68688 },
