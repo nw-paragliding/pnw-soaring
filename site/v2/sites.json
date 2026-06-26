@@ -1,6 +1,6 @@
 [
   { "name": "Poo Poo Point",  "type": "launch",  "lat": 47.49927,   "lon": -122.00819 },
-  { "name": "Rattlesnake",    "type": "launch",  "lat": 47.466792,  "lon": -121.823934 },
+  { "name": "Grand Prospect", "type": "launch",  "lat": 47.47162,   "lon": -121.82094 },
   { "name": "Mount Si",       "type": "launch",  "lat": 47.507751,  "lon": -121.739688 },
   { "name": "Green Mountain", "type": "launch",  "lat": 47.5121111, "lon": -121.6777222 },
   { "name": "Bandera",        "type": "launch",  "lat": 47.41984,   "lon": -121.55438 },
