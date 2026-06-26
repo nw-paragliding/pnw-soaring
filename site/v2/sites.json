@@ -4,10 +4,11 @@
   { "name": "Mount Si",       "type": "launch",  "lat": 47.507751,  "lon": -121.739688 },
   { "name": "Green Mountain", "type": "launch",  "lat": 47.5121111, "lon": -121.6777222 },
   { "name": "Bandera",        "type": "launch",  "lat": 47.41984,   "lon": -121.55438 },
-  { "name": "Granite",        "type": "launch",  "lat": 47.4173,    "lon": -121.4780 },
+  { "name": "Granite",        "type": "launch",  "lat": 47.415878,  "lon": -121.477933 },
   { "name": "Index",          "type": "launch",  "lat": 47.83572,   "lon": -121.53549 },
 
-  { "name": "Tiger LZ",       "type": "landing", "lat": 47.49800,   "lon": -122.02100 },
-  { "name": "Green Mtn LZ",   "type": "landing", "lat": 47.4874722, "lon": -121.6756111 },
-  { "name": "Index LZ",       "type": "landing", "lat": 47.81783,   "lon": -121.56702 }
+  { "name": "Tiger LZ",        "type": "landing", "lat": 47.49800,   "lon": -122.02100 },
+  { "name": "Green Mtn LZ",    "type": "landing", "lat": 47.4874722, "lon": -121.6756111 },
+  { "name": "Index LZ",        "type": "landing", "lat": 47.81783,   "lon": -121.56702 },
+  { "name": "Bandera Airstrip","type": "landing", "lat": 47.39533,   "lon": -121.53650 }
 ]
