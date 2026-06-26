@@ -56,9 +56,10 @@
   .tolhover::before{content:"TOL ";font-weight:500;font-size:9px;letter-spacing:.12em;opacity:.55}
 
   /* ── Launch / landing site markers ──────────────────────────────────── */
-  /* NB: never put transform/transition on .ll-marker itself — MapLibre owns its
-     transform for geo-positioning; overriding it makes the pins drift on pan/zoom. */
-  .ll-marker{position:relative;width:26px;height:26px;cursor:pointer}
+  /* NB: don't set position OR transform/transition on .ll-marker — MapLibre adds
+     .maplibregl-marker (position:absolute) and owns its transform for geo-anchoring.
+     A position:relative here drops pins into normal flow and they drift on pan/zoom. */
+  .ll-marker{width:26px;height:26px;cursor:pointer}
   .ll-marker:hover{z-index:6}
   .ll-ico{display:flex;align-items:center;justify-content:center;width:26px;height:26px;
     border-radius:50% 50% 50% 2px;transform:rotate(45deg);transform-origin:center;
