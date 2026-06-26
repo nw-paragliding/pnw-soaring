@@ -19,23 +19,33 @@ import {
 import { makeFineField, sampleField, isoSegments, type FineField } from "./contour.js";
 import { drawBarb } from "./barbs.js";
 
-// Lapse-rate background (windgram.py BG_COLOR / LAPSE_LEVELS / LAPSE_COLORS).
-const BG_COLOR: [number, number, number] = [128, 128, 230]; // (0.5,0.5,0.9)
+// ── PNW Soaring palette — warm topo paper, evergreen ink, thermal-orange lift,
+//    sky-blue cold/stable. The windgram reads as a printed topographic chart.
+const PAPER: [number, number, number] = [243, 239, 230]; // #f3efe6 — figure / margins
+const SKY: [number, number, number] = [214, 226, 228];   // #d6e2e4 — high thin air / no-data
+const INK = "#1c2622";
+const INK_SOFT = "#566159";
+const EVERGREEN = "#1f5240";
+const THERMAL = "#e0662a";
+
+// Lapse-rate bands re-keyed to the site palette: warm = thermic/lift, cool =
+// capping inversion. Order matches windgram.py (idx 0 = < -3 superadiabatic =
+// strongest lift … idx 8 = > 0.5 = strong inversion = coolest cap).
 const LAPSE_LEVELS = [-3.0, -2.5, -2.0, -1.5, -1.2, -0.5, 0.0, 0.5];
 const LAPSE_COLORS: [number, number, number][] = [
-  [255, 61, 61], // < -3 red (superadiabatic)
-  [255, 153, 0], // orange
-  [255, 186, 255], // pink
-  [204, 191, 255], // purple
-  [250, 240, 230], // cream
-  BG_COLOR, // background
-  BG_COLOR, // background
-  [204, 204, 204], // grey (weak inversion)
-  [153, 153, 153], // dark grey (strong inversion)
+  [176, 64, 24],   // < -3   superadiabatic — deep ember
+  [201, 86, 32],   // -3 … -2.5   burnt orange
+  [224, 102, 42],  // -2.5 … -2   thermal-orange (#e0662a)
+  [230, 150, 84],  // -2 … -1.5   warm amber
+  [233, 198, 150], // -1.5 … -1.2 pale gold
+  [239, 231, 214], // -1.2 … -0.5 warm cream — calm normal atmosphere
+  [228, 230, 222], // -0.5 … 0    neutral paper
+  [199, 216, 222], // 0 … 0.5     pale sky — weak inversion
+  [150, 184, 200], // > 0.5       sky-slate — strong inversion cap
 ];
 
 function lapseColor(v: number): [number, number, number] {
-  if (!isFinite(v)) return BG_COLOR;
+  if (!isFinite(v)) return SKY;
   if (v < LAPSE_LEVELS[0]) return LAPSE_COLORS[0];
   for (let i = 0; i < LAPSE_LEVELS.length - 1; i++) {
     if (v < LAPSE_LEVELS[i + 1]) return LAPSE_COLORS[i + 1];
@@ -43,8 +53,16 @@ function lapseColor(v: number): [number, number, number] {
   return LAPSE_COLORS[LAPSE_COLORS.length - 1];
 }
 
-// Paraglider wing crescent — the _WING_VERTS path from windgram.py (y negated
-// for canvas). Drawn filled blue with a dark-blue edge.
+// Climb (w*) strength → colour: muted ink → amber → thermal → ember.
+function climbColor(w: number): string {
+  if (w < 0.5) return INK_SOFT;
+  if (w < 1.5) return "#c8881f";
+  if (w < 3.0) return THERMAL;
+  return "#b04018";
+}
+
+// Paraglider wing crescent (soaring ceiling) — the hero marker, in thermal-orange
+// with a deep evergreen edge so it reads against the cream/amber band it sits in.
 function drawWing(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: number) {
   ctx.save();
   ctx.beginPath();
@@ -52,11 +70,14 @@ function drawWing(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: numb
   ctx.bezierCurveTo(cx + -0.6 * s, cy - 0.7 * s, cx + 0.6 * s, cy - 0.7 * s, cx + 1.2 * s, cy - -0.1 * s);
   ctx.bezierCurveTo(cx + 0.6 * s, cy - 0.25 * s, cx + -0.6 * s, cy - 0.25 * s, cx + -1.2 * s, cy - -0.1 * s);
   ctx.closePath();
-  ctx.fillStyle = "#1f4ed8";
-  ctx.fill();
-  ctx.lineWidth = 0.8;
-  ctx.strokeStyle = "#0b2a8a";
+  // Bright halo + charcoal body → maximum contrast against the warm thermal
+  // layer (and cream aloft), so the soaring ceiling always stands out.
+  ctx.lineJoin = "round";
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = "rgba(249,246,239,0.95)";
   ctx.stroke();
+  ctx.fillStyle = INK;
+  ctx.fill();
   ctx.restore();
 }
 
@@ -126,12 +147,12 @@ export function renderWindgram(
   const xT = (t: number) => m.l + (T < 2 ? pw / 2 : (t / (T - 1)) * pw);
   const yZ = (z: number) => m.t + (1 - (z - zB) / (zTop - zB)) * ph;
 
-  // Whole-figure background
-  ctx.fillStyle = `rgb(${BG_COLOR[0]},${BG_COLOR[1]},${BG_COLOR[2]})`;
+  // Whole-figure background — warm paper, matching the panel
+  ctx.fillStyle = `rgb(${PAPER[0]},${PAPER[1]},${PAPER[2]})`;
   ctx.fillRect(0, 0, W, H);
 
   if (T === 0 || L < 2) {
-    ctx.fillStyle = "#fff";
+    ctx.fillStyle = INK_SOFT;
     ctx.font = "13px 'IBM Plex Mono',monospace";
     ctx.textAlign = "center";
     ctx.fillText("no usable column data", W / 2, H / 2);
@@ -162,30 +183,30 @@ export function renderWindgram(
   // --- background raster: lapse bands + cloud hatch (one device-pixel pass) ---
   drawBackground(ctx, dpr, m, pw, ph, zB, zTop, T, lapseField, rhField);
 
-  // --- isotherms (°F lines, white) + clabel ---
+  // --- isotherms — topo-style contour lines in evergreen ink ---
   ctx.save();
   ctx.beginPath();
   ctx.rect(m.l, m.t, pw, ph);
   ctx.clip();
   ctx.lineWidth = 0.8;
-  ctx.strokeStyle = "rgba(255,255,255,0.7)";
+  ctx.strokeStyle = "rgba(28,38,34,0.30)";
   for (let lev = -40; lev < 120; lev += 10) {
     const segs = isoSegments(tcfField, lev);
     if (!segs.length) continue;
     strokeSegs(ctx, segs, xT, yZ);
-    labelContour(ctx, segs, xT, yZ, `${lev}°F`, "#0a1a4a", m);
+    labelContour(ctx, segs, xT, yZ, `${lev}°F`, EVERGREEN, m);
   }
-  // Freezing level — prominent 32 °F line (cyan)
+  // Freezing level — prominent 32 °F line in sky-blue
   const freeze = isoSegments(tcfField, 32);
   if (freeze.length) {
     ctx.lineWidth = 1.6;
-    ctx.strokeStyle = "rgba(0,229,255,0.9)";
+    ctx.strokeStyle = "rgba(47,111,147,0.95)";
     strokeSegs(ctx, freeze, xT, yZ);
-    labelContour(ctx, freeze, xT, yZ, "32°F", "#06384a", m);
+    labelContour(ctx, freeze, xT, yZ, "32°F", "#1d4d66", m);
   }
   ctx.restore();
 
-  // --- wind barbs (green < 9 kt, white otherwise) at every level in view ---
+  // --- wind barbs — calm (< 9 kt) evergreen, stronger winds charcoal ink ---
   ctx.save();
   ctx.beginPath();
   ctx.rect(m.l, m.t - 4, pw, ph + 4);
@@ -196,7 +217,7 @@ export function renderWindgram(
       if (!isFinite(z) || z < zB || z > zTop) continue;
       const spd = Math.hypot(u[t][k], v[t][k]);
       drawBarb(ctx, xT(t), yZ(z), u[t][k], v[t][k], {
-        color: spd < 9 ? "#00ff55" : "#ffffff",
+        color: spd < 9 ? "#2e6b4f" : INK,
         length: 20,
         lineWidth: 0.9,
       });
@@ -216,9 +237,9 @@ export function renderWindgram(
       const x = xT(t);
       const y = yZ(lcl);
       ctx.font = "30px sans-serif";
-      ctx.fillStyle = "rgba(90,90,90,0.5)";
+      ctx.fillStyle = "rgba(61,126,166,0.30)";
       ctx.fillText("☁", x + 1, y - 1);
-      ctx.fillStyle = "rgba(255,255,255,0.9)";
+      ctx.fillStyle = "rgba(255,255,255,0.95)";
       ctx.fillText("☁", x, y);
     }
   }
@@ -233,16 +254,14 @@ export function renderWindgram(
   ctx.restore();
 
   // --- axes ---
-  ctx.fillStyle = "#fff";
-  ctx.strokeStyle = "#fff";
   ctx.lineWidth = 1;
   ctx.font = "10px 'IBM Plex Mono',monospace";
 
-  // Left: altitude (ft ASL)
+  // Left: altitude (ft ASL), faint topo gridlines + ink labels
   const step = zTop - zB > 9000 ? 2000 : 1000;
   const yTer = yZ(zB);
   ctx.textAlign = "right";
-  ctx.strokeStyle = "rgba(255,255,255,0.18)";
+  ctx.strokeStyle = "rgba(28,38,34,0.09)";
   for (let z = Math.ceil(zB / step) * step; z <= zTop; z += step) {
     const y = yZ(z);
     ctx.beginPath();
@@ -251,31 +270,39 @@ export function renderWindgram(
     ctx.stroke();
     // Skip the gridline label if it would collide with the terrain tick below.
     if (yTer - y < 13) continue;
-    ctx.fillStyle = "#fff";
+    ctx.fillStyle = INK_SOFT;
     ctx.fillText(`${(z / 1000).toFixed(z % 1000 ? 1 : 0)}k`, m.l - 5, y + 3);
   }
-  // terrain baseline
-  ctx.strokeStyle = "rgba(0,0,0,0.45)";
-  ctx.lineWidth = 1.4;
+
+  // Printed-chart frame around the plot
+  ctx.strokeStyle = "rgba(28,38,34,0.22)";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(m.l + 0.5, m.t + 0.5, pw - 1, ph - 1);
+
+  // Terrain baseline — the ground, a firm evergreen line + elevation chip
+  ctx.strokeStyle = EVERGREEN;
+  ctx.lineWidth = 1.6;
   ctx.beginPath();
   ctx.moveTo(m.l, yTer);
   ctx.lineTo(m.l + pw, yTer);
   ctx.stroke();
   ctx.lineWidth = 1;
-  ctx.fillStyle = "#ffe9b0";
+  ctx.fillStyle = EVERGREEN;
+  ctx.font = "600 10px 'IBM Plex Mono',monospace";
   ctx.fillText(`${Math.round(zB)}'`, m.l - 5, Math.min(yTer + 3, m.t + ph));
+  ctx.font = "10px 'IBM Plex Mono',monospace";
 
   ctx.save();
   ctx.translate(12, m.t + ph / 2);
   ctx.rotate(-Math.PI / 2);
   ctx.textAlign = "center";
-  ctx.fillStyle = "#dfe7f5";
+  ctx.fillStyle = INK_SOFT;
   ctx.fillText("Altitude (ft MSL)", 0, 0);
   ctx.restore();
 
   // Bottom: local time labels (12-hour am/pm)
   ctx.textAlign = "center";
-  ctx.fillStyle = "#fff";
+  ctx.fillStyle = INK_SOFT;
   for (let t = 0; t < T; t++) {
     let h = ((hours[t] + utcOffset) % 24 + 24) % 24;
     const ap = h < 12 ? "a" : "p";
@@ -284,16 +311,15 @@ export function renderWindgram(
     ctx.fillText(`${h}${ap}`, xT(t), H - 9);
   }
 
-  // --- w* climb labels (yellow row above the plot) ---
-  ctx.fillStyle = "#ffe000";
+  // --- w* climb row — graded muted→amber→ember by thermal strength ---
   ctx.font = "bold 12px 'IBM Plex Mono',monospace";
   ctx.textAlign = "center";
   for (let t = 0; t < T; t++) {
+    ctx.fillStyle = climbColor(wstar[t]);
     ctx.fillText(wstar[t].toFixed(1), xT(t), m.t - 8);
   }
-  // Caption stacked on two lines (windgram.py "Climb\nm/s") so it tucks into
-  // the top-left corner above the altitude axis without hitting the first value.
   ctx.textAlign = "left";
+  ctx.fillStyle = INK_SOFT;
   ctx.font = "bold 8px 'IBM Plex Mono',monospace";
   ctx.fillText("Climb", 3, m.t - 15);
   ctx.fillText("m/s", 3, m.t - 6);
@@ -324,10 +350,14 @@ function drawBackground(
     for (let ii = 0; ii < pwD; ii++) {
       const t = (ii / (pwD - 1 || 1)) * (T - 1);
       let r: number, g: number, b: number;
-      if (z >= midYmin && z <= midYmax) {
-        [r, g, b] = lapseColor(sampleField(lapse, t, z));
+      if (z > midYmax) {
+        [r, g, b] = SKY; // above the data — high thin air
+      } else if (z < midYmin) {
+        // Near-surface sliver below the lowest lapse midpoint — extend the
+        // surface band down to the terrain (not sky) so the bottom reads warm.
+        [r, g, b] = lapseColor(sampleField(lapse, t, midYmin));
       } else {
-        [r, g, b] = BG_COLOR;
+        [r, g, b] = lapseColor(sampleField(lapse, t, z));
       }
       // cloud hatch from RH
       const cf = z >= rhField.y[0] && z <= rhField.y[rhField.y.length - 1]
@@ -403,7 +433,7 @@ function labelContour(
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   const w = ctx.measureText(text).width + 4;
-  ctx.fillStyle = "rgba(255,255,255,0.85)";
+  ctx.fillStyle = "rgba(243,239,230,0.92)";
   ctx.fillRect(x - w / 2, y - 6, w, 12);
   ctx.fillStyle = color;
   ctx.fillText(text, x, y);
