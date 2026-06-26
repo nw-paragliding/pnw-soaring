@@ -419,10 +419,17 @@
     }
     async function discoverDays(model) {
       if (availableDays[model]) return availableDays[model];
-      const now = new Date();
+      // Anchor "today" to the forecast's zone (America/Los_Angeles), NOT the
+      // browser's UTC date. In the evening, UTC has already rolled to the next
+      // day while PDT hasn't — so a UTC-based off=0 mislabels *tomorrow's*
+      // forecast as "Today" (and shifts the whole picker a day). en-CA gives a
+      // YYYY-MM-DD string; DST is handled by the timeZone option.
+      const [by, bm, bd] = new Date()
+        .toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
+        .split('-').map(Number);
       const out = [];
       for (let off = 0; off <= 2; off++) {
-        const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + off));
+        const d = new Date(Date.UTC(by, bm - 1, bd + off));
         const ds = d.toISOString().slice(0, 10);
         // Skip a day once its soaring window (~8pm local, PDT) has ended — so an
         // evening visit shows "tomorrow + next-day", not a spent "today". This is
