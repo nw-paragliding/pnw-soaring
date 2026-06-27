@@ -280,9 +280,13 @@
       .map-header h1 { font-weight: 800; font-size: 17px; letter-spacing: -.02em;
         line-height: 1; color: var(--ink); }
       .map-header h1 .lift { color: var(--thermal); }
-      .map-header .kicker { font-family: 'IBM Plex Mono', monospace; font-size: 8.5px;
+      .map-header .kicker { font-family: 'IBM Plex Mono', monospace; font-size: 10px;
         letter-spacing: .1em; text-transform: uppercase; color: var(--ink-soft); }
       .map-header .glyph { color: var(--evergreen); }
+      /* Pill is click-through (pointer-events:none) so the map stays draggable;
+         re-enable just the v2 link so it's tappable. */
+      .map-header a { pointer-events: auto; display: inline-block; padding: 1px 0;
+        font-weight: 600; color: var(--thermal); text-decoration: none; }
     }
     @media (prefers-reduced-motion: reduce) {
       * { animation: none !important; transition: none !important; }
@@ -344,7 +348,7 @@
     <!-- Floating brand over the full-screen map (mobile only) -->
     <div class="map-header">
       <h1>PNW <span class="lift">Soaring</span></h1>
-      <span class="kicker"><span class="glyph">▲</span> Cascades · thermal forecast</span>
+      <span class="kicker"><a href="/v2">v2 →</a></span>
     </div>
   </div>
 
