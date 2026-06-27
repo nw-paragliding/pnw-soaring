@@ -167,9 +167,12 @@
       border:1px solid var(--line);box-shadow:var(--shadow);pointer-events:none}
     .map-header h1{font-weight:800;font-size:17px;letter-spacing:-.02em;line-height:1;color:var(--ink)}
     .map-header h1 .lift{color:var(--thermal)}
-    .map-header .kicker{font-family:'IBM Plex Mono',monospace;font-size:8.5px;
-      letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft)}
+    .map-header .kicker{font-family:'IBM Plex Mono',monospace;font-size:10px;
+      letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);text-align:right}
     .map-header .glyph{color:var(--evergreen)}
+    /* The pill is click-through (pointer-events:none) so the map stays draggable
+       underneath; re-enable just the v1 link so it stays tappable. */
+    .map-header a{pointer-events:auto;display:inline-block;padding:1px 0;font-weight:600}
     /* Declutter map overlays: drop the tall legend, keep the time slider top-right */
     .legend{display:none}
     .bar{top:10px;right:10px;left:auto;width:170px}
@@ -196,7 +199,7 @@
     <div class="tolhover" id="tolhover"></div>
     <div class="map-header">
       <h1>PNW <span class="lift">Soaring</span></h1>
-      <div class="kicker"><span class="glyph">▲</span> Soaring cube · beta</div>
+      <div class="kicker"><a href="/">← return to v1</a></div>
     </div>
   </div>
   <div id="panel">
