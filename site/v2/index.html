@@ -144,22 +144,28 @@
     #wrap{display:block;height:100dvh}
     #left{position:absolute;inset:0}
     #map{position:absolute;inset:0}
+    /* Persistent bottom bar: the model/date selectors are always docked at the
+       bottom; the windgram (.panel-body) collapses to nothing and slides up to
+       reveal itself when a point is selected. */
     #panel{order:0;flex:none;position:fixed;left:0;right:0;bottom:0;
-      width:100%;min-width:0;max-width:none;height:auto;max-height:82dvh;
+      width:100%;min-width:0;max-width:none;height:auto;max-height:88dvh;
       border:1px solid var(--line-2);border-right:none;border-bottom:none;
-      border-radius:18px 18px 0 0;box-shadow:0 -10px 34px rgba(28,38,34,.28);
-      transform:translateY(101%);transition:transform .34s cubic-bezier(.2,.7,.2,1);
+      border-radius:18px 18px 0 0;box-shadow:0 -10px 34px rgba(28,38,34,.22);
       z-index:1000;overflow-y:auto;overscroll-behavior:contain}
-    #panel.open{transform:translateY(0)}
     .sheet-grip{display:block;width:40px;height:4px;border-radius:3px;
       background:var(--line-2);margin:9px auto 2px;cursor:pointer}
-    .sheet-close{display:flex;align-items:center;justify-content:center;position:absolute;
+    /* The ✕ only appears once expanded — it collapses back to the selector peek. */
+    .sheet-close{display:none;align-items:center;justify-content:center;position:absolute;
       top:10px;right:12px;width:30px;height:30px;border:none;border-radius:50%;
       background:var(--panel);color:var(--ink-soft);font-size:13px;cursor:pointer;
       box-shadow:0 1px 3px rgba(28,38,34,.18);z-index:2}
+    #panel.open .sheet-close{display:flex}
     .brand{display:none}
     .controls{padding:4px 18px 6px}
-    .panel-body{padding:4px 18px 26px}
+    /* Collapsed by default (peek shows only the selectors); slides open on select. */
+    .panel-body{max-height:0;overflow:hidden;padding:0 18px;opacity:0;
+      transition:max-height .34s cubic-bezier(.2,.7,.2,1),opacity .24s,padding .34s}
+    #panel.open .panel-body{max-height:72dvh;opacity:1;padding:4px 18px 26px}
     /* Floating brand pill over the map */
     .map-header{display:flex;flex-direction:column;gap:1px;position:fixed;top:10px;left:10px;
       z-index:500;padding:7px 12px;border-radius:12px;background:rgba(243,239,230,.92);
@@ -571,8 +577,9 @@ async function loadSites(){
 
 map.on("click", e=> showWindgram(e.lngLat.lng, e.lngLat.lat));
 document.querySelectorAll('input[name="model"]').forEach(r=>r.addEventListener("change",e=>{ if(!e.target.disabled) loadModel(e.target.value, currentDate); }));
-// Dismiss the mobile sheet via the grip or the close button.
-$("sheetGrip").addEventListener("click", closeSheet);
+// The grip toggles the windgram open/closed (selectors stay docked either way);
+// the ✕ collapses back to the selector peek.
+$("sheetGrip").addEventListener("click", ()=> $("panel").classList.toggle("open"));
 $("sheetClose").addEventListener("click", closeSheet);
 map.on("load", ()=>{
   setupBasemap(); buildLegend(); loadSites(); loadModel("nam");
