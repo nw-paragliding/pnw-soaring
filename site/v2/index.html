@@ -335,12 +335,12 @@ function renderDays(days){
     const b=document.createElement("button");
     b.innerHTML=`${d.label}<span class="sub">${d.sub}</span>`;
     b.classList.toggle("active", d.date===currentDate);
-    b.onclick=()=>{ if(d.date!==currentDate) loadModel(model, d.date); };
+    b.onclick=()=>{ if(d.date!==currentDate) loadModel(model, d.date, true); };
     el.appendChild(b);
   });
 }
 
-async function loadModel(m, date){
+async function loadModel(m, date, reveal=false){
   model = m; $("wgwrap").style.display="none"; $("hint").style.display="none";
   status("Loading "+m.toUpperCase()+" cube…");
   // Resolve which forecast day to load + render the day picker.
@@ -391,7 +391,7 @@ async function loadModel(m, date){
     $("legend").style.display = "";                              // TOL scale for the overlay
     $("hint").textContent = HINT; $("hint").style.display = "";   // cube ready → invite a click
     goodModel = m;                                               // remember the last model that loaded
-    showWindgram(lastSite.lng, lastSite.lat, lastSite.name, false); // default windgram; keep the mobile sheet closed (map opens full-screen)
+    showWindgram(lastSite.lng, lastSite.lat, lastSite.name, reveal); // reveal=true on a user model/date switch so the updated windgram shows on mobile; false on initial load
   } catch(e){
     // No warning box — just log and snap the toggle back to the model that's
     // currently up (the failed model's cube isn't published yet).
@@ -576,7 +576,7 @@ async function loadSites(){
 }
 
 map.on("click", e=> showWindgram(e.lngLat.lng, e.lngLat.lat));
-document.querySelectorAll('input[name="model"]').forEach(r=>r.addEventListener("change",e=>{ if(!e.target.disabled) loadModel(e.target.value, currentDate); }));
+document.querySelectorAll('input[name="model"]').forEach(r=>r.addEventListener("change",e=>{ if(!e.target.disabled) loadModel(e.target.value, currentDate, true); }));
 // The grip toggles the windgram open/closed (selectors stay docked either way);
 // the ✕ collapses back to the selector peek.
 $("sheetGrip").addEventListener("click", ()=> $("panel").classList.toggle("open"));

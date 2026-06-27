@@ -462,7 +462,7 @@
         const b = document.createElement('button');
         b.innerHTML = `${d.label}<span class="sub">${d.sub}</span>`;
         b.classList.toggle('active', d.date === currentDate);
-        b.onclick = () => { currentDate = d.date; renderDays(days); updateWindgram(); };
+        b.onclick = () => { currentDate = d.date; renderDays(days); updateWindgram(); openSheet(); };
         el.appendChild(b);
       });
     }
@@ -535,6 +535,7 @@
         currentModel = e.target.value;
         await loadDays();          // each model may offer a different set of days
         updateWindgram();
+        openSheet();               // reveal the updated windgram (mobile peek → expanded)
       });
     });
 
