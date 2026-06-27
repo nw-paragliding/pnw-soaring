@@ -20,7 +20,9 @@ env:
 jobs:
   forecast:
     runs-on: ubuntu-24.04-arm
-    timeout-minutes: 120
+    # The 1km/27h WRF run is ~124 min at 6s (matches production's 360-min budget);
+    # 120 min was too short and cancelled a deep run mid-wrf.exe.
+    timeout-minutes: 360
     permissions:
       contents: read
       packages: read
