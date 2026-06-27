@@ -239,34 +239,38 @@
       #app { display: block; height: 100dvh; }
       #map { position: absolute; inset: 0; width: 100%; height: 100dvh; }
 
+      /* Persistent bottom bar: model/date selectors always docked at the bottom;
+         the windgram (.panel) collapses and slides up to reveal on selection. */
       #sidebar {
         position: fixed; left: 0; right: 0; bottom: 0;
         width: 100%; min-width: 0; max-width: none; height: auto;
-        max-height: 80dvh;
+        max-height: 88dvh;
         border: 1px solid var(--line-2); border-bottom: none;
         border-radius: 18px 18px 0 0;
-        box-shadow: 0 -10px 34px rgba(28,38,34,.28);
-        transform: translateY(101%);
-        transition: transform .34s cubic-bezier(.2,.7,.2,1);
+        box-shadow: 0 -10px 34px rgba(28,38,34,.22);
         z-index: 1000;
         overflow-y: auto; overscroll-behavior: contain;
       }
-      #sidebar.open { transform: translateY(0); }
 
       .sheet-grip {
         display: block; width: 40px; height: 4px; border-radius: 3px;
         background: var(--line-2); margin: 9px auto 2px; cursor: pointer;
       }
+      /* The ✕ only appears once expanded — it collapses back to the selector peek. */
       .sheet-close {
-        display: flex; align-items: center; justify-content: center;
+        display: none; align-items: center; justify-content: center;
         position: absolute; top: 10px; right: 12px; width: 30px; height: 30px;
         border: none; border-radius: 50%; background: var(--panel);
         color: var(--ink-soft); font-size: 13px; cursor: pointer;
         box-shadow: 0 1px 3px rgba(28,38,34,.18); z-index: 2;
       }
+      #sidebar.open .sheet-close { display: flex; }
       .brand { display: none; }
       .controls { padding: 4px 18px 6px; }
-      .panel { padding: 4px 18px 30px; }
+      /* Collapsed by default (peek shows only the selectors); slides open on select. */
+      .panel { max-height: 0; overflow: hidden; padding: 0 18px; opacity: 0;
+        transition: max-height .34s cubic-bezier(.2,.7,.2,1), opacity .24s, padding .34s; }
+      #sidebar.open .panel { max-height: 72dvh; opacity: 1; padding: 4px 18px 30px; }
 
       /* Floating brand pill over the map */
       .map-header {
@@ -536,7 +540,8 @@
 
     // Dismiss the sheet: close button, grip tap, or tapping the open map.
     document.getElementById('sheetClose').addEventListener('click', closeSheet);
-    document.getElementById('sheetGrip').addEventListener('click', closeSheet);
+    // Grip toggles the windgram open/closed; selectors stay docked either way.
+    document.getElementById('sheetGrip').addEventListener('click', () => sheet.classList.toggle('open'));
     map.on('click', closeSheet);   // empty-map taps (marker clicks don't propagate)
 
     // Resolve the day set first (sets currentDate), then sites + metadata.
