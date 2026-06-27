@@ -6,9 +6,16 @@ on:
       target_date:
         description: 'Target date YYYY-MM-DD (blank = auto)'
         required: false
+      target_cycle:
+        description: 'Force extended cycle HH (00/06/12/18) — use to reproduce a deep fhr run; blank = auto'
+        required: false
+      image:
+        description: 'windgram image to test (e.g. ghcr.io/nw-paragliding/windgram:cfl-test)'
+        required: false
+        default: 'ghcr.io/nw-paragliding/windgram:latest'
 
 env:
-  IMAGE: ghcr.io/nw-paragliding/windgram:latest
+  IMAGE: ${{ inputs.image }}
 
 jobs:
   forecast:
@@ -52,10 +59,15 @@ jobs:
         run: |
           mkdir -p output wrfout-debug
           TARGET_DATE="${{ inputs.target_date }}"
+          TARGET_CYCLE="${{ inputs.target_cycle }}"
           TARGET_FLAG=""
           if [ -n "$TARGET_DATE" ]; then
             TARGET_FLAG="--target-date $TARGET_DATE"
           fi
+          if [ -n "$TARGET_CYCLE" ]; then
+            TARGET_FLAG="$TARGET_FLAG --target-cycle $TARGET_CYCLE"
+          fi
+          echo "Image: $IMAGE | flags: $TARGET_FLAG"
 
           docker run --rm \
             -v ${{ github.workspace }}/geo_em:/mnt/geo_em:ro \
