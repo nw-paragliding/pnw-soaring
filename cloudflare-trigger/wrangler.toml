@@ -23,8 +23,9 @@ workers_dev = false
 # cycle; the pipeline then polls NOMADS and runs the instant data lands.
 [triggers]
 crons = [
-  "15 1 * * *",   # Evening run -> 00z cycle (HRRR data ~01:25z, NAM ~02:05z)
-  "0 13 * * *",   # Morning run -> 12z cycle (HRRR data ~13:10z, NAM ~13:54z)
+  "15 1 * * *",   # Evening run  -> 00z cycle (HRRR data ~01:25z, NAM ~02:05z) — night-before / tomorrow
+  "15 7 * * *",   # Pre-dawn run -> 06z cycle (HRRR data ~07:25z) — clean early refresh of today
+  "0 13 * * *",   # Morning run  -> 12z cycle (HRRR data ~13:10z, NAM ~13:54z) — freshest of today
 ]
 
 # Non-secret config (the GitHub token is injected as an encrypted Worker secret
