@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       target_date:
-        description: 'Base date YYYY-MM-DD for the 2-day window (blank = today UTC)'
+        description: 'Soaring date YYYY-MM-DD to render (blank = today UTC)'
         required: false
 
 env:
@@ -18,19 +18,15 @@ env:
 
 jobs:
   forecast:
-    # Two-day forecast, mirroring the NAM workflow: one windgram set per day,
-    # rendered by independent parallel runs (day 0 = today UTC, day 1 = tomorrow
-    # UTC). Unlike NAM (84h reach), HRRR only reaches 48h — so the *evening* run
-    # cannot reach next-day's full 8am–8pm window (its 8pm is ~51h out). When a
-    # day is beyond reach the pipeline falls back to near-term data, which the
-    # renderer dates to *today*, not the requested day; the "Guard" step below
-    # detects that filename/date mismatch and skips the deploy for that day. So
-    # HRRR shows today+tomorrow during the day, and just tomorrow in the evening
-    # (NAM, the default model, carries the full two days).
-    strategy:
-      fail-fast: false
-      matrix:
-        day: [0, 1]
+    # Single-day run: each dispatch renders ONE soaring day (day 0 = today UTC)
+    # on the cycle its fire time aligns to (Cloudflare crons → 00z/06z/12z).
+    # Today+tomorrow coverage comes from the *dispatch schedule*, not a parallel
+    # day-1 leg: the morning (12z) and pre-dawn (06z) runs render today; the
+    # evening (00z, 01:15z ≈ 6pm PDT) run's "today UTC" is tomorrow-PDT, so it's
+    # the night-before forecast. Dropping the old 2-day matrix removes the day-1
+    # leg, which for any cycle reachable within 48h ran at *deep* forecast hours
+    # (fhr 27–45) — the source of the garbage / wrong-window next-day forecasts.
+    # NAM (84h reach) still carries the longer multi-day outlook.
     runs-on: ubuntu-24.04-arm
     # Budget: up to 4h sleep (from --not-before compensation) + ~15 min runtime
     timeout-minutes: 360
@@ -40,7 +36,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check HRRR reach (day ${{ matrix.day }})
+      - name: Check HRRR reach (day 0)
         id: reach
         run: |
           # Cheap upfront 48h-horizon test, so an out-of-reach day (next-day in
@@ -49,7 +45,7 @@ jobs:
           # the publish-lag borderline case.
           BASE="${{ inputs.target_date }}${{ github.event.client_payload.target_date }}"
           [ -z "$BASE" ] && BASE=$(date -u +%F)
-          TARGET_DATE=$(date -u -d "$BASE +${{ matrix.day }} days" +%F)
+          TARGET_DATE=$(date -u -d "$BASE +0 days" +%F)
           echo "TARGET_DATE=$TARGET_DATE" >> "$GITHUB_ENV"
 
           # Soaring window for TARGET_DATE ends 8pm local (PDT=UTC-7) = 03:00z
@@ -69,7 +65,7 @@ jobs:
           CYCLE_EPOCH=$(date -u -d "$(date -u +%F) ${CYC}:00:00Z" +%s)
           FHR_END=$(( (END_EPOCH - CYCLE_EPOCH) / 3600 ))
 
-          echo "Day ${{ matrix.day }} → $TARGET_DATE: window ends ${FHR_END}h past newest cycle (${CYC}z); HRRR reach 48h."
+          echo "Day 0 → $TARGET_DATE: window ends ${FHR_END}h past newest cycle (${CYC}z); HRRR reach 48h."
           if [ "$FHR_END" -gt 48 ]; then
             echo "::notice::HRRR can't reach $TARGET_DATE (${FHR_END}h > 48h horizon). Skipping this day — NAM carries it."
             echo "reachable=false" >> "$GITHUB_OUTPUT"
@@ -125,11 +121,11 @@ jobs:
         if: steps.reach.outputs.reachable == 'true'
         run: docker pull $IMAGE
 
-      - name: Run forecast (day ${{ matrix.day }})
+      - name: Run forecast (day 0)
         if: steps.reach.outputs.reachable == 'true'
         run: |
           mkdir -p output
-          echo "Day ${{ matrix.day }} → soaring date $TARGET_DATE (cycle ${CYC}z, extended/48h)"
+          echo "Day 0 → soaring date $TARGET_DATE (cycle ${CYC}z, extended/48h)"
 
           docker run --rm \
             -v ${{ github.workspace }}/geo_em:/mnt/geo_em:ro \
@@ -172,7 +168,7 @@ jobs:
           fi
 
       - name: Save geo_em cache
-        if: steps.reach.outputs.reachable == 'true' && matrix.day == 0 && hashFiles('geo_em/geo_em.d01.nc') != ''
+        if: steps.reach.outputs.reachable == 'true' && hashFiles('geo_em/geo_em.d01.nc') != ''
         uses: actions/cache/save@v4
         with:
           path: geo_em/
@@ -182,7 +178,7 @@ jobs:
         if: steps.guard.outputs.deploy == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: hrrr-windgrams-day${{ matrix.day }}
+          name: hrrr-windgrams-day0
           path: output/*.png
           retention-days: 7
 
@@ -191,9 +187,9 @@ jobs:
         uses: ./.github/actions/deploy-forecast
         with:
           model: hrrr
-          # Only the nearest reachable day updates /latest; tomorrow lives in its
-          # own date dir and the day-picker UI surfaces it.
-          update_latest: ${{ matrix.day == 0 }}
+          # Each dispatch's single day is the freshest forecast, so it updates
+          # /latest. The day-picker UI also surfaces each day by its date dir.
+          update_latest: true
 
       - name: Upload soaring cube to R2 (v2)
         if: steps.guard.outputs.deploy == 'true'
@@ -215,7 +211,7 @@ jobs:
                  RCLONE_S3_SECRET_ACCESS_KEY="$R2_SECRET_ACCESS_KEY"
           DATE=$(ls output/*.png 2>/dev/null | head -1 | xargs basename | cut -d_ -f1)
           rclone sync output/soaring.zarr ":s3:${R2_BUCKET}/${MODEL}/${DATE}/soaring.zarr" --s3-no-check-bucket
-          if [ "${{ matrix.day }}" = "0" ]; then
+          if [ "0" = "0" ]; then
             rclone sync output/soaring.zarr ":s3:${R2_BUCKET}/${MODEL}/latest/soaring.zarr" --s3-no-check-bucket
           fi
-          echo "Uploaded cube → R2 ${R2_BUCKET}/${MODEL}/${DATE}$([ "${{ matrix.day }}" = "0" ] && echo ' (+latest)')"
+          echo "Uploaded cube → R2 ${R2_BUCKET}/${MODEL}/${DATE}$([ "0" = "0" ] && echo ' (+latest)')"

@@ -13,8 +13,9 @@
 // Map each configured cron trigger to the forecast cycle it targets.
 // Keys MUST match the crons in wrangler.toml exactly.
 const CRON_TO_CYCLE = {
-  "15 1 * * *": "0",    // evening -> 00z cycle
-  "0 13 * * *": "12",   // morning -> 12z cycle
+  "15 1 * * *": "0",    // evening  -> 00z cycle (night-before / tomorrow)
+  "15 7 * * *": "6",    // pre-dawn -> 06z cycle (clean early refresh of today)
+  "0 13 * * *": "12",   // morning  -> 12z cycle (freshest of today)
 };
 
 async function dispatch(env, cycle) {
