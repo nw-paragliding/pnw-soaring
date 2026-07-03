@@ -19,18 +19,26 @@ compatibility_date = "2026-01-01"
 # a workers.dev subdomain in the Cloudflare dashboard and set this to true.
 workers_dev = false
 
-# Forecast cadence. Crons are UTC. We fire a little before NOAA publishes each
-# cycle; the pipeline then polls NOMADS and runs the instant data lands.
+# Forecast cadence. Crons are UTC. HRRR and NAM fire on SEPARATE schedules and
+# event types so each catches its own cycle promptly — NAM GRIB publishes ~40min
+# after HRRR, so a shared HRRR-timed dispatch made NAM (auto-cycle) grab the
+# stale previous cycle. Each cron maps to {event_type, cycle} in worker.js.
+# (Cloudflare free tier caps a Worker at 5 cron triggers.)
 [triggers]
 crons = [
-  "15 1 * * *",   # Evening run  -> 00z cycle (HRRR data ~01:25z, NAM ~02:05z) — night-before / tomorrow
-  "15 7 * * *",   # Pre-dawn run -> 06z cycle (HRRR data ~07:25z) — clean early refresh of today
-  "0 13 * * *",   # Morning run  -> 12z cycle (HRRR data ~13:10z, NAM ~13:54z) — freshest of today
+  # HRRR — a little after HRRR GRIB publishes (~cycle+1h25). 3x/day (short reach).
+  "15 1 * * *",   # 00z HRRR (~01:25z) — night-before / tomorrow
+  "15 7 * * *",   # 06z HRRR (~07:25z) — pre-dawn refresh of today
+  "0 13 * * *",   # 12z HRRR (~13:10z) — freshest of today
+  # NAM — later, after NAM GRIB publishes (~cycle+2h). 2x/day (84h reach covers more).
+  "5 2 * * *",    # 00z NAM (~02:05z) — overnight multi-day outlook
+  "0 14 * * *",   # 12z NAM (~13:54z) — freshest midday
 ]
 
 # Non-secret config (the GitHub token is injected as an encrypted Worker secret
-# by the deploy workflow, not stored here).
+# by the deploy workflow, not stored here). Event types are per-model — see the
+# CRON_MAP in worker.js; forecast-hrrr.yml listens for run-hrrr, forecast-nam.yml
+# for run-nam.
 [vars]
 GH_OWNER = "nw-paragliding"
 GH_REPO = "pnw-soaring"
-DISPATCH_EVENT_TYPE = "run-forecast"
