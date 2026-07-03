@@ -1,24 +1,27 @@
 // Punctual trigger for the pnw-soaring forecast pipelines.
 //
 // On each Cloudflare cron tick (see wrangler.toml [triggers]) this fires a
-// GitHub `repository_dispatch` event of type DISPATCH_EVENT_TYPE. The
-// forecast workflows (HRRR, NAM) subscribe to that event type and
-// run immediately — `repository_dispatch` is not throttled the way GitHub's
-// own `schedule` events are.
-//
-// The cron string that fired is mapped to the NWP cycle (00z or 12z); the
-// workflows read it from client_payload.cycle and pass --target-cycle, then
-// poll NOMADS until that cycle's data is published.
+// GitHub `repository_dispatch`. HRRR and NAM run on SEPARATE schedules and
+// event types (run-hrrr / run-nam) so each catches its own cycle promptly:
+// NAM GRIB publishes ~40 min after HRRR, so a shared HRRR-timed dispatch made
+// NAM (which auto-selects the freshest cycle) grab the stale *previous* cycle
+// — the "15 hours ago" staleness. `repository_dispatch` is not throttled the
+// way GitHub's own `schedule` events are, so it starts the workflow in seconds.
 
-// Map each configured cron trigger to the forecast cycle it targets.
-// Keys MUST match the crons in wrangler.toml exactly.
-const CRON_TO_CYCLE = {
-  "15 1 * * *": "0",    // evening  -> 00z cycle (night-before / tomorrow)
-  "15 7 * * *": "6",    // pre-dawn -> 06z cycle (clean early refresh of today)
-  "0 13 * * *": "12",   // morning  -> 12z cycle (freshest of today)
+// Map each configured cron to {event_type, cycle}. Keys MUST match the crons in
+// wrangler.toml exactly. `cycle` is informational — HRRR derives its
+// --target-cycle from the fire hour, NAM auto-selects the freshest available.
+const CRON_MAP = {
+  // HRRR — 3x/day, a little after HRRR GRIB publishes (short 48h reach)
+  "15 1 * * *": { type: "run-hrrr", cycle: "0" },   // 00z — night-before / tomorrow
+  "15 7 * * *": { type: "run-hrrr", cycle: "6" },   // 06z — pre-dawn refresh of today
+  "0 13 * * *": { type: "run-hrrr", cycle: "12" },  // 12z — freshest of today
+  // NAM — 2x/day, after NAM GRIB publishes (~40 min later; 84h reach covers more)
+  "5 2 * * *":  { type: "run-nam",  cycle: "0" },   // 00z — overnight multi-day outlook
+  "0 14 * * *": { type: "run-nam",  cycle: "12" },  // 12z — freshest midday
 };
 
-async function dispatch(env, cycle) {
+async function dispatch(env, type, cycle) {
   const url = `https://api.github.com/repos/${env.GH_OWNER}/${env.GH_REPO}/dispatches`;
   const res = await fetch(url, {
     method: "POST",
@@ -30,27 +33,27 @@ async function dispatch(env, cycle) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      event_type: env.DISPATCH_EVENT_TYPE,
+      event_type: type,
       client_payload: { cycle, target_date: "" },
     }),
   });
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`repository_dispatch failed: ${res.status} ${text}`);
+    throw new Error(`repository_dispatch (${type}) failed: ${res.status} ${text}`);
   }
 }
 
 export default {
   // Cron-triggered entrypoint.
   async scheduled(event, env, ctx) {
-    const cycle = CRON_TO_CYCLE[event.cron];
-    if (cycle === undefined) {
-      console.error(`No cycle mapping for cron "${event.cron}" — check wrangler.toml/worker.js`);
+    const m = CRON_MAP[event.cron];
+    if (!m) {
+      console.error(`No mapping for cron "${event.cron}" — check wrangler.toml/worker.js`);
       return;
     }
     ctx.waitUntil(
-      dispatch(env, cycle)
-        .then(() => console.log(`Dispatched ${env.DISPATCH_EVENT_TYPE} cycle=${cycle}z (cron "${event.cron}")`))
+      dispatch(env, m.type, m.cycle)
+        .then(() => console.log(`Dispatched ${m.type} cycle=${m.cycle}z (cron "${event.cron}")`))
         .catch((err) => { console.error(String(err)); throw err; })
     );
   },
@@ -62,8 +65,8 @@ export default {
       JSON.stringify({
         worker: "pnw-soaring-trigger",
         target: `${env.GH_OWNER}/${env.GH_REPO}`,
-        event_type: env.DISPATCH_EVENT_TYPE,
-        crons: Object.keys(CRON_TO_CYCLE),
+        crons: Object.fromEntries(
+          Object.entries(CRON_MAP).map(([cron, m]) => [cron, `${m.type} ${m.cycle}z`])),
         note: "Forecasts fire on the cron schedule above. This endpoint does not trigger a run.",
       }, null, 2),
       { headers: { "Content-Type": "application/json" } }

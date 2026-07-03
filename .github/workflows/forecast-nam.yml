@@ -6,7 +6,7 @@ on:
   # seconds — unlike GitHub's throttled `schedule` events, which were running
   # these forecasts ~5h late. The schedule lives in the Worker now.
   repository_dispatch:
-    types: [run-forecast]
+    types: [run-nam]
   workflow_dispatch:
     inputs:
       target_date:
