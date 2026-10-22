@@ -14,7 +14,7 @@
 # -- together with forecast-hrrr.yml's geo_em_hrrr-1km.tar.gz asset / cache key
 # geo-em-cascades-hrrr-1km-v2, which stay on the geo-em-v1 release.
 #
-# Needs windgram:latest >= 0.6.2: Vtable.HRRR.pressure ships in that image
+# Needs windgram:latest >= 0.7.1: Vtable.HRRR.pressure ships in that image
 # (0.6.1 lacks the file and ungrib would fail). 0.6.1 ran this product with the
 # stock Vtable.RAP.pressure.ncep + Vtable.raphrrr pair, whose 2 m SPFH rows made
 # real.exe start WRF with a bone-dry column (rasp-windgram HRRR_DRJACK_AB.md §6).
