@@ -59,3 +59,11 @@ physics:
   radt: 10              # 10-min radiation calls
   sf_sfclay_physics: 1  # MM5 similarity / Monin-Obukhov
   bl_pbl_physics: 1     # YSU non-local PBL
+
+# WRF solver damping for steep terrain at 1.33 km (rasp-windgram >= 0.7.3, PR #22):
+# epssm raises the off-centering of the vertically implicit acoustic step from
+# WRF's default 0.1. Without it the nest blows up (NaN within minutes) wherever
+# the terrain is as steep as Rainier, Baker/Shuksan or the North Cascades crest;
+# a smaller time step does not help and costs 1.5x. No run-time cost.
+dynamics:
+  epssm: 0.5
