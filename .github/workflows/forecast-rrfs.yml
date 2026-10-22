@@ -1,21 +1,26 @@
 name: Forecast (RRFS)
 
 # RRFS (Rapid Refresh Forecast System, 3 km) drives the SAME WRF chain as the
-# NAM product (domains/cascades-rrfs.yaml = cascades.yaml with model: rrfs;
-# 4 km -> 1.33 km, DrJack physics). It is a third model alongside NAM and HRRR
-# until NCEP retires NAM on 2026-11-03 12Z, after which it replaces NAM.
+# NAM product (4 km -> 1.33 km, DrJack physics) for every WA region tile: the
+# job's domain config is domains/<region>.yaml with `model: rrfs` swapped in at
+# run time (scripts/derive-domain.sh). It is a third model alongside NAM and
+# HRRR until NCEP retires NAM on 2026-11-03 12Z, after which it replaces NAM.
 
 on:
   # Fired by the Cloudflare trigger Worker (cloudflare-trigger/): the two NAM
   # crons dispatch both run-nam and run-rrfs (no spare cron on the free tier),
   # so this starts at the same instant as the NAM run. repository_dispatch
-  # starts within seconds — unlike GitHub's throttled `schedule` events.
+  # starts within seconds — unlike GitHub's throttled `schedule` events. One
+  # dispatch starts every region and day.
   repository_dispatch:
     types: [run-rrfs]
   workflow_dispatch:
     inputs:
       target_date:
         description: 'Base date YYYY-MM-DD for the 2-day window (blank = today UTC)'
+        required: false
+      regions:
+        description: 'Region tiles to run, JSON list (blank = all seven)'
         required: false
 
 env:
@@ -24,194 +29,180 @@ env:
   # .../com/rrfs/v1.0 until the 2026-11-03 12Z switch, when it moves to
   # .../com/rrfs/prod. Set the repository variable RASP_RRFS_ROOT (Settings →
   # Secrets and variables → Actions → Variables) to switch without a code change;
-  # the image honours the same env var (passed into `docker run` below).
+  # the wait gate polls it and the image honours the same env var (passed into
+  # `docker run` by .github/actions/run-forecast).
   RASP_RRFS_ROOT: ${{ vars.RASP_RRFS_ROOT || 'https://nomads.ncep.noaa.gov/pub/data/nccf/com/rrfs/v1.0' }}
 
+# Seven WA region tiles x a two-day forecast = 14 arm jobs (day 0 = today UTC,
+# day 1 = tomorrow UTC). Both the evening (00z) and morning (12z) dispatches fire
+# on the same UTC date, so {today, tomorrow} covers "tomorrow+next-day" (evening)
+# and "today+tomorrow" (morning) alike. --target-date auto-selects the freshest
+# covering cycle (same mode as NAM — --target-cycle would force an fhr-0 start
+# and a ~50 h WRF run on the day-1 leg). The days are two jobs rather than one
+# matrix axis only so that each waits on its own gate: day 0 starts when f27 is
+# out (~20 min after the dispatch), day 1 when f51 is (~45 min).
 jobs:
-  forecast:
-    # Two-day forecast: one windgram set per day, rendered by independent
-    # parallel runs (day 0 = today UTC, day 1 = tomorrow UTC). Both the evening
-    # (00z) and morning (12z) dispatches fire on the same UTC date, so
-    # {today, tomorrow} covers "tomorrow+next-day" (evening) and "today+tomorrow"
-    # (morning) alike. --target-date auto-selects the freshest covering cycle
-    # (same mode as NAM — --target-cycle would force an fhr-0 start and a ~50 h
-    # WRF run on the day-1 leg).
+  wait-day0:
+    # RRFS readiness gate for the day-0 legs (f027): one small x86 runner polls
+    # NOMADS so the arm matrix doesn't hold 7 runners idle for up to 75 min
+    # against the 20-job cap. Times out and proceeds (see scripts/wait-rrfs.sh).
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    outputs:
+      ready: ${{ steps.ready.outputs.ready }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Wait for RRFS GRIB on NOMADS (day 0, f027)
+        id: ready
+        run: scripts/wait-rrfs.sh 0
+
+  forecast-day0:
+    # Day 0 legs for every region; start once wait-day0 has seen the files.
+    needs: wait-day0
     strategy:
       fail-fast: false
       matrix:
-        day: [0, 1]
+        region: ${{ fromJson(inputs.regions || '["issaquah","wenatchee","skykomish","chelan","baker","methow","waterville"]') }}
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 360
     permissions:
-      contents: write
+      contents: read
       packages: read
     steps:
       - uses: actions/checkout@v4
 
-      - name: Free up disk space
+      - name: Soaring date (day 0)
+        id: date
         run: |
-          echo "Disk before cleanup:"; df -h /
-          sudo rm -rf \
-            /usr/local/lib/android \
-            /usr/share/dotnet \
-            /opt/ghc /usr/local/.ghcup \
-            /opt/hostedtoolcache \
-            /usr/local/share/boost 2>/dev/null || true
-          docker system prune -af 2>/dev/null || true
-          echo "Disk after cleanup:"; df -h /
-
-      # The RRFS domain is geometrically identical to the NAM domain, so the NAM
-      # geo_em grids (release asset + cache key) are reused as-is — no separate
-      # bootstrap. See the header of domains/cascades-rrfs.yaml.
-      - name: Restore geo_em cache
-        id: cache
-        uses: actions/cache/restore@v4
-        with:
-          path: geo_em/
-          key: geo-em-cascades-nam-v2
-
-      - name: Download geo_em from release (cache miss fallback)
-        if: steps.cache.outputs.cache-hit != 'true'
-        run: |
-          mkdir -p geo_em
-          gh release download geo-em-v1 --pattern 'geo_em_nam-v2.tar.gz' --dir .
-          tar xzf geo_em_nam-v2.tar.gz -C geo_em
-          rm geo_em_nam-v2.tar.gz
-          echo "Downloaded geo_em from release:"
-          ls -lh geo_em/
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Pull image
-        run: docker pull $IMAGE
-
-      - name: Wait for RRFS GRIB on NOMADS (day ${{ matrix.day }})
-        id: ready
-        run: |
-          # This workflow rides the NAM crons (02:05z / 14:00z), but RRFS publishes
-          # ~40 min AFTER NAM for the same forecast hour. Without a gate the
-          # pipeline's --target-date auto-cycle would find the newest cycle still
-          # incomplete and fall back to the previous (6 h older) one — the stale
-          # cycle problem. So: derive the newest 00z/12z cycle from the fire hour
-          # (as forecast-hrrr.yml does) and poll NOMADS until BOTH the prslev and
-          # 2dfld files exist for the last forecast hour this leg needs — f27 for
-          # day 0 (its soaring window ends 03z the next day = 00z+27h), f51 for
-          # day 1. Expected arrival: 00z f27 ≈ 02:20z, f51 ≈ 02:50z; 12z f27 ≈
-          # 14:20z, f51 ≈ 14:50z. 16 checks x 5 min = up to 75 min of waiting.
-          H=$(( 10#$(date -u +%H) ))
-          CYC=$(printf '%02d' $(( (H / 12) * 12 )))
-          CDATE=$(date -u +%Y%m%d)
-          FHR=$(printf '%03d' $(( 27 + 24 * ${{ matrix.day }} )))
-          ROOT="${RASP_RRFS_ROOT%/}"
-          PRS="${ROOT}/rrfs.${CDATE}/${CYC}/rrfs.t${CYC}z.prslev.3km.f${FHR}.conus.grib2"
-          SFC="${ROOT}/rrfs.${CDATE}/${CYC}/rrfs.t${CYC}z.2dfld.3km.f${FHR}.conus.grib2"
-          echo "Gate: RRFS ${CYC}z cycle of ${CDATE}, need f${FHR} (prslev + 2dfld):"
-          echo "  $PRS"
-          echo "  $SFC"
-          MAX=16
-          for attempt in $(seq 1 $MAX); do
-            if curl --http1.1 -sfI "$PRS" -o /dev/null && curl --http1.1 -sfI "$SFC" -o /dev/null; then
-              echo "RRFS ${CYC}z f${FHR} is on NOMADS (check $attempt, $(date -u +%H:%M)z)."
-              echo "ready=true" >> "$GITHUB_OUTPUT"
-              exit 0
-            fi
-            if [ "$attempt" -lt "$MAX" ]; then
-              echo "[$(date -u +%H:%M)z] f${FHR} not published yet (check $attempt/$MAX) — retrying in 5 min"
-              sleep 300
-            fi
-          done
-          # Don't fail the run: --target-date still renders from the freshest cycle
-          # that covers the day (likely the previous one), which beats no forecast.
-          echo "::warning::RRFS ${CYC}z f${FHR} still missing on NOMADS after 75 min — proceeding; auto-cycle may pick the previous cycle."
-          echo "ready=false" >> "$GITHUB_OUTPUT"
-
-      - name: Run forecast (day ${{ matrix.day }})
-        run: |
-          mkdir -p output
           # Per-day target date: base (manual input, else today UTC) + matrix offset.
           BASE="${{ inputs.target_date }}${{ github.event.client_payload.target_date }}"
           [ -z "$BASE" ] && BASE=$(date -u +%F)
-          TARGET_DATE=$(date -u -d "$BASE +${{ matrix.day }} days" +%F)
-          echo "Day ${{ matrix.day }} → soaring date $TARGET_DATE (auto-cycle, RRFS root $RASP_RRFS_ROOT)"
+          TARGET_DATE=$(date -u -d "$BASE +0 days" +%F)
+          echo "Day 0 → soaring date $TARGET_DATE (auto-cycle)"
+          echo "target_date=$TARGET_DATE" >> "$GITHUB_OUTPUT"
 
-          docker run --rm \
-            -e RASP_RRFS_ROOT="$RASP_RRFS_ROOT" \
-            -v ${{ github.workspace }}/geo_em:/mnt/geo_em:ro \
-            -v ${{ github.workspace }}/output:/mnt/output:rw \
-            -v ${{ github.workspace }}/domains/cascades-rrfs.yaml:/opt/rasp/domain.yaml:ro \
-            -v ${{ github.workspace }}/sites/issaquah-sites.csv:/opt/rasp/sites.csv:ro \
-            --entrypoint bash \
-            $IMAGE -c "
-              cp /mnt/geo_em/geo_em.d0*.nc /opt/rasp/wps/ 2>/dev/null || true
-              python3 -m rasp.pipeline domain.yaml \
-                --sites sites.csv \
-                --output-dir /mnt/output \
-                --num-procs 4 \
-                --target-date $TARGET_DATE
-            "
-
-      - name: Check forecast output
-        run: |
-          count=$(ls output/*.png 2>/dev/null | wc -l)
-          if [ "$count" -eq 0 ]; then
-            echo "::error::No windgrams rendered — model produced no usable output (likely bad/NaN model data)."
-            exit 1
-          fi
-          echo "Rendered $count windgrams."
-
-      - name: Save geo_em cache
-        if: matrix.day == 0 && hashFiles('geo_em/geo_em.d01.nc') != ''
-        uses: actions/cache/save@v4
+      - name: Run forecast
+        id: run
+        uses: ./.github/actions/run-forecast
         with:
-          path: geo_em/
-          key: geo-em-cascades-nam-v2
+          model: rrfs
+          region: ${{ matrix.region }}
+          target_date: ${{ steps.date.outputs.target_date }}
+          image: ${{ env.IMAGE }}
 
       - name: Upload windgrams
         uses: actions/upload-artifact@v4
         with:
-          name: rrfs-windgrams-day${{ matrix.day }}
+          name: rrfs-${{ matrix.region }}-day0
           path: output/*.png
           retention-days: 7
 
-      # Publishing is main-only: a run from any other ref (e.g. a feature branch
-      # exercising the pipeline) renders + uploads artifacts but never touches
-      # gh-pages or R2.
-      - name: Deploy to Pages
-        if: github.ref == 'refs/heads/main'
-        uses: ./.github/actions/deploy-forecast
-        with:
-          model: rrfs
-          # Only the nearest day (today) updates /latest, so v1 keeps showing
-          # today until the day-picker UI lands; tomorrow lives in its date dir.
-          update_latest: ${{ matrix.day == 0 }}
-
+      # Only the home tile writes the v2 soaring cube: R2 keeps its
+      # <model>/<date>/soaring.zarr layout and site/v2 shows the issaquah tile.
+      # Publishing is main-only: a run from any other ref renders + uploads
+      # artifacts but never touches gh-pages or R2.
       - name: Upload soaring cube to R2 (v2)
-        if: always() && github.ref == 'refs/heads/main'
+        if: always() && matrix.region == 'issaquah' && github.ref == 'refs/heads/main'
+        uses: ./.github/actions/upload-cube
         env:
           R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          R2_BUCKET: nw-paragliding-forecasts
-          MODEL: rrfs
+        with:
+          model: rrfs
+          day: 0
+
+  wait-day1:
+    # RRFS readiness gate for the day-1 legs (f051): one small x86 runner polls
+    # NOMADS so the arm matrix doesn't hold 7 runners idle for up to 75 min
+    # against the 20-job cap. Times out and proceeds (see scripts/wait-rrfs.sh).
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    outputs:
+      ready: ${{ steps.ready.outputs.ready }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Wait for RRFS GRIB on NOMADS (day 1, f051)
+        id: ready
+        run: scripts/wait-rrfs.sh 1
+
+  forecast-day1:
+    # Day 1 legs for every region; start once wait-day1 has seen the files.
+    needs: wait-day1
+    strategy:
+      fail-fast: false
+      matrix:
+        region: ${{ fromJson(inputs.regions || '["issaquah","wenatchee","skykomish","chelan","baker","methow","waterville"]') }}
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 360
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Soaring date (day 1)
+        id: date
         run: |
-          # The pipeline writes output/soaring.zarr on the 24.04 image; older
-          # images don't. Both this and missing R2 secrets skip cleanly.
-          if [ ! -d output/soaring.zarr ]; then echo "No cube produced — skipping R2 upload."; exit 0; fi
-          if [ -z "$R2_ACCOUNT_ID" ] || [ -z "$R2_ACCESS_KEY_ID" ] || [ -z "$R2_SECRET_ACCESS_KEY" ]; then echo "R2 secrets unset/incomplete — skipping cube upload."; exit 0; fi
-          curl -fsSL https://rclone.org/install.sh | sudo bash >/dev/null 2>&1 || sudo apt-get install -y -q rclone
-          export RCLONE_S3_PROVIDER=Cloudflare \
-                 RCLONE_S3_ENDPOINT="https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com" \
-                 RCLONE_S3_ACCESS_KEY_ID="$R2_ACCESS_KEY_ID" \
-                 RCLONE_S3_SECRET_ACCESS_KEY="$R2_SECRET_ACCESS_KEY"
-          DATE=$(ls output/*.png 2>/dev/null | head -1 | xargs basename | cut -d_ -f1)
-          rclone sync output/soaring.zarr ":s3:${R2_BUCKET}/${MODEL}/${DATE}/soaring.zarr" --s3-no-check-bucket
-          if [ "${{ matrix.day }}" = "0" ]; then
-            rclone sync output/soaring.zarr ":s3:${R2_BUCKET}/${MODEL}/latest/soaring.zarr" --s3-no-check-bucket
-          fi
-          echo "Uploaded cube → R2 ${R2_BUCKET}/${MODEL}/${DATE}$([ "${{ matrix.day }}" = "0" ] && echo ' (+latest)')"
+          # Per-day target date: base (manual input, else today UTC) + matrix offset.
+          BASE="${{ inputs.target_date }}${{ github.event.client_payload.target_date }}"
+          [ -z "$BASE" ] && BASE=$(date -u +%F)
+          TARGET_DATE=$(date -u -d "$BASE +1 days" +%F)
+          echo "Day 1 → soaring date $TARGET_DATE (auto-cycle)"
+          echo "target_date=$TARGET_DATE" >> "$GITHUB_OUTPUT"
+
+      - name: Run forecast
+        id: run
+        uses: ./.github/actions/run-forecast
+        with:
+          model: rrfs
+          region: ${{ matrix.region }}
+          target_date: ${{ steps.date.outputs.target_date }}
+          image: ${{ env.IMAGE }}
+
+      - name: Upload windgrams
+        uses: actions/upload-artifact@v4
+        with:
+          name: rrfs-${{ matrix.region }}-day1
+          path: output/*.png
+          retention-days: 7
+
+      # Only the home tile writes the v2 soaring cube: R2 keeps its
+      # <model>/<date>/soaring.zarr layout and site/v2 shows the issaquah tile.
+      # Publishing is main-only: a run from any other ref renders + uploads
+      # artifacts but never touches gh-pages or R2.
+      - name: Upload soaring cube to R2 (v2)
+        if: always() && matrix.region == 'issaquah' && github.ref == 'refs/heads/main'
+        uses: ./.github/actions/upload-cube
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        with:
+          model: rrfs
+          day: 1
+
+  publish:
+    # One gh-pages commit for every region and day (instead of one per job).
+    # Runs even when some legs failed, so one bad region never blocks the rest.
+    needs: [forecast-day0, forecast-day1]
+    if: always() && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: rrfs-*
+          path: windgrams
+      - name: Deploy to Pages
+        uses: ./.github/actions/deploy-forecast
+        with:
+          model: rrfs
+          artifacts_dir: windgrams
+          latest_day: "0"

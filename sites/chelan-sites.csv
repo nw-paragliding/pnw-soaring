@@ -1,0 +1,15 @@
+# chelan region sites, domains/chelan.yaml (Chelan Butte, Lake Chelan, Entiat, Glacier Peak east)
+# Seeded from the wxtofly (raspnw-v2) WA site list; every site sits >= 15 km
+# inside this tile's 1.33 km nest. A seed list: prune/rename as needed.
+# name lat lon
+# North Cascades
+Carne_Mt           48.08784    -120.80395
+TupshinPk          48.29701    -120.75031
+GlacierPk          48.114194   -121.112781
+McAllester_Mt      48.39812    -120.6534
+# Central Cascades
+Round_Mt           47.79731    -120.81699
+Snowgrass          47.68573    -120.934868
+Eagle_Creek        47.6685     -120.5601
+# Eastern
+Chelan             47.81       -120.03

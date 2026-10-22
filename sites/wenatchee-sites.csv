@@ -1,0 +1,16 @@
+# wenatchee region sites, domains/wenatchee.yaml (Wenatchee, Leavenworth, Mission Ridge, Ellensburg / Cle Elum)
+# Seeded from the wxtofly (raspnw-v2) WA site list; every site sits >= 15 km
+# inside this tile's 1.33 km nest. A seed list: prune/rename as needed.
+# name lat lon
+# Central Cascades
+Lion_Rock          47.268      -120.586
+MissionPeak        47.284819   -120.442486
+RedTop             47.302981   -120.759087
+Enchantments       47.488      -120.801
+Icicle_Ridge       47.563      -120.723
+Tibbetts           47.573      -120.488
+Domerie            47.266184   -121.127815
+Tumwater           47.597      -120.695
+Cleman             46.835715   -120.893219
+# Eastern
+Swakane            47.58003    -120.31043

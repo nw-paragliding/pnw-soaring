@@ -1,0 +1,51 @@
+# baker region sites, domains/baker.yaml (Bellingham, Blanchard, Mt Baker, Fraser Valley south)
+# Seeded from the wxtofly (raspnw-v2) WA site list; every site sits >= 15 km
+# inside this tile's 1.33 km nest. A seed list: prune/rename as needed.
+# name lat lon
+# North Cascades
+MtBaker            48.775198   -121.811142
+Church_Mt          48.927991   -121.872999
+TableMt            48.779      -121.658
+TwinSisters        48.708182   -121.98555
+Lookout_Mountain   48.55221    -121.32937
+Sauk               48.52       -121.6
+Iron               48.48       -121.94
+# North-West
+Black              48.982      -122.006
+StickyL            48.97       -122.02
+BlackNo            48.99       -122.042
+Lippy1             48.9569     -122.05
+BJ35               48.849      -122.059
+BlackLZ            48.9657     -122.07
+NPorter            48.8352     -122.088
+BJHG               48.8595     -122.097
+SPorter            48.813      -122.099
+BJ                 48.86       -122.11
+BJN                48.876      -122.11
+Red                48.932      -122.118
+BJPortBailoutLZ    48.813      -122.131
+BJLZN              48.86       -122.145
+BJLZS              48.8535     -122.144
+N_Nooksack_Valley  48.8895     -122.149
+Lyman              48.5948     -122.1611
+Serpentine         48.95       -122.17
+SumasNE            48.93       -122.167
+Casino             48.83523    -122.1993
+Sumas              48.9211     -122.229
+BigFoot            48.7785     -122.238
+Anderson           48.6471     -122.2631
+AndersonLZ         48.67215    -122.264828
+Stewart            48.77       -122.27
+SumasLZ            48.92       -122.29
+Lookout            48.68       -122.36
+StewartLZ          48.77       -122.39
+Blanchard          48.615      -122.4
+BlanchardLZ        48.57       -122.4
+# Fraser Valley
+Elk                49.12       -121.76
+SumasCa            49.121      -122.126
+Bridal             49.171      -121.748
+Pattison           49.17396    -122.17672
+Little_Nick        49.188      -122.145
+DeRoche            49.204      -122.112
+Ranch              49.2344     -121.928

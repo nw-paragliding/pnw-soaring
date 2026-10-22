@@ -35,7 +35,7 @@ jobs:
           }
 
           cp site/index.html pages/index.html
-          python3 site/generate-sites-json.py sites/issaquah-sites.csv > pages/sites.json
+          python3 site/generate-sites-json.py > pages/sites.json   # every sites/<region>-sites.csv
           # v2 (beta) — interactive cube frontend, served at /v2
           mkdir -p pages/v2 && cp -r site/v2/. pages/v2/
 

@@ -1,73 +1,96 @@
 name: Bootstrap geo_em files
 
+# Optional pre-warm of the per-region geo_em caches. The forecast workflows
+# build a missing tile's geo_em themselves (.github/actions/run-forecast: GEOG
+# download + geogrid on a cache miss, then cache save), so this is only useful
+# to fill the caches ahead of the first forecast run, e.g. right after a
+# domains/<region>.yaml change lands on main. It writes the SAME cache key the
+# forecast jobs restore: geo-em-<region>-<sha256(domains/<region>.yaml)[:16]>.
+# Caches are branch-scoped: run it on main for the scheduled forecasts to see it.
+
 on:
   workflow_dispatch:
     inputs:
-      domain:
-        description: 'Domain config (nam, rrfs or hrrr)'
-        required: true
-        default: 'nam'
+      regions:
+        description: 'Region tiles, JSON list (blank = all seven)'
+        required: false
 
 env:
   IMAGE: ghcr.io/nw-paragliding/windgram:latest
-  GEOG_URL: https://www2.mmm.ucar.edu/wrf/src/wps_files/geog_low_res_mandatory.tar.gz
 
 jobs:
   generate:
-    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        region: ${{ fromJson(inputs.regions || '["issaquah","wenatchee","skykomish","chelan","baker","methow","waterville"]') }}
+    runs-on: ubuntu-24.04-arm
     timeout-minutes: 30
     permissions:
+      contents: read
       packages: read
     steps:
       - uses: actions/checkout@v4
 
+      - name: Cache key
+        id: key
+        run: |
+          SRC="domains/${{ matrix.region }}.yaml"
+          [ -f "$SRC" ] || { echo "::error::no $SRC"; exit 1; }
+          echo "geo_key=geo-em-${{ matrix.region }}-$(sha256sum "$SRC" | cut -c1-16)" >> "$GITHUB_OUTPUT"
+
+      - name: Already cached?
+        id: geo
+        uses: actions/cache/restore@v4
+        with:
+          path: geo_em/
+          key: ${{ steps.key.outputs.geo_key }}
+          lookup-only: true
+
+      - name: Restore GEOG cache
+        id: geog
+        if: steps.geo.outputs.cache-hit != 'true'
+        uses: actions/cache/restore@v4
+        with:
+          path: geog/
+          key: wps-geog-lowres-plus-30s-v1
+
+      - name: Download GEOG (low-res package + 30s terrain/landuse, ~0.6 GB)
+        if: steps.geo.outputs.cache-hit != 'true' && steps.geog.outputs.cache-hit != 'true'
+        run: |
+          BASE=https://www2.mmm.ucar.edu/wrf/src/wps_files
+          curl -fL --retry 3 -sS "$BASE/geog_low_res_mandatory.tar.gz" -o geog.tar.gz
+          mkdir -p geog && tar xzf geog.tar.gz -C geog --strip-components=1 && rm geog.tar.gz
+          for t in topo_gmted2010_30s modis_landuse_20class_30s_with_lakes; do
+            curl -fL --retry 3 -sS "$BASE/$t.tar.bz2" -o add.tar.bz2
+            tar xjf add.tar.bz2 -C geog && rm add.tar.bz2
+          done
+          du -sh geog
+
+      - name: Save GEOG cache
+        if: steps.geo.outputs.cache-hit != 'true' && steps.geog.outputs.cache-hit != 'true'
+        continue-on-error: true
+        uses: actions/cache/save@v4
+        with:
+          path: geog/
+          key: wps-geog-lowres-plus-30s-v1
+
       - uses: docker/login-action@v3
+        if: steps.geo.outputs.cache-hit != 'true'
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Download GEOG data (low-res, ~3GB)
-        run: |
-          curl -L --progress-bar "$GEOG_URL" -o geog.tar.gz
-          mkdir -p geog
-          tar xzf geog.tar.gz -C geog --strip-components=1
-          rm geog.tar.gz
-          echo "GEOG size: $(du -sh geog | cut -f1)"
-
-      - name: Select domain config
-        run: |
-          case "${{ inputs.domain }}" in
-            hrrr)
-              echo "CONFIG=domains/cascades-hrrr.yaml" >> $GITHUB_ENV
-              # Cache key keeps the hrrr-1km name (matches the release asset and
-              # the forecast workflow's restore key); see forecast-hrrr.yml.
-              echo "CACHE_KEY=geo-em-cascades-hrrr-1km-v1" >> $GITHUB_ENV
-              ;;
-            rrfs)
-              echo "CONFIG=domains/cascades-rrfs.yaml" >> $GITHUB_ENV
-              # The RRFS domain is geometrically identical to the NAM domain (only
-              # `model:` differs), so it shares the NAM geo_em cache key / release
-              # asset; forecast-rrfs.yml restores geo-em-cascades-nam-v2. You only
-              # need this branch if the RRFS geometry ever diverges from NAM's.
-              echo "CACHE_KEY=geo-em-cascades-nam-v1" >> $GITHUB_ENV
-              ;;
-            *)
-              echo "CONFIG=domains/cascades.yaml" >> $GITHUB_ENV
-              echo "CACHE_KEY=geo-em-cascades-nam-v1" >> $GITHUB_ENV
-              ;;
-          esac
-
-      - name: Pull image
-        run: docker pull $IMAGE
-
       - name: Run geogrid
+        if: steps.geo.outputs.cache-hit != 'true'
         run: |
           mkdir -p geo_em
+          docker pull $IMAGE
           docker run --rm \
             -v ${{ github.workspace }}/geog:/mnt/geog:ro \
             -v ${{ github.workspace }}/geo_em:/mnt/output:rw \
-            -v ${{ github.workspace }}/${{ env.CONFIG }}:/opt/rasp/domain.yaml:ro \
+            -v ${{ github.workspace }}/domains/${{ matrix.region }}.yaml:/opt/rasp/domain.yaml:ro \
             --entrypoint bash \
             $IMAGE -c "
               python3 -m rasp.namelist_generator domain.yaml \
@@ -79,16 +102,11 @@ jobs:
             "
           echo "geo_em files:"
           ls -lh geo_em/
+          [ -f geo_em/geo_em.d02.nc ] || { echo "::error::geogrid produced no d02"; exit 1; }
 
       - name: Cache geo_em files
+        if: steps.geo.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: geo_em/
-          key: ${{ env.CACHE_KEY }}
-
-      - name: Upload as artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: geo-em-${{ inputs.domain }}
-          path: geo_em/geo_em.d0*.nc
-          retention-days: 90
+          key: ${{ steps.key.outputs.geo_key }}

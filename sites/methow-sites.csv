@@ -1,0 +1,15 @@
+# methow region sites, domains/methow.yaml (Methow valley, Mazama, Washington Pass, Manning Park)
+# Seeded from the wxtofly (raspnw-v2) WA site list; every site sits >= 15 km
+# inside this tile's 1.33 km nest. A seed list: prune/rename as needed.
+# name lat lon
+# North Cascades
+Goat_Peak          48.634      -120.403
+Mazama             48.59       -120.4
+Silver_Star        48.549      -120.587
+LibertyBell        48.515695   -120.656376
+Boston_Peak        48.49568    -121.0365
+Washington_Pass    48.501      -120.656
+Eldorado_Peak      48.53763    -121.13428
+Bowen              48.4675151  -120.105028
+# Fraser Valley
+ManningPark        49.06369    -120.90952

@@ -1,0 +1,7 @@
+# waterville region sites, domains/waterville.yaml (Waterville Plateau, Mansfield, Coulee City (Chelan XC country))
+# Seeded from the wxtofly (raspnw-v2) WA site list; every site sits >= 15 km
+# inside this tile's 1.33 km nest. A seed list: prune/rename as needed.
+# name lat lon
+# Eastern
+Mansfield          47.82       -119.65
+Farmer             47.61       -119.82

@@ -314,7 +314,7 @@
         <div class="wordmark">
           <h1>PNW <span class="lift">Soaring</span></h1>
         </div>
-        <div class="kicker"><span class="glyph">▲</span> Cascades · thermal forecast · <a href="/v2" style="color:var(--thermal);text-decoration:none">try v2 →</a></div>
+        <div class="kicker"><span class="glyph">▲</span> Washington · thermal forecast · <a href="/v2" style="color:var(--thermal);text-decoration:none">try v2 →</a></div>
       </header>
 
       <div class="controls">
@@ -496,9 +496,12 @@
       const nodata = document.getElementById('windgram-nodata');
       const link = document.getElementById('windgram-link');
       const openFull = document.getElementById('open-full');
+      // Windgrams are per region tile: forecasts/<date|latest>/<model>/<region>/.
+      // A region folder that doesn't exist yet (new tile, failed run) 404s and
+      // falls through to the "no forecast yet" state via img.onerror below.
       const base = currentDate ? `forecasts/${currentDate}/${currentModel}`
                                : `forecasts/latest/${currentModel}`;
-      const src = `${base}/${currentSite.name}_windgram.png`;
+      const src = `${base}/${encodeURIComponent(currentSite.region || 'issaquah')}/${encodeURIComponent(currentSite.name)}_windgram.png`;
 
       document.getElementById('site-name').textContent = prettyName(currentSite.name);
       document.getElementById('site-coords').textContent =

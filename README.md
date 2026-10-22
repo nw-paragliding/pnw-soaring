@@ -5,27 +5,53 @@ Automated paragliding soaring forecasts for the Pacific Northwest, powered by [r
 ## What This Does
 
 GitHub Actions runs the WRF weather model several times a day using NAM, RRFS and
-HRRR input data, generates windgram forecasts for 15 flying sites in the
-Issaquah/North Bend area, and publishes them to a map-based site on GitHub Pages.
+HRRR input data, generates windgram forecasts for ~115 flying sites across
+Washington, split over seven region tiles, and publishes them to a map-based site
+on GitHub Pages.
 
 ## View Forecasts
 
-**[pnw-soaring.nw-paragliding.org](https://nw-paragliding.github.io/pnw-soaring/)** (once deployed)
+**[forecast.nwparagliding.com](https://forecast.nwparagliding.com/)**
 
 Click a site marker on the map to see its windgram.
 
-## Sites
+## Regions
 
-| Site | Lat | Lon |
-|------|-----|-----|
-| Tiger | 47.503 | -121.975 |
-| Poo Poo Point | 47.500 | -121.977 |
-| Rattlesnake | 47.434 | -121.782 |
-| Si Main | 47.454 | -121.723 |
-| Teneriffe | 47.488 | -121.711 |
-| ... and 10 more | | |
+Washington is covered by seven independent WRF tiles. Each runs the same chain
+(parent model → WRF 4 km → WRF 1.33 km, 52 levels, DrJack physics) with a
+120 km × 120 km 1.33 km nest; the 4 km parent auto-sizes to 200 km. Each tile is
+one `domains/<region>.yaml` (the NAM config; the workflows derive the RRFS and
+HRRR configs from it at run time with `scripts/derive-domain.sh`) and one
+`sites/<region>-sites.csv`, every site at least 15 km inside the nest.
 
-See [sites/issaquah.csv](sites/issaquah.csv) for the full list.
+| Region | Center (lat, lon) | Covers | Sites |
+|--------|-------------------|--------|-------|
+| `issaquah` | 47.22, -121.80 | Home tile: Tiger / Issaquah Alps / North Bend / Snoqualmie Pass, Rainier NW | 31 |
+| `wenatchee` | 47.22, -120.59 | Wenatchee, Leavenworth, Mission Ridge, Ellensburg / Cle Elum | 10 |
+| `skykomish` | 48.03, -121.80 | Everett foothills, Index, Darrington, Stevens Pass west | 11 |
+| `chelan` | 48.03, -120.59 | Chelan Butte, Lake Chelan, Entiat | 8 |
+| `baker` | 48.84, -121.80 | Bellingham, Blanchard, Mt Baker, Fraser Valley south | 44 |
+| `methow` | 48.84, -120.59 | Methow valley, Mazama, Washington Pass | 9 |
+| `waterville` | 47.72, -119.45 | Waterville Plateau, Mansfield, Coulee City (Chelan XC) | 2 |
+
+The site lists are seeded from the wxtofly (raspnw-v2) Washington list and are
+meant to be pruned. Windgrams are published per tile at
+`forecasts/<date>/<model>/<region>/<Site>_windgram.png` (and
+`forecasts/latest/<model>/<region>/`); the site loads each marker's windgram
+from its tile. The v2 page (`/v2`, interactive cube) covers the `issaquah` tile
+only: only that tile uploads its soaring cube to R2.
+
+Each tile's geo_em grids are cached in Actions under
+`geo-em-<region>-<hash of domains/<region>.yaml>`; on a miss (new tile, edited
+YAML) the job downloads the WPS GEOG data and runs geogrid itself.
+`bootstrap-geoem.yml` can pre-warm the caches.
+
+**Jobs per run:** NAM and RRFS run every tile for day 0 and day 1 = 14 arm jobs
+each; HRRR runs day 0 only = 7 jobs. Each run then commits once to gh-pages
+from a single `publish` job. RRFS's NOMADS readiness polling runs in two small
+`wait-day0` / `wait-day1` jobs, so the arm runners start only once the GRIB is
+out. The free tier allows 20 concurrent jobs, so when NAM and RRFS fire
+together some jobs queue briefly.
 
 ## Schedule
 
@@ -49,11 +75,15 @@ runs. NAM is retired by NCEP on 2026-11-03 12Z; RRFS, which drives the identical
 WRF chain, replaces it. Until then both run and the site offers NAM (default),
 RRFS and HRRR. Removing NAM is a follow-up change.
 
+The Cloudflare trigger is unchanged by the region tiles: one dispatch starts the
+whole region × day matrix of a workflow.
+
 ## Fork for Your Region
 
 1. Fork this repo
-2. Edit `domains/*.yaml` — change `center_lat`, `center_lon`, `target_dx_km`
-3. Edit `sites/*.csv` — add your flying sites
+2. Edit `domains/<region>.yaml` — change `center_lat`, `center_lon`, `target_dx_km`
+   (and the region list in the three `forecast-*.yml` matrices)
+3. Edit `sites/<region>-sites.csv` — add your flying sites
 4. Push — GitHub Actions will start generating forecasts for your region
 
 The Docker image (`ghcr.io/nw-paragliding/windgram`) handles everything:
