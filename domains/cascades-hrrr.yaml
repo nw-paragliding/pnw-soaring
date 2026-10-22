@@ -1,13 +1,98 @@
-# Cascades HRRR nested — 3km outer → 1km inner
-# Centered on Issaquah sites cluster (47.24-47.64, -122.05 to -121.55).
-# d02 extent 120km gives all sites >30km buffer from boundaries
-# (avoids NaN issues observed when sites were within 7 cells of edge).
-# d01 extent 240km provides clean boundary forcing for the nest.
+# Cascades HRRR — HRRR 3 km into the DrJack chain (WRF 4 km → 1.33 km).
+#
+# Converted 2026-10-22 from the HRRR 3 km → 1 km nest, which was unstable and
+# forecast worse than the NAM product (rasp-windgram HRRR_DRJACK_AB.md). HRRR
+# now only supplies initial/boundary conditions to the SAME chain the NAM and
+# RRFS products run (domains/cascades.yaml geometry, DrJack physics), so all
+# three models share one grid and one geo_em asset (geo_em_nam-v2.tar.gz,
+# cache key geo-em-cascades-nam-v2). The site labels it "HRRR (beta)".
+#
+# Rollback: the previous nest config (center 47.44/-121.80, target_dx_km 1.0,
+# inner_extent_km 120, outer_extent_km 240, default MYNN/Thompson physics,
+# hydrometeor init) is in git history --
+#   git log --follow -- domains/cascades-hrrr.yaml
+# -- together with forecast-hrrr.yml's geo_em_hrrr-1km.tar.gz asset / cache key
+# geo-em-cascades-hrrr-1km-v2, which stay on the geo-em-v1 release.
+#
+# Needs windgram:latest >= 0.6.1 for the vtable/idx keys below (older images
+# ignore them: the chain still runs, but with Vtable.HRRR.full, i.e. with
+# hydrometeor initialisation on).
 name: cascades-hrrr
 model: hrrr
-center_lat: 47.44
-center_lon: -121.80
-target_dx_km: 1.0
-inner_extent_km: 120
-outer_extent_km: 240
-direct_reader: false
+direct_reader: false              # run WPS/WRF (HRRR defaults to the direct reader)
+
+# NAM-like initialisation: T/U/V/RH/HGT on pressure levels + surface fields,
+# NO hydrometeors (QC/QR/QI/QS/QG) -- WRF spins up its own clouds, as from NAM.
+# The second ungrib pass (Vtable.raphrrr) supplies the 9-level RUC soil; real.exe
+# interpolates it onto Noah's 4 layers, as for RRFS.
+vtable: Vtable.RAP.pressure.ncep
+sfc_vtable: Vtable.raphrrr
+
+# .idx byte-range downloads of just the records those Vtables read (wrfprs
+# 420 → ~215 MB, wrfsfc 148 → ~20 MB per forecast hour); a missing .idx or a
+# failed range falls back to the full file.
+idx_max_gap_mb: 2
+idx_subset:
+  - "TMP:* mb"
+  - "UGRD:* mb"
+  - "VGRD:* mb"
+  - "RH:* mb"
+  - "HGT:* mb"
+  - "TMP:2 m above ground"
+  - "RH:2 m above ground"
+  - "SPFH:2 m above ground"
+  - "UGRD:10 m above ground"
+  - "VGRD:10 m above ground"
+  - "PRES:surface"
+  - "MSLMA:mean sea level"
+  - "HGT:surface"
+  - "TMP:surface"
+  - "WEASD:surface"
+  - "SNOD:surface"
+  - "CNWAT:surface"
+  - "LAND:surface"
+  - "ICEC:surface"
+  - "TSOIL:*"
+  - "SOILW:*"
+sfc_idx_subset:
+  - "TMP:2 m above ground"
+  - "RH:2 m above ground"
+  - "SPFH:2 m above ground"
+  - "UGRD:10 m above ground"
+  - "VGRD:10 m above ground"
+  - "PRES:surface"
+  - "MSLMA:mean sea level"
+  - "HGT:surface"
+  - "TMP:surface"
+  - "WEASD:surface"
+  - "SNOD:surface"
+  - "CNWAT:surface"
+  - "LAND:surface"
+  - "ICEC:surface"
+
+# ---- grid + physics: identical to domains/cascades.yaml (NAM) ----------------
+center_lat: 47.6
+center_lon: -121.4
+
+# HRRR 3 km → WRF 4 km → WRF 1.33 km (2 WRF domains, DrJack RASP PNW-WINDOW).
+outer_dx_km: 4.0
+target_dx_km: 1.33
+
+# Physical extent at finest resolution (km)
+inner_extent_km: 150
+
+# Nesting ratio (default 3)
+nest_ratio: 3
+
+# Vertical levels — DrJack RASP uses 52 (vs WRF default 45)
+e_vert: 52
+
+# Physics matched to DrJack RASP (raspnw-v2 / wxtofly.net) for consistency
+# with the established PNW soaring community calibration.
+physics:
+  mp_physics: 5         # Eta Ferrier
+  ra_lw_physics: 1      # RRTM
+  ra_sw_physics: 1      # Dudhia
+  radt: 10              # 10-min radiation calls
+  sf_sfclay_physics: 1  # MM5 similarity / Monin-Obukhov
+  bl_pbl_physics: 1     # YSU non-local PBL
