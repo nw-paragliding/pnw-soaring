@@ -5,7 +5,7 @@ Automated paragliding soaring forecasts for the Pacific Northwest, powered by [r
 ## What This Does
 
 GitHub Actions runs the WRF weather model several times a day using NAM, RRFS and
-HRRR input data, generates windgram forecasts for 124 flying sites and reference points across
+HRRR input data, generates windgram forecasts for 123 flying sites and reference points across
 Washington, split over seven region tiles, and publishes them to a map-based site
 on GitHub Pages.
 
@@ -30,7 +30,7 @@ points coincide where they overlap.
 |--------|-------------------|--------|-------|
 | `issaquah` | 47.22, -121.80 | Home tile: Tiger / Issaquah Alps / North Bend / Snoqualmie Pass, Rainier NW | 32 |
 | `wenatchee` | 47.22, -120.59 | Wenatchee, Leavenworth, Mission Ridge, Ellensburg / Cle Elum | 11 |
-| `skykomish` | 48.03, -121.80 | Everett foothills, Index, Darrington, Stevens Pass west | 12 |
+| `skykomish` | 48.03, -121.80 | Everett foothills, Index, Darrington, Stevens Pass west | 11 |
 | `chelan` | 48.03, -120.59 | Chelan Butte, Lake Chelan, Entiat | 8 |
 | `baker` | 48.84, -121.80 | Bellingham, Blanchard, Mt Baker, Fraser Valley south | 50 |
 | `methow` | 48.84, -120.59 | Methow valley, Mazama, Washington Pass | 9 |
