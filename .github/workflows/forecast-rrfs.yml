@@ -24,6 +24,10 @@ on:
         required: false
 
 env:
+  # v2 soaring-cube upload to R2 is OFF (R2 cost): the pipeline still writes
+  # output/soaring.zarr, it just isn't uploaded. 'true' re-enables it for the
+  # issaquah tile; r2-prune.yml keeps ageing out the existing objects.
+  UPLOAD_CUBES: 'false'
   IMAGE: ghcr.io/nw-paragliding/windgram:latest   # needs >= 0.6.0 (adds the rrfs model)
   # NOMADS root for RRFS GRIB. NCEP serves the parallel-production feed under
   # .../com/rrfs/v1.0 until the 2026-11-03 12Z switch, when it moves to
@@ -99,12 +103,12 @@ jobs:
           path: output/*.png
           retention-days: 7
 
-      # Only the home tile writes the v2 soaring cube: R2 keeps its
+      # Disabled while UPLOAD_CUBES is 'false'. When on, only the home tile writes the v2 soaring cube: R2 keeps its
       # <model>/<date>/soaring.zarr layout and site/v2 shows the issaquah tile.
       # Publishing is main-only: a run from any other ref renders + uploads
       # artifacts but never touches gh-pages or R2.
       - name: Upload soaring cube to R2 (v2)
-        if: always() && matrix.region == 'issaquah' && github.ref == 'refs/heads/main'
+        if: always() && env.UPLOAD_CUBES == 'true' && matrix.region == 'issaquah' && github.ref == 'refs/heads/main'
         uses: ./.github/actions/upload-cube
         env:
           R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
@@ -171,12 +175,12 @@ jobs:
           path: output/*.png
           retention-days: 7
 
-      # Only the home tile writes the v2 soaring cube: R2 keeps its
+      # Disabled while UPLOAD_CUBES is 'false'. When on, only the home tile writes the v2 soaring cube: R2 keeps its
       # <model>/<date>/soaring.zarr layout and site/v2 shows the issaquah tile.
       # Publishing is main-only: a run from any other ref renders + uploads
       # artifacts but never touches gh-pages or R2.
       - name: Upload soaring cube to R2 (v2)
-        if: always() && matrix.region == 'issaquah' && github.ref == 'refs/heads/main'
+        if: always() && env.UPLOAD_CUBES == 'true' && matrix.region == 'issaquah' && github.ref == 'refs/heads/main'
         uses: ./.github/actions/upload-cube
         env:
           R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}

@@ -42,8 +42,9 @@ boundary relaxation zone), each in the tile where it sits deepest; `# edge`
 marks the ones only 10–15 km inside. Windgrams are published per tile at
 `forecasts/<date>/<model>/<region>/<Site>_windgram.png` (and
 `forecasts/latest/<model>/<region>/`); the site loads each marker's windgram
-from its tile. The v2 page (`/v2`, interactive cube) is unlinked for now: only the `issaquah`
-tile uploads its soaring cube to R2, so v2 would show that tile alone.
+from its tile. The v2 page (`/v2`, interactive cube) is unlinked and its R2 cube upload is off
+for now (`UPLOAD_CUBES: 'false'` in the forecast workflows), so it goes stale;
+when re-enabled only the `issaquah` tile uploads a cube.
 
 Each tile's geo_em grids are cached in Actions under
 `geo-em-<region>-<hash of domains/<region>.yaml>-img<image id>`; on a miss (new tile,
