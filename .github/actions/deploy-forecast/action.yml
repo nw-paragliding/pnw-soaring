@@ -89,9 +89,10 @@ runs:
           echo "{\"model\":\"${MODEL}\",\"date\":\"${LATEST_DATES}\",\"generated\":\"${GEN}\"}" > "$D/metadata.json"
         fi
 
-        # Generate sites.json (every region) and refresh frontend
-        python3 site/generate-sites-json.py > pages/sites.json
-        cp site/index.html pages/index.html
+        # The frontend (index.html, sites.json, v2/) is NOT touched here: it is
+        # deployed only by deploy-site.yml on push to main. Copying it from the
+        # forecast run's checkout let a run that started before a frontend merge
+        # overwrite the new index.html with the old one (2026-10-22 05:06Z).
 
         # Cleanup old forecasts (>7 days)
         CUTOFF=$(date -d '7 days ago' +%Y-%m-%d 2>/dev/null || date -v-7d +%Y-%m-%d 2>/dev/null || echo "")

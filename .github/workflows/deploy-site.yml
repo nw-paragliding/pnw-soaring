@@ -48,8 +48,8 @@ jobs:
           git commit -m "Deploy site frontend (${GITHUB_SHA::7})"
 
           # Push with rebase-retry: forecast workflows also push to gh-pages,
-          # so the branch can move under us. We only touch index.html/sites.json,
-          # which they overwrite identically, so a rebase never conflicts.
+          # so the branch can move under us. We only touch index.html/sites.json/v2,
+          # which they never write (this is the only frontend deploy), so a rebase never conflicts.
           for attempt in 1 2 3 4 5; do
             if git push origin HEAD:gh-pages; then
               echo "Pushed on attempt $attempt"
