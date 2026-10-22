@@ -32,33 +32,40 @@ env:
   RASP_HRRR_ROOT: ${{ vars.RASP_HRRR_ROOT || 'https://noaa-hrrr-bdp-pds.s3.amazonaws.com' }}
 
 jobs:
-  forecast:
-    # Seven region tiles x two soaring days (day 0 = base date, default today
-    # UTC; day 1 = base + 1) = 14 jobs, like NAM/RRFS. HRRR's 00/06/12/18z
-    # cycles reach 48 h, so whether a day is reachable depends on the dispatch:
-    #
-    #   dispatch   newest cycle  day 0 (window end)     day 1 (window end)
-    #   01:15z     00z           tomorrow-PDT (27 h)    skipped (51 h > 48 h)
-    #   07:15z     06z           today (21 h)           tomorrow (45 h)
-    #   13:00z     12z           today (15 h)           tomorrow (39 h)
-    #
-    # The reach step decides this per day: an out-of-reach day ends its job in
-    # seconds with a ::notice (job success, no artifact, nothing published).
-    # PR #41 (2026-07) dropped day 1 because its deep forecast hours (fhr 27–45)
-    # produced garbage; the cause was a WRF instability (NaN after hours of
-    # integration), fixed by `dynamics: {epssm: 0.5}` in every tile (windgram
-    # >= 0.7.3), so the second day is back.
-    #
-    # HRRR feeds the same DrJack 4 km → 1.33 km chain as the NAM/RRFS products:
-    # the job's domain config is domains/<region>.yaml with `model: hrrr` and the
-    # DrJack-chain override keys of domains/cascades-hrrr.yaml appended at run
-    # time (scripts/derive-domain.sh), so it shares the tile's geo_em cache and
-    # runs in the NAM product's auto --target-date mode. "HRRR (beta)" on the site.
+  # Seven region tiles x two soaring days (day 0 = base date, default today UTC;
+  # day 1 = base + 1) = 14 arm jobs, like NAM/RRFS. HRRR's 00/06/12/18z cycles
+  # reach 48 h, so whether a day is reachable depends on the dispatch:
+  #
+  #   dispatch   newest cycle  day 0 (window end)     day 1 (window end)
+  #   01:15z     00z           tomorrow-PDT (27 h)    skipped (51 h > 48 h)
+  #   07:15z     06z           today (21 h)           tomorrow (45 h, ~07:45z)
+  #   13:00z     12z           today (15 h)           tomorrow (39 h, ~13:40z)
+  #
+  # Day 0 starts at once. Day 1 waits on one small x86 gate job (wait-day1,
+  # scripts/wait-hrrr.sh) for the newest cycle's window-end GRIB, so the wait
+  # holds one cheap runner instead of seven arm runners, and the 13:00z day-1
+  # legs don't sit on arm runners into the 14:00z NAM+RRFS burst. An unreachable
+  # day (past 48 h, or the gate timed out) is skipped: notice, success, no
+  # artifact, nothing published. The days are two jobs rather than one matrix
+  # axis only so that day 1 alone depends on the gate (same as forecast-rrfs.yml).
+  #
+  # PR #41 (2026-07) dropped day 1 because its deep forecast hours (fhr 27–45)
+  # produced garbage; the cause was a WRF instability (NaN after hours of
+  # integration), fixed by `dynamics: {epssm: 0.5}` in every tile (windgram
+  # >= 0.7.3), so the second day is back.
+  #
+  # HRRR feeds the same DrJack 4 km → 1.33 km chain as the NAM/RRFS products:
+  # the job's domain config is domains/<region>.yaml with `model: hrrr` and the
+  # DrJack-chain override keys of domains/cascades-hrrr.yaml appended at run time
+  # (scripts/derive-domain.sh), so it shares the tile's geo_em cache and runs in
+  # the NAM product's auto --target-date mode (the pipeline takes the freshest
+  # 00/06/12/18z cycle whose files for the whole window are published and starts
+  # WRF at the window start, fhr >= 3). "HRRR (beta)" on the site.
+  forecast-day0:
     strategy:
       fail-fast: false
       matrix:
         region: ${{ fromJson(inputs.regions || '["issaquah","wenatchee","skykomish","chelan","baker","methow","waterville"]') }}
-        day: [0, 1]
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 360
     permissions:
@@ -67,78 +74,106 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check HRRR reach (day ${{ matrix.day }})
+      - name: Check HRRR reach (day 0)
         id: reach
-        env:
-          DAY: ${{ matrix.day }}
         run: |
-          # Cheap upfront 48h-horizon test, so an out-of-reach day (day 1 in the
-          # 01:15z run) exits in seconds instead of running a full WRF sim it
-          # would only discard. The post-render Guard below still backstops the
-          # publish-lag borderline case.
+          # Cheap upfront 48h-horizon test (matters for a manual future
+          # target_date); no wait — day 0's window ends at f15–f27, which the
+          # pipeline's auto-cycle handles itself. Same logic as the day-1 gate.
           BASE="${{ inputs.target_date }}${{ github.event.client_payload.target_date }}"
-          [ -z "$BASE" ] && BASE=$(date -u +%F)
-          TARGET_DATE=$(date -u -d "$BASE +${DAY} days" +%F)
-          echo "TARGET_DATE=$TARGET_DATE" >> "$GITHUB_ENV"
+          GITHUB_OUTPUT=out.txt HRRR_WAIT_CHECKS=0 scripts/wait-hrrr.sh 0 "$BASE"
+          echo "TARGET_DATE=$(sed -n 's/^target_date=//p' out.txt)" >> "$GITHUB_ENV"
+          echo "reachable=$(sed -n 's/^ready=//p' out.txt)" >> "$GITHUB_OUTPUT"
 
-          # Soaring window for TARGET_DATE ends 8pm local (PDT=UTC-7) = 03:00z
-          # the next day.
-          END_DATE=$(date -u -d "$TARGET_DATE +1 day" +%F)
-          END_EPOCH=$(date -u -d "$END_DATE 03:00:00Z" +%s)
+      - name: Run forecast
+        id: run
+        if: steps.reach.outputs.reachable == 'true'
+        uses: ./.github/actions/run-forecast
+        with:
+          model: hrrr
+          region: ${{ matrix.region }}
+          target_date: ${{ env.TARGET_DATE }}
+          image: ${{ env.IMAGE }}
 
-          # Best case: the newest HRRR cycle already initialized (00/06/12/18z
-          # today) minimizes the forecast hour to the window end — if even it
-          # can't reach, no cycle can. HRRR tops out at 48h.
-          H=$(( 10#$(date -u +%H) ))
-          CYC=$(printf '%02d' $(( (H / 6) * 6 )))
-          # The run itself is NOT pinned to this cycle: it uses the NAM product's
-          # auto --target-date mode, where the pipeline takes the freshest cycle
-          # whose files for the whole window are already published and starts
-          # WRF at the window start (fhr >= 3). The HRRR registry lists only the
-          # 00/06/12/18z cycles (the ones with 48h of GRIB), so the 18h hourly
-          # cycles are never chosen.
-          echo "CYC=$CYC" >> "$GITHUB_ENV"
-          CYC_DATE=$(date -u +%F)
-          CYCLE_EPOCH=$(date -u -d "$CYC_DATE ${CYC}:00:00Z" +%s)
-          FHR_END=$(( (END_EPOCH - CYCLE_EPOCH) / 3600 ))
-
-          echo "Day $DAY → $TARGET_DATE: window ends ${FHR_END}h past newest cycle (${CYC}z); HRRR reach 48h."
-          if [ "$FHR_END" -gt 48 ]; then
-            echo "::notice::HRRR can't reach $TARGET_DATE (day $DAY: ${FHR_END}h > 48h horizon). Skipping this day — NAM/RRFS carry it."
-            echo "reachable=false" >> "$GITHUB_OUTPUT"
-            exit 0
+      - name: Guard — did HRRR actually reach this day?
+        id: guard
+        if: steps.reach.outputs.reachable == 'true'
+        env:
+          RENDERED: ${{ steps.run.outputs.rendered_date }}
+        run: |
+          # The renderer dates each windgram to the valid date of its first
+          # (8am-local) timestep. If HRRR couldn't reach $TARGET_DATE, the
+          # pipeline falls back to near-term data dated to an earlier day — so
+          # the rendered date won't match what we asked for. Detect that and
+          # skip the deploy/upload rather than publishing it under the wrong day.
+          # (Zero windgrams already failed the run step.)
+          if [ "$RENDERED" != "$TARGET_DATE" ]; then
+            echo "::notice::HRRR did not reach $TARGET_DATE (rendered $RENDERED — beyond the 48h horizon). Skipping deploy for this day."
+            echo "deploy=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Rendered ${{ steps.run.outputs.count }} windgrams for $RENDERED."
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
           fi
 
-          # Day 1 only: the dispatch fires ~15 min after its cycle starts
-          # publishing, before the deep hour that ends day 1's window (f45 for
-          # 06z, f39 for 12z, ~07:45z / ~13:40z on the AWS mirror). Left alone,
-          # auto mode would take the previous cycle six hours deeper (13:00z) or
-          # find no covering cycle at all (07:15z: 00z would need f51) and fall
-          # back to near-term data that the Guard then throws away. So wait for
-          # the newest cycle's window-end files (wrfprs + wrfsfc and their .idx,
-          # the pipeline's own readiness test). Day 0's window ends at f15–f27,
-          # which the pipeline already handles without waiting.
-          if [ "$DAY" -ge 1 ]; then
-            DC=$(date -u -d "$CYC_DATE" +%Y%m%d)
-            F=$(printf '%02d' "$FHR_END")
-            URLS=()
-            for k in prs sfc; do
-              u="${RASP_HRRR_ROOT}/hrrr.${DC}/conus/hrrr.t${CYC}z.wrf${k}f${F}.grib2"
-              URLS+=("$u" "$u.idx")
-            done
-            ready() { for u in "${URLS[@]}"; do curl -sfI -o /dev/null --max-time 20 "$u" || return 1; done; }
-            WAITED=0; MAX=75
-            until ready; do
-              if [ "$WAITED" -ge "$MAX" ]; then
-                echo "::notice::HRRR ${CYC}z f${F} not published after ${MAX} min; skipping $TARGET_DATE (day $DAY) rather than rendering an older, deeper cycle."
-                echo "reachable=false" >> "$GITHUB_OUTPUT"
-                exit 0
-              fi
-              echo "HRRR ${CYC}z f${F} not published yet (waited ${WAITED} min); sleeping 3 min"
-              sleep 180; WAITED=$((WAITED + 3))
-            done
-            echo "HRRR ${CYC}z f${F} published (waited ${WAITED} min)."
-          fi
+      - name: Upload windgrams
+        if: steps.guard.outputs.deploy == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: hrrr-${{ matrix.region }}-day0
+          path: output/*.png
+          retention-days: 7
+
+      # Only the home tile writes the v2 soaring cube; publishing is main-only.
+      - name: Upload soaring cube to R2 (v2)
+        if: steps.guard.outputs.deploy == 'true' && env.UPLOAD_CUBES == 'true' && matrix.region == 'issaquah' && github.ref == 'refs/heads/main'
+        uses: ./.github/actions/upload-cube
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        with:
+          model: hrrr
+          day: 0
+
+  wait-day1:
+    # HRRR readiness gate for the day-1 legs: one small x86 runner checks the
+    # 48 h reach and polls the mirror for the newest cycle's window-end hour
+    # (scripts/wait-hrrr.sh), so the arm matrix doesn't hold 7 runners idle.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    outputs:
+      ready: ${{ steps.ready.outputs.ready }}
+      target_date: ${{ steps.ready.outputs.target_date }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Wait for HRRR GRIB (day 1)
+        id: ready
+        run: scripts/wait-hrrr.sh 1 "${{ inputs.target_date }}${{ github.event.client_payload.target_date }}"
+
+  forecast-day1:
+    # Day 1 legs for every region; start once wait-day1 has seen the files.
+    # Skipped (not failed) when the day is out of reach or the gate timed out.
+    needs: wait-day1
+    if: needs.wait-day1.outputs.ready == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        region: ${{ fromJson(inputs.regions || '["issaquah","wenatchee","skykomish","chelan","baker","methow","waterville"]') }}
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 360
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Soaring date (day 1)
+        id: reach
+        run: |
+          echo "Day 1 → soaring date ${{ needs.wait-day1.outputs.target_date }} (auto-cycle; gate passed)"
+          echo "TARGET_DATE=${{ needs.wait-day1.outputs.target_date }}" >> "$GITHUB_ENV"
           echo "reachable=true" >> "$GITHUB_OUTPUT"
 
       - name: Run forecast
@@ -158,11 +193,10 @@ jobs:
           RENDERED: ${{ steps.run.outputs.rendered_date }}
         run: |
           # The renderer dates each windgram to the valid date of its first
-          # (8am-local) timestep. If HRRR couldn't reach $TARGET_DATE (next-day
-          # in the evening run is ~51h out, past the 48h limit), the pipeline
-          # falls back to near-term data dated to *today* — so the rendered date
-          # won't match what we asked for. Detect that and skip the deploy/upload
-          # for this day rather than publishing today's data under tomorrow.
+          # (8am-local) timestep. If HRRR couldn't reach $TARGET_DATE, the
+          # pipeline falls back to near-term data dated to an earlier day — so
+          # the rendered date won't match what we asked for. Detect that and
+          # skip the deploy/upload rather than publishing it under the wrong day.
           # (Zero windgrams already failed the run step.)
           if [ "$RENDERED" != "$TARGET_DATE" ]; then
             echo "::notice::HRRR did not reach $TARGET_DATE (rendered $RENDERED — beyond the 48h horizon). Skipping deploy for this day."
@@ -176,7 +210,7 @@ jobs:
         if: steps.guard.outputs.deploy == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: hrrr-${{ matrix.region }}-day${{ matrix.day }}
+          name: hrrr-${{ matrix.region }}-day1
           path: output/*.png
           retention-days: 7
 
@@ -190,7 +224,7 @@ jobs:
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         with:
           model: hrrr
-          day: ${{ matrix.day }}
+          day: 1
 
   publish:
     # One gh-pages commit for every region-day (instead of one per job). Runs
@@ -198,7 +232,7 @@ jobs:
     # never blocks the rest; legs without an artifact are simply not published.
     # Each leg lands in forecasts/<rendered date>/hrrr/<region>/ (so day 1 goes
     # under date+1); only day 0 updates /latest (latest_day 0), as for NAM.
-    needs: forecast
+    needs: [forecast-day0, forecast-day1]
     if: always() && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     permissions:

@@ -54,10 +54,10 @@ edited YAML, new windgram image) the job downloads the WPS GEOG data and runs ge
 **Jobs per run:** NAM, RRFS and HRRR each run every tile for day 0 and day 1 =
 14 arm jobs. HRRR's cycles reach only 48 h, so a day HRRR cannot reach (day 1
 of the 01:15z run) ends its job in seconds with a notice and publishes nothing;
-HRRR's day-1 legs wait in their reach step for the cycle's window-end GRIB
-(f45 / f39) before starting WRF. HRRR fires in its own hours, so its 14 jobs fit
-the concurrency cap. Each run then commits once to gh-pages
-from a single `publish` job. RRFS's readiness polling runs in two small
+HRRR's day-1 legs start only after a small `wait-day1` job
+(`scripts/wait-hrrr.sh`) has seen the cycle's window-end GRIB (f45 / f39), while
+its day-0 legs start at once. Each run then commits once to gh-pages
+from a single `publish` job. RRFS's readiness polling likewise runs in two small
 `wait-day0` / `wait-day1` jobs, so the arm runners start only once the GRIB is
 out. The free tier allows 20 concurrent jobs, so when NAM and RRFS fire
 together some jobs queue briefly.
