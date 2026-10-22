@@ -47,12 +47,23 @@ runs:
         docker system prune -af 2>/dev/null || true
         echo "Disk after cleanup:"; df -h /
 
+    - uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ github.token }}
+
+    - name: Pull image
+      shell: bash
+      run: docker pull "${{ inputs.image }}"
+
     - name: Prepare domain config (${{ inputs.region }} / ${{ inputs.model }})
       id: prep
       shell: bash
       env:
         REGION: ${{ inputs.region }}
         MODEL: ${{ inputs.model }}
+        IMAGE: ${{ inputs.image }}
       run: |
         SRC="domains/${REGION}.yaml"; SITES="sites/${REGION}-sites.csv"
         [ -f "$SRC" ] || { echo "::error::no domain config $SRC"; exit 1; }
@@ -63,7 +74,11 @@ runs:
         N=$(grep -cvE '^\s*(#|$)' job/sites.csv)
         # geo_em depends only on the tile geometry, which is the same for every
         # model, so the key is the NAM source file's hash (not the derived one).
-        echo "geo_key=geo-em-${REGION}-$(sha256sum "$SRC" | cut -c1-16)" >> "$GITHUB_OUTPUT"
+        # The image is part of the key too: geogrid output depends on the
+        # generator (e.g. windgram >= 0.7.0 honours the shared `lattice:` block,
+        # older images ignore it), so a new image rebuilds the grid once.
+        IMG=$(docker image inspect --format '{{.Id}}' "$IMAGE" | sed 's/^sha256://' | cut -c1-12)
+        echo "geo_key=geo-em-${REGION}-$(sha256sum "$SRC" | cut -c1-16)-img${IMG}" >> "$GITHUB_OUTPUT"
         echo "sites=$N" >> "$GITHUB_OUTPUT"
         echo "Region $REGION, model $MODEL, $N sites; derived config:"
         grep -nE '^(name|model|center_lat|center_lon|inner_extent_km|geog_data_res|direct_reader|vtable|sfc_vtable):' job/domain.yaml
@@ -105,16 +120,6 @@ runs:
       with:
         path: geog/
         key: wps-geog-lowres-plus-30s-v1
-
-    - uses: docker/login-action@v3
-      with:
-        registry: ghcr.io
-        username: ${{ github.actor }}
-        password: ${{ github.token }}
-
-    - name: Pull image
-      shell: bash
-      run: docker pull "${{ inputs.image }}"
 
     - name: Run forecast (${{ inputs.region }} / ${{ inputs.model }} / ${{ inputs.target_date }})
       shell: bash

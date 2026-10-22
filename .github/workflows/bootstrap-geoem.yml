@@ -5,7 +5,7 @@ name: Bootstrap geo_em files
 # download + geogrid on a cache miss, then cache save), so this is only useful
 # to fill the caches ahead of the first forecast run, e.g. right after a
 # domains/<region>.yaml change lands on main. It writes the SAME cache key the
-# forecast jobs restore: geo-em-<region>-<sha256(domains/<region>.yaml)[:16]>.
+# forecast jobs restore: geo-em-<region>-<sha256(domains/<region>.yaml)[:16]>-img<image id>.
 # Caches are branch-scoped: run it on main for the scheduled forecasts to see it.
 
 on:
@@ -32,12 +32,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull image
+        run: docker pull $IMAGE
+
       - name: Cache key
         id: key
         run: |
+          # Same key as .github/actions/run-forecast (tile YAML hash + image id).
           SRC="domains/${{ matrix.region }}.yaml"
           [ -f "$SRC" ] || { echo "::error::no $SRC"; exit 1; }
-          echo "geo_key=geo-em-${{ matrix.region }}-$(sha256sum "$SRC" | cut -c1-16)" >> "$GITHUB_OUTPUT"
+          IMG=$(docker image inspect --format '{{.Id}}' "$IMAGE" | sed 's/^sha256://' | cut -c1-12)
+          echo "geo_key=geo-em-${{ matrix.region }}-$(sha256sum "$SRC" | cut -c1-16)-img${IMG}" >> "$GITHUB_OUTPUT"
 
       - name: Already cached?
         id: geo
@@ -75,18 +86,10 @@ jobs:
           path: geog/
           key: wps-geog-lowres-plus-30s-v1
 
-      - uses: docker/login-action@v3
-        if: steps.geo.outputs.cache-hit != 'true'
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Run geogrid
         if: steps.geo.outputs.cache-hit != 'true'
         run: |
           mkdir -p geo_em
-          docker pull $IMAGE
           docker run --rm \
             -v ${{ github.workspace }}/geog:/mnt/geog:ro \
             -v ${{ github.workspace }}/geo_em:/mnt/output:rw \

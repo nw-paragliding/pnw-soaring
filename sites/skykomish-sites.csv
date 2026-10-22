@@ -1,18 +1,21 @@
 # skykomish region sites, domains/skykomish.yaml (Everett foothills, Index, Darrington, Stevens Pass west)
-# Seeded from the wxtofly (raspnw-v2) WA site list; every site sits >= 15 km
-# inside this tile's 1.33 km nest. A seed list: prune/rename as needed.
+# Every raspnw-v2 (wxtofly) site at least 10 km inside this tile's 1.33 km nest
+# edge, assigned to the tile where it sits deepest (airports/METAR points and
+# towns included). '# edge' marks sites only 10-15 km inside the nest edge.
 # name lat lon
 # Moved from issaquah-sites.csv
-Carnation          47.64334    -121.93639
 Index_Launch       47.83572    -121.53549
 Index_LZ           47.81783    -121.56702
 # North Cascades
-Pilchuck           48.057732   -121.792871
-Stickney           47.910819   -121.61396
-Whitehorse         48.211233   -121.677547
-Whitechuck         48.207287   -121.414833
 Penthouse          48.333      -121.713
+Pilchuck           48.057732   -121.792871
 Snowking           48.407782   -121.277504
+Stickney           47.910819   -121.61396
+Whitechuck         48.207287   -121.414833
+Whitehorse         48.211233   -121.677547
 # North-West
+Arlington          48.165      -122.15
+HarveyField        47.906      -122.101
 JordanRidge        48.13585    -121.981316
-Cultus             48.43361    -122.16248
+# Puget Sound
+Padilla            48.46389    -122.46806   # edge

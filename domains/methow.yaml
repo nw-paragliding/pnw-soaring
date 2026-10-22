@@ -12,8 +12,9 @@
 #   HRRR: `model: hrrr` swapped in + the DrJack-chain override keys
 #         (direct_reader/vtable/idx subsets) from domains/cascades-hrrr.yaml
 # All three share one geometry, so one geo_em grid per tile serves them all. The
-# geo_em files are cached per tile under geo-em-methow-<hash of this file>:
-# editing this file invalidates the cache and the next run re-runs geogrid.
+# geo_em files are cached per tile under geo-em-methow-<hash of this file>-img<id>:
+# editing this file or a new windgram image invalidates the cache and the next
+# run re-runs geogrid.
 # utc_offset is deliberately unset: the pipeline derives Pacific time from
 # center_lon.
 name: methow
@@ -21,6 +22,16 @@ model: nam
 
 center_lat: 48.84
 center_lon: -120.59
+
+# Shared map projection + lattice: all WA tiles use the same block so their
+# grids coincide where they overlap (needs windgram >= 0.7.0; older images
+# ignore it and centre each tile on its own projection).
+lattice:
+  truelat1: 46.0
+  truelat2: 49.0
+  stand_lon: -120.5
+  ref_lat: 47.5
+  ref_lon: -120.5
 
 # NAM 12 km -> WRF 4 km -> WRF 1.33 km (2 WRF domains, DrJack RASP PNW-WINDOW).
 outer_dx_km: 4.0

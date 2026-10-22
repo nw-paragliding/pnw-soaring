@@ -5,7 +5,7 @@ Automated paragliding soaring forecasts for the Pacific Northwest, powered by [r
 ## What This Does
 
 GitHub Actions runs the WRF weather model several times a day using NAM, RRFS and
-HRRR input data, generates windgram forecasts for ~115 flying sites across
+HRRR input data, generates windgram forecasts for 124 flying sites and reference points across
 Washington, split over seven region tiles, and publishes them to a map-based site
 on GitHub Pages.
 
@@ -22,28 +22,32 @@ Washington is covered by seven independent WRF tiles. Each runs the same chain
 120 km × 120 km 1.33 km nest; the 4 km parent auto-sizes to 200 km. Each tile is
 one `domains/<region>.yaml` (the NAM config; the workflows derive the RRFS and
 HRRR configs from it at run time with `scripts/derive-domain.sh`) and one
-`sites/<region>-sites.csv`, every site at least 15 km inside the nest.
+`sites/<region>-sites.csv`. The tiles share one map projection and grid lattice
+(the `lattice:` block, honoured by windgram >= 0.7.0) so their 1.33 km grid
+points coincide where they overlap.
 
 | Region | Center (lat, lon) | Covers | Sites |
 |--------|-------------------|--------|-------|
-| `issaquah` | 47.22, -121.80 | Home tile: Tiger / Issaquah Alps / North Bend / Snoqualmie Pass, Rainier NW | 31 |
-| `wenatchee` | 47.22, -120.59 | Wenatchee, Leavenworth, Mission Ridge, Ellensburg / Cle Elum | 10 |
-| `skykomish` | 48.03, -121.80 | Everett foothills, Index, Darrington, Stevens Pass west | 11 |
+| `issaquah` | 47.22, -121.80 | Home tile: Tiger / Issaquah Alps / North Bend / Snoqualmie Pass, Rainier NW | 32 |
+| `wenatchee` | 47.22, -120.59 | Wenatchee, Leavenworth, Mission Ridge, Ellensburg / Cle Elum | 11 |
+| `skykomish` | 48.03, -121.80 | Everett foothills, Index, Darrington, Stevens Pass west | 12 |
 | `chelan` | 48.03, -120.59 | Chelan Butte, Lake Chelan, Entiat | 8 |
-| `baker` | 48.84, -121.80 | Bellingham, Blanchard, Mt Baker, Fraser Valley south | 44 |
+| `baker` | 48.84, -121.80 | Bellingham, Blanchard, Mt Baker, Fraser Valley south | 50 |
 | `methow` | 48.84, -120.59 | Methow valley, Mazama, Washington Pass | 9 |
 | `waterville` | 47.72, -119.45 | Waterville Plateau, Mansfield, Coulee City (Chelan XC) | 2 |
 
-The site lists are seeded from the wxtofly (raspnw-v2) Washington list and are
-meant to be pruned. Windgrams are published per tile at
+The site lists hold every raspnw-v2 (wxtofly) site, airports and towns included,
+that sits at least 10 km inside a tile's 1.33 km nest edge (outside the ~7 km
+boundary relaxation zone), each in the tile where it sits deepest; `# edge`
+marks the ones only 10–15 km inside. Windgrams are published per tile at
 `forecasts/<date>/<model>/<region>/<Site>_windgram.png` (and
 `forecasts/latest/<model>/<region>/`); the site loads each marker's windgram
-from its tile. The v2 page (`/v2`, interactive cube) covers the `issaquah` tile
-only: only that tile uploads its soaring cube to R2.
+from its tile. The v2 page (`/v2`, interactive cube) is unlinked for now: only the `issaquah`
+tile uploads its soaring cube to R2, so v2 would show that tile alone.
 
 Each tile's geo_em grids are cached in Actions under
-`geo-em-<region>-<hash of domains/<region>.yaml>`; on a miss (new tile, edited
-YAML) the job downloads the WPS GEOG data and runs geogrid itself.
+`geo-em-<region>-<hash of domains/<region>.yaml>-img<image id>`; on a miss (new tile,
+edited YAML, new windgram image) the job downloads the WPS GEOG data and runs geogrid itself.
 `bootstrap-geoem.yml` can pre-warm the caches.
 
 **Jobs per run:** NAM and RRFS run every tile for day 0 and day 1 = 14 arm jobs
