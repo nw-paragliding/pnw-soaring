@@ -234,8 +234,11 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: write
+    # gh-pages-writer (was ab-pairs-publish): still one lab publish at a time,
+    # and also serialized with the forecast/site publishers and the squash.
     concurrency:
-      group: ab-pairs-publish
+      group: gh-pages-writer
+      cancel-in-progress: false
     env:
       CYCLE_DATE: ${{ needs.params.outputs.cycle_date }}
       CYCLE: ${{ needs.params.outputs.cycle }}

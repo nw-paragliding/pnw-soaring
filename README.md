@@ -83,6 +83,31 @@ RRFS and HRRR. Removing NAM is a follow-up change.
 The Cloudflare trigger is unchanged by the region tiles: one dispatch starts the
 whole region × day matrix of a workflow.
 
+## gh-pages history squash
+
+The site is served by GitHub Pages from the root of the `gh-pages` branch. Every
+forecast cycle commits a few hundred windgram PNGs, and although the publish jobs
+prune dates older than 7 days from the tree, git history kept every image ever
+published: 4+ GB and 10+ minute Pages builds, for history nobody needs.
+
+[`squash-gh-pages.yml`](.github/workflows/squash-gh-pages.yml) runs every Tuesday at
+10:30 UTC (clear of all forecast crons) and on `workflow_dispatch`
+(`gh workflow run squash-gh-pages.yml --ref main`). It shallow-fetches the
+`gh-pages` tip, makes one parentless commit with the *identical* tree
+(`git commit-tree`), checks the tree hash and an empty diff, and
+`--force-with-lease`-pushes it against the exact tip it read (re-fetching and
+retrying if a publish landed in between). The live site does not change; only the
+history goes.
+
+Every job that pushes to `gh-pages` (the three forecast `publish` jobs, the lab
+A/B `publish`, `deploy-site.yml` and the squash) shares
+`concurrency: gh-pages-writer`, so GitHub never runs the squash while a publisher
+is between its fetch and its rebase-retry push.
+
+GitHub reclaims the space only after its own garbage collection of the now
+unreachable objects, which can take days (GitHub Support can expedite it), so the
+repository size shown by GitHub lags behind the squash.
+
 ## Fork for Your Region
 
 1. Fork this repo

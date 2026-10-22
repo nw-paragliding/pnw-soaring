@@ -1,0 +1,86 @@
+name: Squash gh-pages history
+
+# GitHub Pages serves forecast.nwparagliding.com from the root of gh-pages.
+# Every forecast cycle commits a few hundred windgram PNGs; the publish jobs
+# prune dates older than 7 days from the TREE, but git history keeps every
+# image ever published (4+ GB, 10+ minute Pages builds). That history has no
+# value, so once a week this job replaces gh-pages with a single parentless
+# commit whose tree is byte-for-byte the current tip's tree: the live site is
+# unchanged, only the history goes. See README "gh-pages history squash".
+#
+# Safety:
+#   * The new commit reuses the tip's tree object (git commit-tree), and the
+#     job verifies tree hash equality and an empty `git diff` before pushing.
+#   * The push is --force-with-lease against the exact tip it squashed, so a
+#     publish that lands in between is never discarded: the lease fails, the
+#     job re-fetches and squashes the new tip instead (up to 3 attempts).
+#   * Every job that pushes to gh-pages shares `concurrency: gh-pages-writer`,
+#     so GitHub never runs this while a publisher sits between its fetch and its
+#     push (whose rebase-retry onto an unrelated root would replay all history).
+#
+# GitHub frees the disk space only after its own garbage collection (days;
+# GitHub Support can expedite), so the repo size figure lags.
+
+on:
+  schedule:
+    # Tuesday 10:30 UTC (3:30am PDT): hours clear of every forecast cron in
+    # cloudflare-trigger/wrangler.toml (HRRR 01:15/07:15/13:00, NAM+RRFS
+    # 02:05/14:00) and the lab A/B run (22:30).
+    - cron: '30 10 * * 2'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  squash:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    concurrency:
+      group: gh-pages-writer
+      cancel-in-progress: false
+    steps:
+      # Shallow checkout of main: only for a git dir with an authenticated origin.
+      - uses: actions/checkout@v4
+
+      - name: Squash gh-pages to one commit (live content only)
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          DATE=$(date -u +%F)
+          for attempt in 1 2 3; do
+            # Depth 1: just the tip and its tree, never the multi-GB history.
+            git fetch --no-tags --depth 1 origin +refs/heads/gh-pages:refs/remotes/origin/gh-pages
+            OLD=$(git rev-parse refs/remotes/origin/gh-pages)
+            TREE=$(git rev-parse "$OLD^{tree}")
+            echo "Attempt $attempt: gh-pages tip $OLD, tree $TREE"
+            # The raw commit object keeps its parent lines even in a shallow
+            # clone; none means gh-pages is already a single orphan commit.
+            if ! git cat-file -p "$OLD" | grep -q '^parent '; then
+              echo "gh-pages is already a single parentless commit; nothing to squash."
+              exit 0
+            fi
+            NEW=$(git commit-tree "$TREE" \
+              -m "Squash gh-pages history ($DATE): live content only" \
+              -m "Previous tip: $OLD")
+            NEW_TREE=$(git rev-parse "$NEW^{tree}")
+            echo "Squashed commit $NEW, tree $NEW_TREE"
+            [ "$NEW_TREE" = "$TREE" ] || { echo "::error::tree mismatch ($NEW_TREE != $TREE)"; exit 1; }
+            git diff --stat "$OLD" "$NEW"
+            git diff --quiet "$OLD" "$NEW" || { echo "::error::squashed commit differs from tip"; exit 1; }
+            if git push --force-with-lease=refs/heads/gh-pages:"$OLD" origin "$NEW":refs/heads/gh-pages; then
+              echo "Squashed gh-pages: $OLD -> $NEW (tree $TREE) on attempt $attempt"
+              {
+                echo "### gh-pages squashed"
+                echo "- before: \`$OLD\`"
+                echo "- after: \`$NEW\`"
+                echo "- tree: \`$TREE\` (identical)"
+              } >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
+              exit 0
+            fi
+            echo "Lease rejected (gh-pages moved since fetch, attempt $attempt); re-fetching..."
+            sleep $((RANDOM % 10 + 5))
+          done
+          echo "::error::Failed to squash gh-pages after 3 attempts" >&2
+          exit 1
