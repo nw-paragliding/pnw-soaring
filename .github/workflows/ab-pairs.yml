@@ -54,7 +54,7 @@ on:
 
 env:
   RASP_REPO: nw-paragliding/rasp-windgram
-  WRF_IMAGE: ghcr.io/nw-paragliding/wrf-compiled:v4.5.2-arm64
+  WRF_IMAGE: ghcr.io/nw-paragliding/wrf-compiled:v4.5.2-o2-arm64
   GEOG_URL: https://www2.mmm.ucar.edu/wrf/src/wps_files/geog_low_res_mandatory.tar.gz
   PAGE_DIR: lab/ab
   LAST_DAY: '2026-11-02'   # last 18z cycle before NAM leaves NOMADS (2026-11-03 12Z)
