@@ -6,10 +6,6 @@ name: Forecast (RRFS)
 # until NCEP retires NAM on 2026-11-03 12Z, after which it replaces NAM.
 
 on:
-  # TEMPORARY — removed before merge: lets a push to this branch exercise the
-  # pipeline end-to-end without publishing (deploy/R2 steps are main-only).
-  push:
-    branches: ['feat/rrfs-site*']
   # Fired by the Cloudflare trigger Worker (cloudflare-trigger/): the two NAM
   # crons dispatch both run-nam and run-rrfs (no spare cron on the free tier),
   # so this starts at the same instant as the NAM run. repository_dispatch
@@ -23,7 +19,7 @@ on:
         required: false
 
 env:
-  IMAGE: ghcr.io/nw-paragliding/windgram:0.6.0   # TEMPORARY pin for the branch verification run; back to :latest before merge
+  IMAGE: ghcr.io/nw-paragliding/windgram:latest   # needs >= 0.6.0 (adds the rrfs model)
   # NOMADS root for RRFS GRIB. NCEP serves the parallel-production feed under
   # .../com/rrfs/v1.0 until the 2026-11-03 12Z switch, when it moves to
   # .../com/rrfs/prod. Set the repository variable RASP_RRFS_ROOT (Settings →
