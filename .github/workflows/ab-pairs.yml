@@ -41,7 +41,7 @@ on:
       rasp_ref:
         description: 'rasp-windgram ref to build the image from'
         required: false
-        default: 'feat/rrfs-model'
+        default: 'main'
 
 env:
   RASP_REPO: nw-paragliding/rasp-windgram
@@ -78,7 +78,7 @@ jobs:
             echo "go=false" >> "$GITHUB_OUTPUT"; exit 0
           fi
           [ -z "$DOMAINS" ] && DOMAINS="phoenix,cascades"
-          [ -z "$RASP_REF" ] && RASP_REF="feat/rrfs-model"
+          [ -z "$RASP_REF" ] && RASP_REF="main"
           if [ -z "$CYCLE" ]; then
             # Latest 18z cycle complete through f33 (~20:45Z): before 21Z use yesterday's.
             H=$(date -u +%H)
