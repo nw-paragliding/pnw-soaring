@@ -37,14 +37,14 @@ def main():
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
-<title>A/B pairs</title><style>{CSS}</style></head>
+<title>A/B runs</title><style>{CSS}</style></head>
 <body>
-<h1>NAM vs RRFS A/B pairs</h1>
-<div class="note">Unlisted. Each entry is one soaring day run through the same WRF chain twice, once with NAM and once with RRFS as the parent model. Phoenix is a test domain with real late-season thermals; Cascades is the production grid. These pages exist for review during the RRFS migration and are not forecasts.</div>
+<h1>NAM vs RRFS vs HRRR A/B runs</h1>
+<div class="note">Unlisted. Each entry is one soaring day run through the same WRF chain (4 km → 1.33 km, DrJack physics) three times, with NAM, RRFS and HRRR as the parent model, and compared as NAM vs RRFS and NAM vs HRRR. Phoenix is a test domain with real late-season thermals; Cascades is the production grid. These pages exist for review during the RRFS migration and are not forecasts.</div>
 {''.join(sections) or '<p>No pairs yet.</p>'}
 </body></html>
 """
-    (root / "index.html").write_text(page)
+    (root / "index.html").write_text(page, encoding="utf-8")
     print(f"wrote {root / 'index.html'} ({len(sections)} domains)")
 
 

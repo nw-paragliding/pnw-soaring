@@ -64,14 +64,14 @@ def main():
 <body>
 <h1>{html.escape(a.title)}</h1>
 <div class="meta">{meta}</div>
-<div class="note">Unlisted test page for the RRFS migration: the same WRF chain run twice from different parent models. The numbers are an aid to a human review, not a verdict. Raw: <a href="compare.md">compare.md</a> · <a href="summary.json">summary.json</a></div>
+<div class="note">Unlisted test page for the RRFS migration: the same WRF chain (4 km → 1.33 km, DrJack physics) run from NAM, RRFS and HRRR as parent models; this page compares two of those arms. <a href="../">Back to the day</a>. The numbers are an aid to a human review, not a verdict. Raw: <a href="compare.md">compare.md</a> · <a href="summary.json">summary.json</a></div>
 <h2>Windgrams</h2>
 {''.join(figs)}
 <h2>Numbers</h2>
 {body}
 </body></html>
 """
-    Path(a.out_html).write_text(page)
+    Path(a.out_html).write_text(page, encoding="utf-8")
     print(f"wrote {a.out_html} ({len(figs)} figures)")
 
 

@@ -1,12 +1,21 @@
 name: A/B pairs → lab page
 
-# NAM-vs-RRFS acceptance pairs for the RRFS migration (rasp-windgram
+# NAM vs RRFS vs HRRR A/B runs for the RRFS migration (rasp-windgram
 # RRFS_MIGRATION.md §5), published to an UNLISTED, no-index page on the site:
 #   https://forecast.nwparagliding.com/lab/ab/
+# Three arms per domain, all through the SAME WRF chain (4 km -> 1.33 km,
+# DrJack physics, same geo_em grid), differing only in the parent model:
+#   nam  - the domain YAML as is
+#   rrfs - `model: rrfs`
+#   hrrr - `model: hrrr` plus the registry overrides from rasp-windgram's
+#          examples/cascades-hrrr-drjack.yaml (WPS/WRF instead of the direct
+#          reader, Vtable.RAP.pressure.ncep, .idx subsets): HRRR as boundary
+#          conditions only, not the old HRRR 1 km nest.
+# Two comparisons per domain, each on its own page: NAM vs RRFS, NAM vs HRRR.
 # This is review material, not a forecast product. It never touches
 # forecasts/, index.html, R2 or the Cloudflare trigger. The pipeline image is
-# built from the rasp-windgram migration branch; the Phoenix test domain comes
-# from that branch's test-only ab/ directory and is not part of this repo.
+# built from rasp-windgram (ref below, default main); the Phoenix test domain
+# comes from that repo's test-only ab/ directory and is not part of this repo.
 #
 # Start a run:
 #   * schedule: 22:30 UTC daily until 2026-11-02 (18z cycle → next soaring day)
@@ -23,7 +32,7 @@ on:
   workflow_dispatch:
     inputs:
       domains:
-        description: 'Comma-separated: phoenix (test fixture) and/or cascades (production grid)'
+        description: 'Comma-separated: phoenix (test fixture) and/or cascades (production grid); each runs NAM, RRFS and HRRR arms'
         required: false
         default: 'phoenix,cascades'
       cycle_date:
@@ -49,6 +58,7 @@ env:
   GEOG_URL: https://www2.mmm.ucar.edu/wrf/src/wps_files/geog_low_res_mandatory.tar.gz
   PAGE_DIR: lab/ab
   LAST_DAY: '2026-11-02'   # last 18z cycle before NAM leaves NOMADS (2026-11-03 12Z)
+  # After NAM retires the pairs could continue as RRFS vs HRRR (not implemented).
 
 jobs:
   params:
@@ -101,7 +111,7 @@ jobs:
       fail-fast: false
       matrix:
         domain: ${{ fromJson(needs.params.outputs.domains_json) }}
-        model: [nam, rrfs]
+        model: [nam, rrfs, hrrr]
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 180
     permissions:
@@ -140,8 +150,17 @@ jobs:
           sed -E "s/^model: *[a-z]+.*/model: ${{ matrix.model }}/" "$YAML" > ab-domain.yaml
           # Runner GEOG = low-res package + 30s terrain/landuse add-ons.
           grep -q '^geog_data_res:' ab-domain.yaml || echo "geog_data_res: gmted2010_30s+modis_30s_lake+lowres" >> ab-domain.yaml
+          if [ "${{ matrix.model }}" = "hrrr" ]; then
+            # HRRR through the DrJack chain: the registry overrides from the
+            # reference config (direct_reader .. idx subsets), not its geometry.
+            REF=rasp/examples/cascades-hrrr-drjack.yaml
+            [ -f "$REF" ] || { echo "::error::$REF missing (needs rasp-windgram >= 0.6.1)"; exit 1; }
+            { echo; echo "# ---- hrrr arm: overrides from $REF"; \
+              awk '/^direct_reader:/{p=1} /^# ---- everything below/{p=0} p' "$REF"; } >> ab-domain.yaml
+            grep -q '^direct_reader: *false' ab-domain.yaml || { echo "::error::hrrr override block not appended"; exit 1; }
+          fi
           cp "$SITES" ab-sites.csv
-          grep -n -E '^(model|geog_data_res|utc_offset):' ab-domain.yaml
+          grep -n -E '^(model|geog_data_res|utc_offset|direct_reader|vtable|sfc_vtable):' ab-domain.yaml
 
       - name: Restore GEOG cache
         id: geog
@@ -237,22 +256,33 @@ jobs:
       - name: Compare and render each domain
         run: |
           mkdir -p out
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          GEN=$(date -u +%Y-%m-%dT%H:%MZ)
           for d in $(echo '${{ needs.params.outputs.domains_json }}' | jq -r '.[]'); do
-            if [ ! -d "runs/ab-$d-nam" ] || [ ! -d "runs/ab-$d-rrfs" ]; then
-              echo "::warning::$d: one arm missing, skipping"; continue
-            fi
             if [ -f "rasp/ab/$d.yaml" ]; then YAML="rasp/ab/$d.yaml"; SITES="rasp/ab/$d-sites.csv"; else YAML="domains/$d.yaml"; SITES="sites/issaquah-sites.csv"; fi
             OFF=$(grep -E '^utc_offset:' "$YAML" | awk '{print $2}'); OFF=${OFF:--7}
-            ( cd rasp && uv run --extra cube --with markdown python scripts/ab_compare.py \
-                --a "../runs/ab-$d-nam" --b "../runs/ab-$d-rrfs" --labels NAM RRFS \
-                --sites "../$SITES" --utc-offset "$OFF" --out "../out/$d" ) > /dev/null
-            uv run --with markdown python site/lab/render_ab.py "out/$d" "out/$d/index.html" \
-              --title "$d — NAM vs RRFS, soaring day $TARGET_DATE" \
-              --meta "cycle=$CYCLE_DATE ${CYCLE}z" --meta "generated=$(date -u +%Y-%m-%dT%H:%MZ)" \
-              --meta "run=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-            { echo "## $d — $CYCLE_DATE ${CYCLE}z → $TARGET_DATE"; awk '/^## Pooled/,/^## Whole/' "out/$d/compare.md"; } >> "$GITHUB_STEP_SUMMARY"
+            # Two comparisons per domain, each skipped on its own when an arm is
+            # missing, so one failed arm never blocks the other pair.
+            for b in rrfs hrrr; do
+              B=$(echo "$b" | tr a-z A-Z); SUB="nam-vs-$b"
+              if [ ! -d "runs/ab-$d-nam" ] || [ ! -d "runs/ab-$d-$b" ]; then
+                echo "::warning::$d: NAM or $B arm missing, skipping NAM vs $B"; continue
+              fi
+              ( cd rasp && uv run --extra cube --with markdown python scripts/ab_compare.py \
+                  --a "../runs/ab-$d-nam" --b "../runs/ab-$d-$b" --labels NAM "$B" \
+                  --sites "../$SITES" --utc-offset "$OFF" --out "../out/$d/$SUB" ) > /dev/null
+              uv run --with markdown python site/lab/render_ab.py "out/$d/$SUB" "out/$d/$SUB/index.html" \
+                --title "$d — NAM vs $B, soaring day $TARGET_DATE" \
+                --meta "cycle=$CYCLE_DATE ${CYCLE}z" --meta "generated=$GEN" --meta "run=$RUN_URL"
+              { echo "## $d — NAM vs $B — $CYCLE_DATE ${CYCLE}z → $TARGET_DATE"; awk '/^## Pooled/,/^## Whole/' "out/$d/$SUB/compare.md"; } >> "$GITHUB_STEP_SUMMARY"
+            done
+            if [ -d "out/$d" ]; then
+              uv run --with markdown python site/lab/render_landing.py "out/$d" "out/$d/index.html" \
+                --title "$d — NAM vs RRFS vs HRRR, soaring day $TARGET_DATE" \
+                --meta "cycle=$CYCLE_DATE ${CYCLE}z" --meta "generated=$GEN" --meta "run=$RUN_URL"
+            fi
           done
-          ls out
+          find out -maxdepth 2 | sort
 
       - name: Publish to the unlisted lab page (gh-pages)
         run: |
@@ -262,8 +292,8 @@ jobs:
             DEST="pages/$PAGE_DIR/$d/$TARGET_DATE"
             rm -rf "$DEST" "pages/$PAGE_DIR/$d/latest"
             mkdir -p "$DEST" "pages/$PAGE_DIR/$d/latest"
-            cp out/$d/* "$DEST/"
-            cp out/$d/* "pages/$PAGE_DIR/$d/latest/"
+            cp -r "out/$d/." "$DEST/"
+            cp -r "out/$d/." "pages/$PAGE_DIR/$d/latest/"
           done
           # Keep 14 days of pairs.
           CUTOFF=$(date -u -d '14 days ago' +%F)
@@ -276,7 +306,7 @@ jobs:
           git diff --cached --quiet && { echo "No changes"; exit 0; }
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git commit -q -m "lab/ab: NAM vs RRFS pairs for $TARGET_DATE ($CYCLE_DATE ${CYCLE}z)"
+          git commit -q -m "lab/ab: NAM vs RRFS vs HRRR for $TARGET_DATE ($CYCLE_DATE ${CYCLE}z)"
           for attempt in 1 2 3 4 5; do
             git push origin HEAD:gh-pages && { echo "Pushed on attempt $attempt"; exit 0; }
             git fetch origin gh-pages && git rebase origin/gh-pages || { git rebase --abort; exit 1; }
