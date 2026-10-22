@@ -61,7 +61,7 @@ jobs:
       ready: ${{ steps.ready.outputs.ready }}
     steps:
       - uses: actions/checkout@v4
-      - name: Wait for RRFS GRIB on NOMADS (day 0, f027)
+      - name: Wait for RRFS GRIB (day 0, f027)
         id: ready
         run: scripts/wait-rrfs.sh 0
 
@@ -133,7 +133,7 @@ jobs:
       ready: ${{ steps.ready.outputs.ready }}
     steps:
       - uses: actions/checkout@v4
-      - name: Wait for RRFS GRIB on NOMADS (day 1, f051)
+      - name: Wait for RRFS GRIB (day 1, f051)
         id: ready
         run: scripts/wait-rrfs.sh 1
 
