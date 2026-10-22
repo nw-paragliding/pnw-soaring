@@ -140,3 +140,8 @@ GRIB download, WPS, WRF, windgram rendering. No WRF compilation needed.
 ## License
 
 MIT
+
+> **2026-10-22 — steep-terrain stability.** The 1.33 km nests over Rainier, Baker/Shuksan and the
+> North Cascades crest went NaN within minutes of each run (rasp-windgram #22 has the root cause: a
+> weakly damped acoustic mode in WRF's solver, not the time step). Every tile now carries
+> `dynamics: {epssm: 0.5}`; it needs `windgram:latest` ≥ 0.7.3 (older images ignore the block).
