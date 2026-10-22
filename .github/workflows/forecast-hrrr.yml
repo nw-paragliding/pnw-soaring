@@ -23,6 +23,13 @@ env:
   # issaquah tile; r2-prune.yml keeps ageing out the existing objects.
   UPLOAD_CUBES: 'false'
   IMAGE: ghcr.io/nw-paragliding/windgram:latest
+  # Data root for HRRR GRIB. Default: NOAA's Open Data mirror on AWS
+  # (noaa-hrrr-bdp-pds, same hrrr.YYYYMMDD/conus/ layout and .idx files as
+  # NOMADS, ~1 min behind it, no throttling). Set the repository variable
+  # RASP_HRRR_ROOT to https://nomads.ncep.noaa.gov/pub/data/nccf/com/hrrr/prod
+  # to go back to NOMADS. Needs windgram >= 0.7.2 (older images hardcode NOMADS
+  # for HRRR and ignore the variable).
+  RASP_HRRR_ROOT: ${{ vars.RASP_HRRR_ROOT || 'https://noaa-hrrr-bdp-pds.s3.amazonaws.com' }}
 
 jobs:
   forecast:
