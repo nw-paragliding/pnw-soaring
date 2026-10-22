@@ -4,7 +4,8 @@ on:
   # Fired by the Cloudflare trigger Worker (cloudflare-trigger/), which carries
   # the target cycle in client_payload.cycle. repository_dispatch starts within
   # seconds — unlike GitHub's throttled `schedule` events, which were running
-  # these forecasts ~5h late. The schedule lives in the Worker now.
+  # these forecasts ~5h late. The schedule lives in the Worker now. One dispatch
+  # starts the whole region x day matrix.
   repository_dispatch:
     types: [run-nam]
   workflow_dispatch:
@@ -12,145 +13,98 @@ on:
       target_date:
         description: 'Base date YYYY-MM-DD for the 2-day window (blank = today UTC)'
         required: false
+      regions:
+        description: 'Region tiles to run, JSON list (blank = all seven)'
+        required: false
 
 env:
+  # v2 soaring-cube upload to R2 is OFF (R2 cost): the pipeline still writes
+  # output/soaring.zarr, it just isn't uploaded. 'true' re-enables it for the
+  # issaquah tile; r2-prune.yml keeps ageing out the existing objects.
+  UPLOAD_CUBES: 'false'
   IMAGE: ghcr.io/nw-paragliding/windgram:latest
 
 jobs:
   forecast:
-    # Two-day forecast: one windgram set per day, rendered by independent
-    # parallel runs (day 0 = today UTC, day 1 = tomorrow UTC). Both the evening
-    # (00z) and morning (12z) dispatches fire on the same UTC date, so
+    # Seven WA region tiles (domains/<region>.yaml, README "Regions") x a
+    # two-day forecast: one windgram set per tile per day, each an independent
+    # parallel run (day 0 = today UTC, day 1 = tomorrow UTC) = 14 jobs. Both the
+    # evening (00z) and morning (12z) dispatches fire on the same UTC date, so
     # {today, tomorrow} covers "tomorrow+next-day" (evening) and "today+tomorrow"
     # (morning) alike. --target-date auto-selects the freshest covering cycle.
     strategy:
       fail-fast: false
       matrix:
+        region: ${{ fromJson(inputs.regions || '["issaquah","wenatchee","skykomish","chelan","baker","methow","waterville"]') }}
         day: [0, 1]
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 360
     permissions:
-      contents: write
+      contents: read
       packages: read
     steps:
       - uses: actions/checkout@v4
 
-      - name: Free up disk space
+      - name: Soaring date (day ${{ matrix.day }})
+        id: date
         run: |
-          echo "Disk before cleanup:"; df -h /
-          sudo rm -rf \
-            /usr/local/lib/android \
-            /usr/share/dotnet \
-            /opt/ghc /usr/local/.ghcup \
-            /opt/hostedtoolcache \
-            /usr/local/share/boost 2>/dev/null || true
-          docker system prune -af 2>/dev/null || true
-          echo "Disk after cleanup:"; df -h /
-
-      - name: Restore geo_em cache
-        id: cache
-        uses: actions/cache/restore@v4
-        with:
-          path: geo_em/
-          key: geo-em-cascades-nam-v2
-
-      - name: Download geo_em from release (cache miss fallback)
-        if: steps.cache.outputs.cache-hit != 'true'
-        run: |
-          mkdir -p geo_em
-          gh release download geo-em-v1 --pattern 'geo_em_nam-v2.tar.gz' --dir .
-          tar xzf geo_em_nam-v2.tar.gz -C geo_em
-          rm geo_em_nam-v2.tar.gz
-          echo "Downloaded geo_em from release:"
-          ls -lh geo_em/
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Pull image
-        run: docker pull $IMAGE
-
-      - name: Run forecast (day ${{ matrix.day }})
-        run: |
-          mkdir -p output
           # Per-day target date: base (manual input, else today UTC) + matrix offset.
           BASE="${{ inputs.target_date }}${{ github.event.client_payload.target_date }}"
           [ -z "$BASE" ] && BASE=$(date -u +%F)
           TARGET_DATE=$(date -u -d "$BASE +${{ matrix.day }} days" +%F)
           echo "Day ${{ matrix.day }} → soaring date $TARGET_DATE (auto-cycle)"
+          echo "target_date=$TARGET_DATE" >> "$GITHUB_OUTPUT"
 
-          docker run --rm \
-            -v ${{ github.workspace }}/geo_em:/mnt/geo_em:ro \
-            -v ${{ github.workspace }}/output:/mnt/output:rw \
-            -v ${{ github.workspace }}/domains/cascades.yaml:/opt/rasp/domain.yaml:ro \
-            -v ${{ github.workspace }}/sites/issaquah-sites.csv:/opt/rasp/sites.csv:ro \
-            --entrypoint bash \
-            $IMAGE -c "
-              cp /mnt/geo_em/geo_em.d0*.nc /opt/rasp/wps/ 2>/dev/null || true
-              python3 -m rasp.pipeline domain.yaml \
-                --sites sites.csv \
-                --output-dir /mnt/output \
-                --num-procs 4 \
-                --target-date $TARGET_DATE
-            "
-
-      - name: Check forecast output
-        run: |
-          count=$(ls output/*.png 2>/dev/null | wc -l)
-          if [ "$count" -eq 0 ]; then
-            echo "::error::No windgrams rendered — model produced no usable output (likely bad/NaN model data)."
-            exit 1
-          fi
-          echo "Rendered $count windgrams."
-
-      - name: Save geo_em cache
-        if: matrix.day == 0 && hashFiles('geo_em/geo_em.d01.nc') != ''
-        uses: actions/cache/save@v4
+      - name: Run forecast
+        id: run
+        uses: ./.github/actions/run-forecast
         with:
-          path: geo_em/
-          key: geo-em-cascades-nam-v2
+          model: nam
+          region: ${{ matrix.region }}
+          target_date: ${{ steps.date.outputs.target_date }}
+          image: ${{ env.IMAGE }}
 
       - name: Upload windgrams
         uses: actions/upload-artifact@v4
         with:
-          name: nam-windgrams-day${{ matrix.day }}
+          name: nam-${{ matrix.region }}-day${{ matrix.day }}
           path: output/*.png
           retention-days: 7
 
-      - name: Deploy to Pages
-        uses: ./.github/actions/deploy-forecast
-        with:
-          model: nam
-          # Only the nearest day (today) updates /latest, so v1 keeps showing
-          # today until the day-picker UI lands; tomorrow lives in its date dir.
-          update_latest: ${{ matrix.day == 0 }}
-
+      # Disabled while UPLOAD_CUBES is 'false'. When on, only the home tile writes the v2 soaring cube: R2 keeps its
+      # <model>/<date>/soaring.zarr layout and site/v2 shows the issaquah tile.
+      # Publishing is main-only: a run from any other ref renders + uploads
+      # artifacts but never touches gh-pages or R2.
       - name: Upload soaring cube to R2 (v2)
-        if: always()
+        if: always() && env.UPLOAD_CUBES == 'true' && matrix.region == 'issaquah' && github.ref == 'refs/heads/main'
+        uses: ./.github/actions/upload-cube
         env:
           R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          R2_BUCKET: nw-paragliding-forecasts
-          MODEL: nam
-        run: |
-          # The pipeline writes output/soaring.zarr on the 24.04 image; older
-          # images don't. Both this and missing R2 secrets skip cleanly.
-          if [ ! -d output/soaring.zarr ]; then echo "No cube produced — skipping R2 upload."; exit 0; fi
-          if [ -z "$R2_ACCOUNT_ID" ] || [ -z "$R2_ACCESS_KEY_ID" ] || [ -z "$R2_SECRET_ACCESS_KEY" ]; then echo "R2 secrets unset/incomplete — skipping cube upload."; exit 0; fi
-          curl -fsSL https://rclone.org/install.sh | sudo bash >/dev/null 2>&1 || sudo apt-get install -y -q rclone
-          export RCLONE_S3_PROVIDER=Cloudflare \
-                 RCLONE_S3_ENDPOINT="https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com" \
-                 RCLONE_S3_ACCESS_KEY_ID="$R2_ACCESS_KEY_ID" \
-                 RCLONE_S3_SECRET_ACCESS_KEY="$R2_SECRET_ACCESS_KEY"
-          DATE=$(ls output/*.png 2>/dev/null | head -1 | xargs basename | cut -d_ -f1)
-          rclone sync output/soaring.zarr ":s3:${R2_BUCKET}/${MODEL}/${DATE}/soaring.zarr" --s3-no-check-bucket
-          if [ "${{ matrix.day }}" = "0" ]; then
-            rclone sync output/soaring.zarr ":s3:${R2_BUCKET}/${MODEL}/latest/soaring.zarr" --s3-no-check-bucket
-          fi
-          echo "Uploaded cube → R2 ${R2_BUCKET}/${MODEL}/${DATE}$([ "${{ matrix.day }}" = "0" ] && echo ' (+latest)')"
+        with:
+          model: nam
+          day: ${{ matrix.day }}
+
+  publish:
+    # One gh-pages commit for the whole matrix (instead of one per job). Runs
+    # even when some legs failed, so one bad region never blocks the rest; legs
+    # without an artifact are simply not published (the site keeps their
+    # previous windgrams / shows "no forecast yet").
+    needs: forecast
+    if: always() && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: nam-*
+          path: windgrams
+      - name: Deploy to Pages
+        uses: ./.github/actions/deploy-forecast
+        with:
+          model: nam
+          artifacts_dir: windgrams
+          latest_day: "0"

@@ -1,0 +1,41 @@
+name: Upload soaring cube to R2
+description: >-
+  Upload output/soaring.zarr (the v2 frontend's data cube) to R2 at
+  <model>/<date>/soaring.zarr, plus <model>/latest/ for day 0. The calling step
+  passes the R2 credentials as env (R2_ACCOUNT_ID, R2_ACCESS_KEY_ID,
+  R2_SECRET_ACCESS_KEY); missing credentials or a missing cube skip cleanly.
+  The forecast workflows call this for the issaquah (home) tile only, on main.
+
+inputs:
+  model:
+    description: Model slug (nam, rrfs, hrrr)
+    required: true
+  day:
+    description: Matrix day offset; day 0 also updates <model>/latest
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Upload soaring cube to R2 (v2)
+      shell: bash
+      env:
+        R2_BUCKET: nw-paragliding-forecasts
+        MODEL: ${{ inputs.model }}
+        DAY: ${{ inputs.day }}
+      run: |
+        # The pipeline writes output/soaring.zarr on the 24.04 image; older
+        # images don't. Both this and missing R2 secrets skip cleanly.
+        if [ ! -d output/soaring.zarr ]; then echo "No cube produced — skipping R2 upload."; exit 0; fi
+        if [ -z "${R2_ACCOUNT_ID:-}" ] || [ -z "${R2_ACCESS_KEY_ID:-}" ] || [ -z "${R2_SECRET_ACCESS_KEY:-}" ]; then echo "R2 secrets unset/incomplete — skipping cube upload."; exit 0; fi
+        curl -fsSL https://rclone.org/install.sh | sudo bash >/dev/null 2>&1 || sudo apt-get install -y -q rclone
+        export RCLONE_S3_PROVIDER=Cloudflare \
+               RCLONE_S3_ENDPOINT="https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com" \
+               RCLONE_S3_ACCESS_KEY_ID="$R2_ACCESS_KEY_ID" \
+               RCLONE_S3_SECRET_ACCESS_KEY="$R2_SECRET_ACCESS_KEY"
+        DATE=$(ls output/*.png 2>/dev/null | head -1 | xargs basename | cut -d_ -f1)
+        rclone sync output/soaring.zarr ":s3:${R2_BUCKET}/${MODEL}/${DATE}/soaring.zarr" --s3-no-check-bucket
+        if [ "$DAY" = "0" ]; then
+          rclone sync output/soaring.zarr ":s3:${R2_BUCKET}/${MODEL}/latest/soaring.zarr" --s3-no-check-bucket
+        fi
+        echo "Uploaded cube → R2 ${R2_BUCKET}/${MODEL}/${DATE}$([ "$DAY" = "0" ] && echo ' (+latest)')"

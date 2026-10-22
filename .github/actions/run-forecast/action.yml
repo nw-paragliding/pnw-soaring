@@ -1,0 +1,189 @@
+name: Run one region forecast
+description: >-
+  Render one region tile's windgrams for one model and one soaring day:
+  derive the model's domain config from domains/<region>.yaml, restore (or
+  build with geogrid and cache) the tile's geo_em grids, run the windgram image,
+  and check that it rendered something. Used by forecast-nam/-rrfs/-hrrr.yml;
+  uploading and publishing are left to the calling workflow.
+
+inputs:
+  model:
+    description: nam | rrfs | hrrr
+    required: true
+  region:
+    description: Region tile name (domains/<region>.yaml + sites/<region>-sites.csv)
+    required: true
+  target_date:
+    description: Soaring date YYYY-MM-DD (the pipeline auto-selects the freshest covering cycle)
+    required: true
+  image:
+    description: Windgram image
+    required: true
+
+outputs:
+  count:
+    description: Number of windgrams rendered
+    value: ${{ steps.check.outputs.count }}
+  rendered_date:
+    description: Date stamped on the rendered windgrams (YYYY-MM-DD)
+    value: ${{ steps.check.outputs.rendered_date }}
+  sites:
+    description: Number of sites in the region's site list
+    value: ${{ steps.prep.outputs.sites }}
+
+runs:
+  using: composite
+  steps:
+    - name: Free up disk space
+      shell: bash
+      run: |
+        echo "Disk before cleanup:"; df -h /
+        sudo rm -rf \
+          /usr/local/lib/android \
+          /usr/share/dotnet \
+          /opt/ghc /usr/local/.ghcup \
+          /opt/hostedtoolcache \
+          /usr/local/share/boost 2>/dev/null || true
+        docker system prune -af 2>/dev/null || true
+        echo "Disk after cleanup:"; df -h /
+
+    - uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ github.token }}
+
+    - name: Pull image
+      shell: bash
+      run: docker pull "${{ inputs.image }}"
+
+    - name: Prepare domain config (${{ inputs.region }} / ${{ inputs.model }})
+      id: prep
+      shell: bash
+      env:
+        REGION: ${{ inputs.region }}
+        MODEL: ${{ inputs.model }}
+        IMAGE: ${{ inputs.image }}
+      run: |
+        SRC="domains/${REGION}.yaml"; SITES="sites/${REGION}-sites.csv"
+        [ -f "$SRC" ] || { echo "::error::no domain config $SRC"; exit 1; }
+        [ -f "$SITES" ] || { echo "::error::no site list $SITES"; exit 1; }
+        mkdir -p job geo_em output
+        scripts/derive-domain.sh "$SRC" "$MODEL" job/domain.yaml
+        cp "$SITES" job/sites.csv
+        N=$(grep -cvE '^\s*(#|$)' job/sites.csv)
+        # geo_em depends only on the tile geometry, which is the same for every
+        # model, so the key is the NAM source file's hash (not the derived one).
+        # The image is part of the key too: geogrid output depends on the
+        # generator (e.g. windgram >= 0.7.0 honours the shared `lattice:` block,
+        # older images ignore it), so a new image rebuilds the grid once.
+        IMG=$(docker image inspect --format '{{.Id}}' "$IMAGE" | sed 's/^sha256://' | cut -c1-12)
+        echo "geo_key=geo-em-${REGION}-$(sha256sum "$SRC" | cut -c1-16)-img${IMG}" >> "$GITHUB_OUTPUT"
+        echo "sites=$N" >> "$GITHUB_OUTPUT"
+        echo "Region $REGION, model $MODEL, $N sites; derived config:"
+        grep -nE '^(name|model|center_lat|center_lon|inner_extent_km|geog_data_res|direct_reader|vtable|sfc_vtable):' job/domain.yaml
+
+    - name: Restore geo_em cache
+      id: geo
+      uses: actions/cache/restore@v4
+      with:
+        path: geo_em/
+        key: ${{ steps.prep.outputs.geo_key }}
+
+    # Cache miss (new tile, or domains/<region>.yaml changed): fetch the GEOG
+    # static data and let the pipeline run geogrid; the grids are saved below.
+    - name: Restore GEOG cache (geo_em miss)
+      id: geog
+      if: steps.geo.outputs.cache-hit != 'true'
+      uses: actions/cache/restore@v4
+      with:
+        path: geog/
+        key: wps-geog-lowres-plus-30s-v1
+
+    - name: Download GEOG (low-res package + 30s terrain/landuse, ~0.6 GB)
+      if: steps.geo.outputs.cache-hit != 'true' && steps.geog.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        BASE=https://www2.mmm.ucar.edu/wrf/src/wps_files
+        curl -fL --retry 3 -sS "$BASE/geog_low_res_mandatory.tar.gz" -o geog.tar.gz
+        mkdir -p geog && tar xzf geog.tar.gz -C geog --strip-components=1 && rm geog.tar.gz
+        for t in topo_gmted2010_30s modis_landuse_20class_30s_with_lakes; do
+          curl -fL --retry 3 -sS "$BASE/$t.tar.bz2" -o add.tar.bz2
+          tar xjf add.tar.bz2 -C geog && rm add.tar.bz2
+        done
+        du -sh geog
+
+    - name: Save GEOG cache
+      if: steps.geo.outputs.cache-hit != 'true' && steps.geog.outputs.cache-hit != 'true'
+      continue-on-error: true   # parallel legs race for the same key; one wins
+      uses: actions/cache/save@v4
+      with:
+        path: geog/
+        key: wps-geog-lowres-plus-30s-v1
+
+    - name: Run forecast (${{ inputs.region }} / ${{ inputs.model }} / ${{ inputs.target_date }})
+      shell: bash
+      env:
+        IMAGE: ${{ inputs.image }}
+        TARGET_DATE: ${{ inputs.target_date }}
+      run: |
+        echo "${{ inputs.region }}: soaring date $TARGET_DATE (auto-cycle)"
+        EXTRA=()
+        [ -d geog ] && EXTRA+=(-v "$PWD/geog:/mnt/geog:ro")
+        # RRFS NOMADS root (forecast-rrfs.yml env); the image honours the same var.
+        [ -n "${RASP_RRFS_ROOT:-}" ] && EXTRA+=(-e "RASP_RRFS_ROOT=$RASP_RRFS_ROOT")
+        # geo_em/ is mounted rw: a cached grid is copied into the WPS dir (the
+        # pipeline then skips geogrid); on a miss the pipeline runs geogrid and
+        # the fresh grids are copied back out for the cache save below.
+        docker run --rm \
+          "${EXTRA[@]}" \
+          -v "$PWD/geo_em:/mnt/geo_em:rw" \
+          -v "$PWD/output:/mnt/output:rw" \
+          -v "$PWD/job/domain.yaml:/opt/rasp/domain.yaml:ro" \
+          -v "$PWD/job/sites.csv:/opt/rasp/sites.csv:ro" \
+          --entrypoint bash \
+          "$IMAGE" -c "
+            cp /mnt/geo_em/geo_em.d0*.nc /opt/rasp/wps/ 2>/dev/null || true
+            python3 -m rasp.pipeline domain.yaml \
+              --sites sites.csv \
+              --output-dir /mnt/output \
+              --num-procs 4 \
+              --target-date $TARGET_DATE; EC=\$?
+            if [ ! -f /mnt/geo_em/geo_em.d01.nc ] && [ -f /opt/rasp/wps/geo_em.d01.nc ]; then
+              cp /opt/rasp/wps/geo_em.d0*.nc /mnt/geo_em/ && echo 'geo_em: copied fresh geogrid output out for caching'
+            fi
+            exit \$EC
+          "
+
+    - name: Check forecast output
+      id: check
+      shell: bash
+      run: |
+        count=$(ls output/*.png 2>/dev/null | wc -l)
+        echo "count=$count" >> "$GITHUB_OUTPUT"
+        if [ "$count" -eq 0 ]; then
+          echo "::error::No windgrams rendered — model produced no usable output (likely bad/NaN model data)."
+          exit 1
+        fi
+        RENDERED=$(ls output/*.png | head -1 | xargs basename | cut -d_ -f1)
+        echo "rendered_date=$RENDERED" >> "$GITHUB_OUTPUT"
+        echo "Rendered $count windgrams (of ${{ steps.prep.outputs.sites }} sites) for $RENDERED."
+
+    - name: Save geo_em cache
+      if: always() && steps.geo.outputs.cache-hit != 'true' && hashFiles('geo_em/geo_em.d02.nc') != ''
+      continue-on-error: true   # day-0/day-1 legs race for the same key; one wins
+      uses: actions/cache/save@v4
+      with:
+        path: geo_em/
+        key: ${{ steps.prep.outputs.geo_key }}
+
+    # Small (~2 MB) diagnostic copy of the tile's grids, e.g. to check that
+    # neighbouring tiles' XLAT_M/XLONG_M agree on the shared lattice.
+    - name: Upload geo_em (diagnostic)
+      if: always() && hashFiles('geo_em/geo_em.d02.nc') != ''
+      continue-on-error: true
+      uses: actions/upload-artifact@v4
+      with:
+        name: geo-em-${{ inputs.model }}-${{ inputs.region }}-${{ inputs.target_date }}
+        path: geo_em/geo_em.d0*.nc
+        retention-days: 3

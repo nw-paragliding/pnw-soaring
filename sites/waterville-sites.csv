@@ -1,0 +1,8 @@
+# waterville region sites, domains/waterville.yaml (Waterville Plateau, Mansfield, Coulee City (Chelan XC country))
+# Every raspnw-v2 (wxtofly) site at least 10 km inside this tile's 1.33 km nest
+# edge, assigned to the tile where it sits deepest (airports/METAR points and
+# towns included). '# edge' marks sites only 10-15 km inside the nest edge.
+# name lat lon
+# Eastern
+Farmer             47.61       -119.82
+Mansfield          47.82       -119.65

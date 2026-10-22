@@ -1,17 +1,25 @@
 name: Deploy forecast to Pages
 description: >-
-  Stage the rendered windgrams for a model into the gh-pages branch and push,
-  retrying with a rebase when concurrent forecast workflows race on the branch.
+  Publish one forecast run's windgrams (every region and day of one model) to
+  the gh-pages branch in a single commit, retrying with a rebase when concurrent
+  forecast workflows race on the branch. Called once per workflow run by the
+  `publish` job, after the forecast matrix.
 
 inputs:
   model:
-    description: Model slug, used as the forecasts/<date>/<model> subdir (e.g. nam, hrrr)
+    description: Model slug (nam, rrfs, hrrr)
     required: true
-  update_latest:
-    description: Also copy this day's windgrams to forecasts/latest/<model> (default true).
-      Multi-day runs set this true only for the nearest day so /latest stays "today".
+  artifacts_dir:
+    description: >-
+      Directory holding the downloaded windgram artifacts, one subdirectory per
+      matrix leg named <model>-<region>-day<N> (each with that leg's PNGs).
+    required: true
+  latest_day:
+    description: >-
+      Which day's windgrams also go to forecasts/latest/<model>/<region>
+      (default 0: /latest stays "today"; the day picker reads the date dirs).
     required: false
-    default: "true"
+    default: "0"
 
 runs:
   using: composite
@@ -20,10 +28,20 @@ runs:
       shell: bash
       env:
         MODEL: ${{ inputs.model }}
-        UPDATE_LATEST: ${{ inputs.update_latest }}
+        ARTS: ${{ inputs.artifacts_dir }}
+        LATEST_DAY: ${{ inputs.latest_day }}
       run: |
-        # Determine date from output filenames
-        DATE=$(ls output/*.png | head -1 | xargs basename | cut -d_ -f1)
+        # Layout (region level added under the existing date/model dirs):
+        #   forecasts/<date>/<model>/metadata.json             (day picker probe)
+        #   forecasts/<date>/<model>/<region>/<Site>_windgram.png + metadata.json
+        #   forecasts/latest/<model>/metadata.json              (toggle freshness)
+        #   forecasts/latest/<model>/<region>/<Site>_windgram.png + metadata.json
+        shopt -s nullglob
+        LEGS=("$ARTS"/"$MODEL"-*-day*)
+        if [ ${#LEGS[@]} -eq 0 ]; then
+          echo "::warning::No $MODEL windgram artifacts to publish (every leg failed or was skipped)."
+          exit 0
+        fi
 
         # Clone gh-pages (orphan fallback for first-ever deploy)
         git fetch origin gh-pages || true
@@ -32,25 +50,49 @@ runs:
           cd pages && git checkout --orphan gh-pages && cd ..
         }
 
-        # Stage forecast files
-        mkdir -p "pages/forecasts/${DATE}/${MODEL}"
-        for f in output/*.png; do
-          NEWNAME=$(basename "$f" | sed 's/^[0-9-]*_//')
-          cp "$f" "pages/forecasts/${DATE}/${MODEL}/${NEWNAME}"
+        GEN=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+        DATES=""; LATEST_DATES=""   # space-separated unique dates touched
+        SUMMARY=""
+        for leg in "${LEGS[@]}"; do
+          name=$(basename "$leg")                 # <model>-<region>-day<N>
+          rest=${name#"$MODEL"-}; REGION=${rest%-day*}; DAY=${rest##*-day}
+          PNGS=("$leg"/*.png)
+          [ ${#PNGS[@]} -gt 0 ] || { echo "::warning::$name has no PNGs; skipping"; continue; }
+          DATE=$(basename "${PNGS[0]}" | cut -d_ -f1)
+          DEST="pages/forecasts/${DATE}/${MODEL}/${REGION}"
+          rm -rf "$DEST"; mkdir -p "$DEST"
+          for f in "${PNGS[@]}"; do
+            cp "$f" "$DEST/$(basename "$f" | sed 's/^[0-9-]*_//')"
+          done
+          echo "{\"model\":\"${MODEL}\",\"region\":\"${REGION}\",\"date\":\"${DATE}\",\"generated\":\"${GEN}\",\"windgrams\":${#PNGS[@]}}" > "$DEST/metadata.json"
+          case " $DATES " in *" $DATE "*) ;; *) DATES="$DATES $DATE" ;; esac
+          if [ "$DAY" = "$LATEST_DAY" ]; then
+            L="pages/forecasts/latest/${MODEL}/${REGION}"
+            rm -rf "$L"; mkdir -p "$L"; cp "$DEST/"* "$L/"
+            LATEST_DATES="$DATE"
+          fi
+          SUMMARY+="${REGION} day${DAY} -> ${DATE}: ${#PNGS[@]} windgrams"$'\n'
         done
-        echo "{\"model\":\"${MODEL}\",\"date\":\"${DATE}\",\"generated\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" \
-          > "pages/forecasts/${DATE}/${MODEL}/metadata.json"
+        printf '%s' "$SUMMARY"
 
-        # Update latest (only the nearest day in a multi-day run)
-        if [ "$UPDATE_LATEST" = "true" ]; then
-          rm -rf "pages/forecasts/latest/${MODEL}"
-          mkdir -p "pages/forecasts/latest/${MODEL}"
-          cp "pages/forecasts/${DATE}/${MODEL}/"* "pages/forecasts/latest/${MODEL}/"
+        # Model-level metadata.json per date dir (what the site's day picker
+        # probes) and for latest (what the model toggle's "Nh ago" reads). The
+        # pre-region flat PNGs at those levels are removed as they are superseded.
+        for DATE in $DATES; do
+          D="pages/forecasts/${DATE}/${MODEL}"
+          rm -f "$D"/*.png
+          echo "{\"model\":\"${MODEL}\",\"date\":\"${DATE}\",\"generated\":\"${GEN}\"}" > "$D/metadata.json"
+        done
+        if [ -n "$LATEST_DATES" ]; then
+          D="pages/forecasts/latest/${MODEL}"
+          rm -f "$D"/*.png
+          echo "{\"model\":\"${MODEL}\",\"date\":\"${LATEST_DATES}\",\"generated\":\"${GEN}\"}" > "$D/metadata.json"
         fi
 
-        # Generate sites.json and refresh frontend
-        python3 site/generate-sites-json.py sites/issaquah-sites.csv > pages/sites.json
-        cp site/index.html pages/index.html
+        # The frontend (index.html, sites.json, v2/) is NOT touched here: it is
+        # deployed only by deploy-site.yml on push to main. Copying it from the
+        # forecast run's checkout let a run that started before a frontend merge
+        # overwrite the new index.html with the old one (2026-10-22 05:06Z).
 
         # Cleanup old forecasts (>7 days)
         CUTOFF=$(date -d '7 days ago' +%Y-%m-%d 2>/dev/null || date -v-7d +%Y-%m-%d 2>/dev/null || echo "")
@@ -70,7 +112,7 @@ runs:
         git diff --cached --quiet && echo "No changes" && exit 0
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
-        git commit -m "Update ${MODEL} forecast for ${DATE}"
+        git commit -q -m "Update ${MODEL} forecast:${DATES} (${#LEGS[@]} region-days)"
 
         # Push with retry: other forecast workflows push to gh-pages
         # concurrently. On rejection, rebase our commit onto the latest

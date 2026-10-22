@@ -1,0 +1,16 @@
+# methow region sites, domains/methow.yaml (Methow valley, Mazama, Washington Pass, Manning Park)
+# Every raspnw-v2 (wxtofly) site at least 10 km inside this tile's 1.33 km nest
+# edge, assigned to the tile where it sits deepest (airports/METAR points and
+# towns included). '# edge' marks sites only 10-15 km inside the nest edge.
+# name lat lon
+# Fraser Valley
+ManningPark        49.06369    -120.90952
+# North Cascades
+Boston_Peak        48.49568    -121.0365
+Bowen              48.4675151  -120.105028
+Eldorado_Peak      48.53763    -121.13428
+Goat_Peak          48.634      -120.403
+LibertyBell        48.515695   -120.656376
+Mazama             48.59       -120.4
+Silver_Star        48.549      -120.587
+Washington_Pass    48.501      -120.656

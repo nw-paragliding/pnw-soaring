@@ -4,7 +4,8 @@ on:
   # Fired by the Cloudflare trigger Worker (cloudflare-trigger/), which carries
   # the target cycle in client_payload.cycle. repository_dispatch starts within
   # seconds — unlike GitHub's throttled `schedule` events, which were running
-  # these forecasts ~5h late. The schedule lives in the Worker now.
+  # these forecasts ~5h late. The schedule lives in the Worker now. One dispatch
+  # starts every region tile.
   repository_dispatch:
     types: [run-hrrr]
   workflow_dispatch:
@@ -12,31 +13,43 @@ on:
       target_date:
         description: 'Soaring date YYYY-MM-DD to render (blank = today UTC)'
         required: false
+      regions:
+        description: 'Region tiles to run, JSON list (blank = all seven)'
+        required: false
 
 env:
+  # v2 soaring-cube upload to R2 is OFF (R2 cost): the pipeline still writes
+  # output/soaring.zarr, it just isn't uploaded. 'true' re-enables it for the
+  # issaquah tile; r2-prune.yml keeps ageing out the existing objects.
+  UPLOAD_CUBES: 'false'
   IMAGE: ghcr.io/nw-paragliding/windgram:latest
 
 jobs:
   forecast:
-    # Single-day run: each dispatch renders ONE soaring day (day 0 = today UTC)
-    # on the cycle its fire time aligns to (Cloudflare crons → 00z/06z/12z).
-    # Today+tomorrow coverage comes from the *dispatch schedule*, not a parallel
-    # day-1 leg: the morning (12z) and pre-dawn (06z) runs render today; the
-    # evening (00z, 01:15z ≈ 6pm PDT) run's "today UTC" is tomorrow-PDT, so it's
-    # the night-before forecast. Dropping the old 2-day matrix removes the day-1
-    # leg, which for any cycle reachable within 48h ran at *deep* forecast hours
-    # (fhr 27–45) — the source of the garbage / wrong-window next-day forecasts.
-    # NAM (84h reach) still carries the longer multi-day outlook.
+    # Single-day run per region tile (7 jobs): each dispatch renders ONE soaring
+    # day (day 0 = today UTC) on the cycle its fire time aligns to (Cloudflare
+    # crons → 00z/06z/12z). Today+tomorrow coverage comes from the *dispatch
+    # schedule*, not a parallel day-1 leg: the morning (12z) and pre-dawn (06z)
+    # runs render today; the evening (00z, 01:15z ≈ 6pm PDT) run's "today UTC" is
+    # tomorrow-PDT, so it's the night-before forecast. Dropping the old 2-day
+    # matrix removes the day-1 leg, which for any cycle reachable within 48h ran
+    # at *deep* forecast hours (fhr 27–45) — the source of the garbage /
+    # wrong-window next-day forecasts. NAM (84h reach) still carries the longer
+    # multi-day outlook.
     #
-    # Since 2026-10-22 HRRR feeds the same DrJack 4 km → 1.33 km chain as the
-    # NAM/RRFS products (domains/cascades-hrrr.yaml; "HRRR (beta)" on the site)
-    # instead of the 3 km → 1 km nest, so it shares the NAM geo_em asset/cache
-    # and runs in the NAM product's auto --target-date mode.
+    # HRRR feeds the same DrJack 4 km → 1.33 km chain as the NAM/RRFS products:
+    # the job's domain config is domains/<region>.yaml with `model: hrrr` and the
+    # DrJack-chain override keys of domains/cascades-hrrr.yaml appended at run
+    # time (scripts/derive-domain.sh), so it shares the tile's geo_em cache and
+    # runs in the NAM product's auto --target-date mode. "HRRR (beta)" on the site.
+    strategy:
+      fail-fast: false
+      matrix:
+        region: ${{ fromJson(inputs.regions || '["issaquah","wenatchee","skykomish","chelan","baker","methow","waterville"]') }}
     runs-on: ubuntu-24.04-arm
-    # Budget: up to 4h sleep (from --not-before compensation) + ~15 min runtime
     timeout-minutes: 360
     permissions:
-      contents: write
+      contents: read
       packages: read
     steps:
       - uses: actions/checkout@v4
@@ -81,78 +94,21 @@ jobs:
             echo "reachable=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Free up disk space
+      - name: Run forecast
+        id: run
         if: steps.reach.outputs.reachable == 'true'
-        run: |
-          echo "Disk before cleanup:"; df -h /
-          sudo rm -rf \
-            /usr/local/lib/android \
-            /usr/share/dotnet \
-            /opt/ghc /usr/local/.ghcup \
-            /opt/hostedtoolcache \
-            /usr/local/share/boost 2>/dev/null || true
-          docker system prune -af 2>/dev/null || true
-          echo "Disk after cleanup:"; df -h /
-
-      - name: Restore geo_em cache
-        id: cache
-        if: steps.reach.outputs.reachable == 'true'
-        uses: actions/cache/restore@v4
+        uses: ./.github/actions/run-forecast
         with:
-          path: geo_em/
-          # Same grid as the NAM/RRFS product (domains/cascades.yaml geometry),
-          # so the NAM geo_em asset and cache key are shared. The old 1 km nest
-          # asset (geo_em_hrrr-1km.tar.gz, key geo-em-cascades-hrrr-1km-v2)
-          # stays on the release for rollback.
-          key: geo-em-cascades-nam-v2
-
-      - name: Download geo_em from release (cache miss fallback)
-        if: steps.reach.outputs.reachable == 'true' && steps.cache.outputs.cache-hit != 'true'
-        run: |
-          mkdir -p geo_em
-          gh release download geo-em-v1 --pattern 'geo_em_nam-v2.tar.gz' --dir .
-          tar xzf geo_em_nam-v2.tar.gz -C geo_em
-          rm geo_em_nam-v2.tar.gz
-          echo "Downloaded geo_em from release:"
-          ls -lh geo_em/
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - uses: docker/login-action@v3
-        if: steps.reach.outputs.reachable == 'true'
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Pull image
-        if: steps.reach.outputs.reachable == 'true'
-        run: docker pull $IMAGE
-
-      - name: Run forecast (day 0)
-        if: steps.reach.outputs.reachable == 'true'
-        run: |
-          mkdir -p output
-          echo "Day 0 → soaring date $TARGET_DATE (auto-cycle, 00/06/12/18z only; newest ${CYC}z, 48h reach)"
-
-          docker run --rm \
-            -v ${{ github.workspace }}/geo_em:/mnt/geo_em:ro \
-            -v ${{ github.workspace }}/output:/mnt/output:rw \
-            -v ${{ github.workspace }}/domains/cascades-hrrr.yaml:/opt/rasp/domain.yaml:ro \
-            -v ${{ github.workspace }}/sites/issaquah-sites.csv:/opt/rasp/sites.csv:ro \
-            --entrypoint bash \
-            $IMAGE -c "
-              cp /mnt/geo_em/geo_em.d0*.nc /opt/rasp/wps/ 2>/dev/null || true
-              python3 -m rasp.pipeline domain.yaml \
-                --sites sites.csv \
-                --output-dir /mnt/output \
-                --num-procs 4 \
-                --target-date $TARGET_DATE
-            "
+          model: hrrr
+          region: ${{ matrix.region }}
+          target_date: ${{ env.TARGET_DATE }}
+          image: ${{ env.IMAGE }}
 
       - name: Guard — did HRRR actually reach this day?
         id: guard
         if: steps.reach.outputs.reachable == 'true'
+        env:
+          RENDERED: ${{ steps.run.outputs.rendered_date }}
         run: |
           # The renderer dates each windgram to the valid date of its first
           # (8am-local) timestep. If HRRR couldn't reach $TARGET_DATE (next-day
@@ -160,65 +116,54 @@ jobs:
           # falls back to near-term data dated to *today* — so the rendered date
           # won't match what we asked for. Detect that and skip the deploy/upload
           # for this day rather than publishing today's data under tomorrow.
-          count=$(ls output/*.png 2>/dev/null | wc -l)
-          if [ "$count" -eq 0 ]; then
-            echo "::error::No windgrams rendered — model produced no usable output (likely bad/NaN model data)."
-            exit 1
-          fi
-          RENDERED=$(ls output/*.png | head -1 | xargs basename | cut -d_ -f1)
+          # (Zero windgrams already failed the run step.)
           if [ "$RENDERED" != "$TARGET_DATE" ]; then
             echo "::notice::HRRR did not reach $TARGET_DATE (rendered $RENDERED — beyond the 48h horizon). Skipping deploy for this day."
             echo "deploy=false" >> "$GITHUB_OUTPUT"
           else
-            echo "Rendered $count windgrams for $RENDERED."
+            echo "Rendered ${{ steps.run.outputs.count }} windgrams for $RENDERED."
             echo "deploy=true" >> "$GITHUB_OUTPUT"
           fi
-
-      - name: Save geo_em cache
-        if: steps.reach.outputs.reachable == 'true' && hashFiles('geo_em/geo_em.d01.nc') != ''
-        uses: actions/cache/save@v4
-        with:
-          path: geo_em/
-          key: geo-em-cascades-nam-v2
 
       - name: Upload windgrams
         if: steps.guard.outputs.deploy == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: hrrr-windgrams-day0
+          name: hrrr-${{ matrix.region }}-day0
           path: output/*.png
           retention-days: 7
 
-      - name: Deploy to Pages
-        if: steps.guard.outputs.deploy == 'true'
-        uses: ./.github/actions/deploy-forecast
-        with:
-          model: hrrr
-          # Each dispatch's single day is the freshest forecast, so it updates
-          # /latest. The day-picker UI also surfaces each day by its date dir.
-          update_latest: true
-
+      # Only the home tile writes the v2 soaring cube; publishing is main-only.
       - name: Upload soaring cube to R2 (v2)
-        if: steps.guard.outputs.deploy == 'true'
+        if: steps.guard.outputs.deploy == 'true' && env.UPLOAD_CUBES == 'true' && matrix.region == 'issaquah' && github.ref == 'refs/heads/main'
+        uses: ./.github/actions/upload-cube
         env:
           R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          R2_BUCKET: nw-paragliding-forecasts
-          MODEL: hrrr
-        run: |
-          # The pipeline writes output/soaring.zarr on the 24.04 image; older
-          # images don't. Both this and missing R2 secrets skip cleanly.
-          if [ ! -d output/soaring.zarr ]; then echo "No cube produced — skipping R2 upload."; exit 0; fi
-          if [ -z "$R2_ACCOUNT_ID" ] || [ -z "$R2_ACCESS_KEY_ID" ] || [ -z "$R2_SECRET_ACCESS_KEY" ]; then echo "R2 secrets unset/incomplete — skipping cube upload."; exit 0; fi
-          curl -fsSL https://rclone.org/install.sh | sudo bash >/dev/null 2>&1 || sudo apt-get install -y -q rclone
-          export RCLONE_S3_PROVIDER=Cloudflare \
-                 RCLONE_S3_ENDPOINT="https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com" \
-                 RCLONE_S3_ACCESS_KEY_ID="$R2_ACCESS_KEY_ID" \
-                 RCLONE_S3_SECRET_ACCESS_KEY="$R2_SECRET_ACCESS_KEY"
-          DATE=$(ls output/*.png 2>/dev/null | head -1 | xargs basename | cut -d_ -f1)
-          rclone sync output/soaring.zarr ":s3:${R2_BUCKET}/${MODEL}/${DATE}/soaring.zarr" --s3-no-check-bucket
-          if [ "0" = "0" ]; then
-            rclone sync output/soaring.zarr ":s3:${R2_BUCKET}/${MODEL}/latest/soaring.zarr" --s3-no-check-bucket
-          fi
-          echo "Uploaded cube → R2 ${R2_BUCKET}/${MODEL}/${DATE}$([ "0" = "0" ] && echo ' (+latest)')"
+        with:
+          model: hrrr
+          day: 0
+
+  publish:
+    # One gh-pages commit for every region (instead of one per job). Runs even
+    # when some legs failed or were skipped (out of reach), so one bad region
+    # never blocks the rest. Each dispatch's single day is the freshest
+    # forecast, so it updates /latest (latest_day 0).
+    needs: forecast
+    if: always() && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: hrrr-*
+          path: windgrams
+      - name: Deploy to Pages
+        uses: ./.github/actions/deploy-forecast
+        with:
+          model: hrrr
+          artifacts_dir: windgrams
+          latest_day: "0"
