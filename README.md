@@ -99,10 +99,10 @@ published: 4+ GB and 10+ minute Pages builds, for history nobody needs.
 retrying if a publish landed in between). The live site does not change; only the
 history goes.
 
-Every job that pushes to `gh-pages` (the three forecast `publish` jobs, the lab
-A/B `publish`, `deploy-site.yml` and the squash) shares
-`concurrency: gh-pages-writer`, so GitHub never runs the squash while a publisher
-is between its fetch and its rebase-retry push.
+A publisher that fetched `gh-pages` before a squash and pushes after it is
+rejected and retries; every publish retry loop (`deploy-forecast`, `deploy-site.yml`,
+the lab A/B publish) rebases with `git rebase --onto origin/gh-pages HEAD~1`, so it
+replays only its own commit onto the new root and never brings history back.
 
 GitHub reclaims the space only after its own garbage collection of the now
 unreachable objects, which can take days (GitHub Support can expedite it), so the

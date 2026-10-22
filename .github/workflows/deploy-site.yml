@@ -17,11 +17,6 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    # Serialized with every other gh-pages writer (incl. squash-gh-pages.yml),
-    # so the branch is never rewritten between this job's fetch and push.
-    concurrency:
-      group: gh-pages-writer
-      cancel-in-progress: false
     permissions:
       contents: write
     steps:
@@ -62,7 +57,10 @@ jobs:
             fi
             echo "Push rejected (attempt $attempt); rebasing on latest gh-pages..."
             git fetch origin gh-pages
-            git rebase origin/gh-pages || { git rebase --abort; exit 1; }
+            # Replay ONLY this job's own commit (--onto ... HEAD~1): squash-gh-pages.yml
+            # may have rewritten gh-pages as a new root since our fetch, and a plain
+            # rebase onto an unrelated root would replay the whole history.
+            git rebase --onto origin/gh-pages HEAD~1 || { git rebase --abort; exit 1; }
             sleep $((RANDOM % 5 + 1))
           done
           echo "Failed to push after 5 attempts" >&2

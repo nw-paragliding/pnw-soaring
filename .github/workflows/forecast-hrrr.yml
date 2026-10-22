@@ -153,11 +153,6 @@ jobs:
     needs: forecast
     if: always() && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
-    # Serialized with every other gh-pages writer (incl. squash-gh-pages.yml),
-    # so the branch is never rewritten between this job's fetch and push.
-    concurrency:
-      group: gh-pages-writer
-      cancel-in-progress: false
     permissions:
       contents: write
     steps:

@@ -14,9 +14,13 @@ name: Squash gh-pages history
 #   * The push is --force-with-lease against the exact tip it squashed, so a
 #     publish that lands in between is never discarded: the lease fails, the
 #     job re-fetches and squashes the new tip instead (up to 3 attempts).
-#   * Every job that pushes to gh-pages shares `concurrency: gh-pages-writer`,
-#     so GitHub never runs this while a publisher sits between its fetch and its
-#     push (whose rebase-retry onto an unrelated root would replay all history).
+#   * A publisher that fetched gh-pages before this squash and pushes after it
+#     is rejected (non-fast-forward) and its retry loop replays only its own
+#     commit onto the new root (`git rebase --onto origin/gh-pages HEAD~1`, in
+#     deploy-forecast, deploy-site and ab-pairs), so history never comes back.
+#     The publishers deliberately have NO shared concurrency group: a group
+#     keeps only one pending job and cancels the older one, which could drop a
+#     forecast publish. The group below only stops two squashes overlapping.
 #
 # GitHub frees the disk space only after its own garbage collection (days;
 # GitHub Support can expedite), so the repo size figure lags.
@@ -37,7 +41,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     concurrency:
-      group: gh-pages-writer
+      group: squash-gh-pages
       cancel-in-progress: false
     steps:
       # Shallow checkout of main: only for a git dir with an authenticated origin.
