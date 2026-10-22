@@ -53,7 +53,7 @@ edited YAML, new windgram image) the job downloads the WPS GEOG data and runs ge
 
 **Jobs per run:** NAM and RRFS run every tile for day 0 and day 1 = 14 arm jobs
 each; HRRR runs day 0 only = 7 jobs. Each run then commits once to gh-pages
-from a single `publish` job. RRFS's NOMADS readiness polling runs in two small
+from a single `publish` job. RRFS's readiness polling runs in two small
 `wait-day0` / `wait-day1` jobs, so the arm runners start only once the GRIB is
 out. The free tier allows 20 concurrent jobs, so when NAM and RRFS fire
 together some jobs queue briefly.
@@ -74,11 +74,29 @@ The crons live in [`cloudflare-trigger/wrangler.toml`](cloudflare-trigger/wrangl
 | Morning RRFS | RRFS → WRF 4 km → 1.33 km | 14:00 (NAM cron) | 7:00am | Same as NAM; waits for RRFS GRIB (~14:50z) |
 
 RRFS has no cron of its own (Cloudflare's free tier allows 5): the two NAM ticks
-dispatch both `run-nam` and `run-rrfs`, and `forecast-rrfs.yml` polls NOMADS
-until the RRFS files for the cycle are published (~40 min after NAM's) before it
-runs. NAM is retired by NCEP on 2026-11-03 12Z; RRFS, which drives the identical
+dispatch both `run-nam` and `run-rrfs`, and `forecast-rrfs.yml` polls the RRFS
+data root until the files for the cycle are published (~40 min after NAM's) before
+it runs. NAM is retired by NCEP on 2026-11-03 12Z; RRFS, which drives the identical
 WRF chain, replaces it. Until then both run and the site offers NAM (default),
 RRFS and HRRR. Removing NAM is a follow-up change.
+
+### Where the GRIB comes from
+
+HRRR and RRFS are read from NOAA's Open Data mirrors on AWS, not from NOMADS.
+With ~35 jobs per cycle, NOMADS throttled the runners (HTTP 302s), and one job
+died on it. The mirrors use the same directory layout and `.idx` files as NOMADS,
+answer byte-range requests and do not throttle. They run ~1–4 min behind NOMADS
+(one HRRR file was 10 min behind in the sample measured on 2026-10-22).
+
+| Model | Default root | Repo variable | Back to NOMADS |
+|-------|--------------|---------------|----------------|
+| HRRR | `https://noaa-hrrr-bdp-pds.s3.amazonaws.com` | `RASP_HRRR_ROOT` | `https://nomads.ncep.noaa.gov/pub/data/nccf/com/hrrr/prod` |
+| RRFS | `https://noaa-rrfs-ops-pds.s3.amazonaws.com` | `RASP_RRFS_ROOT` | `https://nomads.ncep.noaa.gov/pub/data/nccf/com/rrfs/v1.0` (`…/rrfs/prod` after 2026-11-03 12Z) |
+
+Set the variable under Settings → Secrets and variables → Actions → Variables.
+No code change is needed. The RRFS wait gate polls the same root. HRRR needs
+windgram >= 0.7.2 for its root to take effect; older images always read HRRR
+from NOMADS. NAM stays on NOMADS (it retires 2026-11-03).
 
 The Cloudflare trigger is unchanged by the region tiles: one dispatch starts the
 whole region × day matrix of a workflow.

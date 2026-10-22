@@ -29,13 +29,16 @@ env:
   # issaquah tile; r2-prune.yml keeps ageing out the existing objects.
   UPLOAD_CUBES: 'false'
   IMAGE: ghcr.io/nw-paragliding/windgram:latest   # needs >= 0.6.0 (adds the rrfs model)
-  # NOMADS root for RRFS GRIB. NCEP serves the parallel-production feed under
-  # .../com/rrfs/v1.0 until the 2026-11-03 12Z switch, when it moves to
-  # .../com/rrfs/prod. Set the repository variable RASP_RRFS_ROOT (Settings →
-  # Secrets and variables → Actions → Variables) to switch without a code change;
-  # the wait gate polls it and the image honours the same env var (passed into
-  # `docker run` by .github/actions/run-forecast).
-  RASP_RRFS_ROOT: ${{ vars.RASP_RRFS_ROOT || 'https://nomads.ncep.noaa.gov/pub/data/nccf/com/rrfs/v1.0' }}
+  # Data root for RRFS GRIB. Default: NOAA's Open Data mirror on AWS
+  # (noaa-rrfs-ops-pds, same rrfs.YYYYMMDD/HH/ layout and .idx files as NOMADS,
+  # ~1-4 min behind it, no throttling). NOMADS throttled the 14-job matrix
+  # (HTTP 302s). To go back to NOMADS, set the repository variable
+  # RASP_RRFS_ROOT (Settings → Secrets and variables → Actions → Variables),
+  # e.g. https://nomads.ncep.noaa.gov/pub/data/nccf/com/rrfs/v1.0 (parallel feed,
+  # until 2026-11-03 12Z) or .../com/rrfs/prod (after). The wait gate polls the
+  # same root and the image honours the same env var (passed into `docker run`
+  # by .github/actions/run-forecast).
+  RASP_RRFS_ROOT: ${{ vars.RASP_RRFS_ROOT || 'https://noaa-rrfs-ops-pds.s3.amazonaws.com' }}
 
 # Seven WA region tiles x a two-day forecast = 14 arm jobs (day 0 = today UTC,
 # day 1 = tomorrow UTC). Both the evening (00z) and morning (12z) dispatches fire

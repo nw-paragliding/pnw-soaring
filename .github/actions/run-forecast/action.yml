@@ -130,8 +130,10 @@ runs:
         echo "${{ inputs.region }}: soaring date $TARGET_DATE (auto-cycle)"
         EXTRA=()
         [ -d geog ] && EXTRA+=(-v "$PWD/geog:/mnt/geog:ro")
-        # RRFS NOMADS root (forecast-rrfs.yml env); the image honours the same var.
+        # GRIB data roots (forecast-rrfs/-hrrr.yml env: AWS mirror or NOMADS);
+        # the image honours the same vars.
         [ -n "${RASP_RRFS_ROOT:-}" ] && EXTRA+=(-e "RASP_RRFS_ROOT=$RASP_RRFS_ROOT")
+        [ -n "${RASP_HRRR_ROOT:-}" ] && EXTRA+=(-e "RASP_HRRR_ROOT=$RASP_HRRR_ROOT")
         # geo_em/ is mounted rw: a cached grid is copied into the WPS dir (the
         # pipeline then skips geogrid); on a miss the pipeline runs geogrid and
         # the fresh grids are copied back out for the cache save below.
