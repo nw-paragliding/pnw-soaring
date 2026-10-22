@@ -70,7 +70,13 @@ export function lapseRate(tcLo: number, tcHi: number, ghLoFt: number, ghHiFt: nu
   return (tcHi - tcLo) / dz;
 }
 
-/** Sundqvist-style cloud fraction from RH (%). RHcrit = 75. */
-export function cloudFraction(rhPct: number): number {
-  return Math.min(Math.max((rhPct - 75.0) / 25.0, 0), 1);
+/**
+ * TJ Olney's moisture-hatch cutoff: `rhcut` in wxtofly's windgrams.ncl, 94 in
+ * production. Mirrors RH_HATCH_PCT in rasp/windgram.py — keep the two in sync.
+ */
+export const RH_HATCH_PCT = 94.0;
+
+/** True where the grid-cell RH exceeds the cutoff: near-saturated air, stratus likely. */
+export function moistureHatch(rhPct: number): boolean {
+  return rhPct > RH_HATCH_PCT;
 }

@@ -13,14 +13,15 @@ __export(math_exports, {
   MS_TO_FPM: () => MS_TO_FPM,
   M_TO_FT: () => M_TO_FT,
   RHO_CP: () => RHO_CP,
+  RH_HATCH_PCT: () => RH_HATCH_PCT,
   VHF_COEF: () => VHF_COEF,
   calcHcritFt: () => calcHcritFt,
   calcWstar: () => calcWstar,
-  cloudFraction: () => cloudFraction,
   drjackHeightFrac: () => drjackHeightFrac,
   lapseRate: () => lapseRate,
   lclAglFt: () => lclAglFt,
-  lclFt: () => lclFt
+  lclFt: () => lclFt,
+  moistureHatch: () => moistureHatch
 });
 var MS_TO_FPM = 196.85;
 var HCRIT_THRESHOLD = 225;
@@ -61,8 +62,9 @@ function lapseRate(tcLo, tcHi, ghLoFt, ghHiFt) {
   const dz = Math.max((ghHiFt - ghLoFt) / 1e3, 0.01);
   return (tcHi - tcLo) / dz;
 }
-function cloudFraction(rhPct) {
-  return Math.min(Math.max((rhPct - 75) / 25, 0), 1);
+var RH_HATCH_PCT = 94;
+function moistureHatch(rhPct) {
+  return rhPct > RH_HATCH_PCT;
 }
 
 // src/contour.ts
@@ -107,6 +109,12 @@ function makeFineField(rowsByT, y, T, factor = 4) {
     rows.push(out);
   }
   return { rows, nFine, T, y };
+}
+function makeRawField(rowsByT, y, T) {
+  if (T < 2) {
+    return { rows: rowsByT.map((r) => [r[0], r[0]]), nFine: 2, T: Math.max(T, 1), y };
+  }
+  return { rows: rowsByT.map((r) => r.slice(0, T)), nFine: T, T, y };
 }
 function locateRow(yArr, z) {
   const n = yArr.length;
@@ -396,7 +404,7 @@ function renderWindgram(canvas, data, options = {}) {
   }
   const lapseField = makeFineField(lapseRows, midY, T);
   const tcfField = makeFineField(tcfRows, fullY, T);
-  const rhField = makeFineField(rhRows, fullY, T);
+  const rhField = makeRawField(rhRows, fullY, T);
   drawBackground(ctx, dpr, m, pw, ph, zB, zTop, T, lapseField, rhField);
   ctx.save();
   ctx.beginPath();
@@ -507,6 +515,10 @@ function renderWindgram(canvas, data, options = {}) {
     if (h === 0) h = 12;
     ctx.fillText(`${h}${ap}`, xT(t), H - 9);
   }
+  ctx.textAlign = "right";
+  ctx.font = "7px 'IBM Plex Mono',monospace";
+  ctx.fillText(`hatch: RH > ${RH_HATCH_PCT}%`, W - m.r, H - 20);
+  ctx.font = "10px 'IBM Plex Mono',monospace";
   ctx.font = "bold 12px 'IBM Plex Mono',monospace";
   ctx.textAlign = "center";
   for (let t = 0; t < T; t++) {
@@ -539,8 +551,8 @@ function drawBackground(ctx, dpr, m, pw, ph, zB, zTop, T, lapse, rhField) {
       } else {
         [r, g, b] = lapseColor(sampleField(lapse, t, z));
       }
-      const cf = z >= rhField.y[0] && z <= rhField.y[rhField.y.length - 1] ? cloudFraction(sampleField(rhField, t, z)) : 0;
-      if (cf >= 0.1 && hatchHit(ii, jj, cf)) {
+      const inRh = z >= rhField.y[0] && z <= rhField.y[rhField.y.length - 1];
+      if (inRh && moistureHatch(sampleField(rhField, t, z)) && hatchHit(ii, jj, dpr)) {
         r = r + 255 >> 1;
         g = g + 255 >> 1;
         b = b + 255 >> 1;
@@ -557,11 +569,9 @@ function drawBackground(ctx, dpr, m, pw, ph, zB, zTop, T, lapse, rhField) {
   ctx.putImageData(img, Math.round(m.l * dpr), Math.round(m.t * dpr));
   ctx.restore();
 }
-function hatchHit(x, y, cf) {
-  if (cf < 0.3) return x % 6 === 0 && y % 6 === 0;
-  if (cf < 0.5) return (x + y) % 7 === 0;
-  if (cf < 0.7) return (x + y) % 7 === 0 || (x - y + 7e3) % 7 === 0;
-  return (x + y) % 4 === 0 || (x - y + 8e3) % 4 === 0;
+function hatchHit(x, y, dpr) {
+  const s = Math.max(4, Math.round(6 * dpr));
+  return (x + y) % s === 0 || (x - y + 1048576) % s === 0;
 }
 function strokeSegs(ctx, segs, xT, yZ) {
   ctx.beginPath();

@@ -1,9 +1,10 @@
 /**
  * Contour helpers — the canvas analogue of matplotlib's contourf / contour as
- * used by windgram.py. The Python smooths every field along the *time* axis
- * with a cubic spline (scipy interp1d, 4× oversampling) before contouring; we
- * reproduce that and then either band-fill (contourf) or trace iso-lines
- * (contour) over the oversampled grid.
+ * used by windgram.py. The Python smooths the lapse-rate and temperature
+ * fields along the *time* axis with a cubic spline (scipy interp1d, 4×
+ * oversampling) before contouring; we reproduce that and then either band-fill
+ * (contourf) or trace iso-lines (contour) over the oversampled grid. The RH
+ * hatch is the exception: it is contoured on the raw hourly grid (makeRawField).
  */
 
 export interface FineField {
@@ -79,6 +80,19 @@ export function makeFineField(
     rows.push(out);
   }
   return { rows, nFine, T, y };
+}
+
+/**
+ * Raw (unsmoothed) FineField: one column per timestep, so sampleField's
+ * bilinear interpolation reproduces matplotlib contourf on the raw hourly
+ * grid. Used for the RH hatch, which windgram.py no longer time-smooths
+ * (cubic overshoot hatched hours that never crossed the cutoff).
+ */
+export function makeRawField(rowsByT: number[][], y: number[], T: number): FineField {
+  if (T < 2) {
+    return { rows: rowsByT.map((r) => [r[0], r[0]]), nFine: 2, T: Math.max(T, 1), y };
+  }
+  return { rows: rowsByT.map((r) => r.slice(0, T)), nFine: T, T, y };
 }
 
 /** Locate row bracket [k, k+1] and weight w for height z within field.y. */

@@ -3,7 +3,8 @@
  * render_windgram() (windgram.py), drawn on a **height (ft ASL)** vertical axis
  * instead of the Python pressure axis (the browser cube carries geopotential
  * height, not 3-D pressure). Everything else — lapse-rate filled background,
- * cloud hatching from RH, °F isotherms + 32 °F freezing line, speed-coloured
+ * moisture hatching where RH > 94 % (TJ's rhcut), °F isotherms + 32 °F
+ * freezing line, speed-coloured
  * wind barbs, paraglider ceiling markers at min(hcrit, LCL), LCL cloud glyphs,
  * w* climb labels — mirrors the Python drawing sequence and constants.
  */
@@ -13,10 +14,11 @@ import {
   calcHcritFt,
   lclFt as lclFtFn,
   lapseRate,
-  cloudFraction,
+  moistureHatch,
+  RH_HATCH_PCT,
   M_TO_FT,
 } from "./math.js";
-import { makeFineField, sampleField, isoSegments, type FineField } from "./contour.js";
+import { makeFineField, makeRawField, sampleField, isoSegments, type FineField } from "./contour.js";
 import { drawBarb } from "./barbs.js";
 
 // ── PNW Soaring palette — warm topo paper, evergreen ink, thermal-orange lift,
@@ -178,9 +180,10 @@ export function renderWindgram(
   }
   const lapseField = makeFineField(lapseRows, midY, T);
   const tcfField: FineField = makeFineField(tcfRows, fullY, T);
-  const rhField: FineField = makeFineField(rhRows, fullY, T);
+  // RH is NOT time-smoothed: windgram.py contours the hatch on the raw hourly grid.
+  const rhField: FineField = makeRawField(rhRows, fullY, T);
 
-  // --- background raster: lapse bands + cloud hatch (one device-pixel pass) ---
+  // --- background raster: lapse bands + moisture hatch (one device-pixel pass) ---
   drawBackground(ctx, dpr, m, pw, ph, zB, zTop, T, lapseField, rhField);
 
   // --- isotherms — topo-style contour lines in evergreen ink ---
@@ -310,6 +313,11 @@ export function renderWindgram(
     if (h === 0) h = 12;
     ctx.fillText(`${h}${ap}`, xT(t), H - 9);
   }
+  // Hatch legend, lower right — TJ's "rhcut 94%" box / windgram.py's label.
+  ctx.textAlign = "right";
+  ctx.font = "7px 'IBM Plex Mono',monospace";
+  ctx.fillText(`hatch: RH > ${RH_HATCH_PCT}%`, W - m.r, H - 20);
+  ctx.font = "10px 'IBM Plex Mono',monospace";
 
   // --- w* climb row — graded muted→amber→ember by thermal strength ---
   ctx.font = "bold 12px 'IBM Plex Mono',monospace";
@@ -325,7 +333,7 @@ export function renderWindgram(
   ctx.fillText("m/s", 3, m.t - 6);
 }
 
-// Device-pixel raster of the lapse-rate bands with graduated cloud hatching.
+// Device-pixel raster of the lapse-rate bands with TJ's RH > 94 % moisture hatch.
 function drawBackground(
   ctx: CanvasRenderingContext2D,
   dpr: number,
@@ -359,11 +367,9 @@ function drawBackground(
       } else {
         [r, g, b] = lapseColor(sampleField(lapse, t, z));
       }
-      // cloud hatch from RH
-      const cf = z >= rhField.y[0] && z <= rhField.y[rhField.y.length - 1]
-        ? cloudFraction(sampleField(rhField, t, z))
-        : 0;
-      if (cf >= 0.1 && hatchHit(ii, jj, cf)) {
+      // moisture hatch: RH above TJ's cutoff, sampled on the raw hourly grid
+      const inRh = z >= rhField.y[0] && z <= rhField.y[rhField.y.length - 1];
+      if (inRh && moistureHatch(sampleField(rhField, t, z)) && hatchHit(ii, jj, dpr)) {
         r = (r + 255) >> 1;
         g = (g + 255) >> 1;
         b = (b + 255) >> 1;
@@ -381,12 +387,13 @@ function drawBackground(
   ctx.restore();
 }
 
-// Graduated cross-hatch matching windgram.py's [".","//","x","xx"] bands.
-function hatchHit(x: number, y: number, cf: number): boolean {
-  if (cf < 0.3) return x % 6 === 0 && y % 6 === 0; // "." dots
-  if (cf < 0.5) return (x + y) % 7 === 0; // "/" single diagonal
-  if (cf < 0.7) return (x + y) % 7 === 0 || (x - y + 7000) % 7 === 0; // "x" cross
-  return (x + y) % 4 === 0 || (x - y + 8000) % 4 === 0; // "xx" dense cross
+// One fine white cross-hatch — windgram.py's matplotlib "xxx" (18 lines per
+// inch each way, ~6 px apart at 100 dpi), itself standing in for NCL fill
+// pattern 6 at scale 0.3 in windgrams.ncl. Spacing is in device pixels so the
+// mesh looks the same on HiDPI canvases.
+function hatchHit(x: number, y: number, dpr: number): boolean {
+  const s = Math.max(4, Math.round(6 * dpr));
+  return (x + y) % s === 0 || (x - y + 1048576) % s === 0;
 }
 
 function strokeSegs(
