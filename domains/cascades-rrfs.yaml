@@ -1,0 +1,45 @@
+# Cascades (PNW soaring region) — RRFS-driven.
+#
+# This is domains/cascades.yaml with `model: rrfs` and NOTHING else changed. The
+# geometry (center, dx, extent, nest ratio, e_vert) is intentionally identical
+# to the NAM domain so the same geo_em grids serve both: forecast-rrfs.yml
+# restores/downloads the NAM geo_em asset (geo_em_nam-v2.tar.gz, cache key
+# geo-em-cascades-nam-v2) rather than bootstrapping its own. If you ever change
+# the geometry here, it stops matching that asset — re-run bootstrap-geoem with
+# domain=rrfs and point the workflow at a new asset/cache key.
+#
+# RRFS (3 km) replaces NAM (12 km) as the boundary/initial condition source when
+# NCEP retires NAM on 2026-11-03; the WRF chain downstream (4 km -> 1.33 km,
+# DrJack physics) is unchanged.
+name: cascades
+model: rrfs
+
+center_lat: 47.6
+center_lon: -121.4
+
+# Finest resolution — system builds nest chain automatically
+# Match DrJack RASP PNW-WINDOW: RRFS 3km → WRF 4km → WRF 1.33km (2 WRF domains,
+# same chain as the NAM config so the two products are directly comparable).
+outer_dx_km: 4.0
+target_dx_km: 1.33
+
+# Physical extent at finest resolution (km)
+inner_extent_km: 150
+
+# Nesting ratio (default 3)
+nest_ratio: 3
+
+# Vertical levels — DrJack RASP uses 52 (vs WRF default 45)
+# More levels = better boundary layer resolution.
+e_vert: 52
+
+# Physics matched to DrJack RASP (raspnw-v2 / wxtofly.net) for consistency
+# with the established PNW soaring community calibration.
+physics:
+  mp_physics: 5         # Eta Ferrier (was Thompson 8)
+  ra_lw_physics: 1      # RRTM (was RRTMG 4)
+  ra_sw_physics: 1      # Dudhia (was RRTMG 4)
+  radt: 10              # 10-min radiation calls (was 15)
+  sf_sfclay_physics: 1  # MM5 similarity / Monin-Obukhov (was MYNN 2)
+  bl_pbl_physics: 1     # YSU non-local PBL (was MYNN 5)
+                        # — produces deeper convective BL = stronger w*
