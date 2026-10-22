@@ -48,7 +48,7 @@ jobs:
 
           echo "Mode: $([ "$DRY_RUN" = "false" ] && echo DELETE || echo DRY-RUN) · keep $KEEP most-recent dated cubes per model"
           TOTAL_DEL=0
-          for MODEL in nam hrrr; do
+          for MODEL in nam rrfs hrrr; do
             echo "── $MODEL ──"
             # Date-named subdirs only (ignore `latest` and any non-date prefixes).
             mapfile -t DATES < <(rclone lsf --dirs-only ":s3:${R2_BUCKET}/${MODEL}/" 2>/dev/null \

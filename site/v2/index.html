@@ -97,16 +97,19 @@
   .controls{padding:13px 24px 3px;display:flex;flex-direction:column;gap:9px}
   .panel-body{padding:8px 24px 30px}
 
-  /* Segmented model toggle — identical to v1 (NAM left, HRRR slides right) */
-  .segmented{position:relative;display:grid;grid-template-columns:1fr 1fr;background:var(--panel);
+  /* Segmented model toggle — identical to v1: three options NAM | RRFS | HRRR; the
+     one-column-wide indicator slides by whole columns (0 / 100% / 200% of itself) */
+  .segmented{position:relative;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));background:var(--panel);
     border:1px solid var(--line-2);border-radius:11px;padding:4px;box-shadow:inset 0 1px 2px rgba(28,38,34,.04)}
-  .segmented .indicator{position:absolute;top:4px;left:4px;bottom:4px;width:calc(50% - 4px);
+  .segmented .indicator{position:absolute;top:4px;left:4px;bottom:4px;width:calc((100% - 8px) / 3);
     background:var(--evergreen);border-radius:8px;box-shadow:0 2px 8px -2px rgba(22,58,45,.5);
     transition:transform .28s cubic-bezier(.5,.1,.1,1);z-index:0}
-  .segmented:has(input[value="hrrr"]:checked) .indicator{transform:translateX(100%)}
+  .segmented:has(input[value="rrfs"]:checked) .indicator{transform:translateX(100%)}
+  .segmented:has(input[value="hrrr"]:checked) .indicator{transform:translateX(200%)}
   .segmented label{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:1px;
     padding:8px 4px;cursor:pointer;user-select:none;border-radius:8px;transition:color .2s}
-  .segmented label .name{font-weight:600;font-size:14px;letter-spacing:-.01em}
+  .segmented label .name{font-weight:600;font-size:14px;letter-spacing:-.01em;white-space:nowrap}
+  .segmented label .name .beta{font-weight:500;font-size:11px;opacity:.75}
   .segmented label .res{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.04em;color:var(--ink-soft)}
   .segmented input{position:absolute;opacity:0;pointer-events:none}
   .segmented label:has(input:checked) .name{color:#fff}
@@ -162,6 +165,10 @@
     #panel.open .sheet-close{display:flex}
     .brand{display:none}
     .controls{padding:4px 18px 6px}
+    /* Three toggle columns on a phone (~109px each at 375px): trim the sublabel so
+       "1.3 km · 12h ago" stays on one line down to ~360px, wrapping below that. */
+    .segmented label{padding:8px 2px}
+    .segmented label .res{font-size:9.5px;letter-spacing:.02em}
     /* Collapsed by default (peek shows only the selectors); slides open on select. */
     .panel-body{max-height:0;overflow:hidden;padding:0 18px;opacity:0;
       transition:max-height .34s cubic-bezier(.2,.7,.2,1),opacity .24s,padding .34s}
@@ -222,9 +229,13 @@
           <input type="radio" name="model" value="nam" checked>
           <span class="name">NAM</span><span class="res" data-model="nam" data-res="1.3 km">1.3 km</span>
         </label>
+        <label id="rrfs-opt">
+          <input type="radio" name="model" value="rrfs">
+          <span class="name">RRFS</span><span class="res" data-model="rrfs" data-res="1.3 km">1.3 km</span>
+        </label>
         <label id="hrrr-opt">
           <input type="radio" name="model" value="hrrr">
-          <span class="name">HRRR</span><span class="res" data-model="hrrr" data-res="1 km">1 km</span>
+          <span class="name">HRRR <span class="beta">(beta)</span></span><span class="res" data-model="hrrr" data-res="1 km">1 km</span>
         </label>
       </div>
       <div class="days" id="days"></div>
@@ -360,8 +371,8 @@ async function loadModel(m, date){
     cube.T = cube.hours.length; cube.L = cube.pres.length;
     // Native LCC extent + CRS for the map overlay. The CRS travels with the cube
     // as a CF grid_mapping (crs_wkt); hand it straight to zarr-layer along with
-    // edge bounds and which dims are spatial. Per-cube so NAM/HRRR each project
-    // correctly. (zarr-layer ≥0.5.1 handles the spherical-earth WKT correctly.)
+    // edge bounds and which dims are spatial. Per-cube so NAM/RRFS/HRRR each
+    // project correctly. (zarr-layer ≥0.5.1 handles the spherical-earth WKT correctly.)
     try {
       const gm = (await (await fetch(cubeUrl(m, currentDate)+"/spatial_ref/zarr.json")).json()).attributes;
       cube.crs = gm.crs_wkt;
@@ -515,6 +526,9 @@ async function showWindgram(lng, lat, name, reveal=true){
 // Toggle-button helpers ───────────────────────────────────────────────────
 // Resolution + run age in each button's sublabel (the v1 style: "1.3 km · 5h ago",
 // amber when stale). Age is per-model run freshness, read from <model>/latest.
+// The resolution comes from the cube itself (dx_km), so it tracks whatever each
+// model's WRF chain actually ran at; data-res is only the pre-load fallback.
+const MODELS = ["nam","rrfs","hrrr"];   // toggle order; NAM is the default
 function timeAgo(ms){
   const h = ms/3.6e6;
   if(h < 1) return Math.max(1,Math.round(h*60))+"m ago";
@@ -522,7 +536,7 @@ function timeAgo(ms){
   return Math.round(h/24)+"d ago";
 }
 async function refreshToggleMeta(){
-  for(const m of ["nam","hrrr"]){
+  for(const m of MODELS){
     const el = document.querySelector(`.res[data-model="${m}"]`);
     if(!el) continue;
     try{
@@ -583,8 +597,12 @@ $("sheetGrip").addEventListener("click", ()=> $("panel").classList.toggle("open"
 $("sheetClose").addEventListener("click", closeSheet);
 map.on("load", ()=>{
   setupBasemap(); buildLegend(); loadSites(); loadModel("nam");
-  refreshToggleMeta();                                            // resolution · run age in both toggle buttons
-  probeModel("hrrr").then(ok=> setModelAvailable("hrrr", ok));   // dim HRRR if its cube isn't published yet
+  refreshToggleMeta();                                            // resolution · run age in every toggle button
+  // Dim any non-default model whose cube isn't published yet (RRFS until its
+  // first run lands; HRRR while in beta). If a click on one still fails to
+  // load, loadModel() snaps the toggle back to goodModel — the last model that
+  // did load — so the fallback works the same for all three.
+  for(const m of MODELS) if(m!=="nam") probeModel(m).then(ok=> setModelAvailable(m, ok));
   setTimeout(()=>map.resize(), 0);                                // ensure MapLibre fills the full-screen container on mobile
 });
 </script>

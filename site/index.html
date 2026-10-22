@@ -85,10 +85,11 @@
     .controls { padding: 13px 24px 3px; display: flex; flex-direction: column; gap: 9px;
       animation: rise .5s cubic-bezier(.2,.7,.2,1) .06s both; }
 
-    /* Segmented model toggle */
+    /* Segmented model toggle — three options: NAM | RRFS | HRRR. The indicator is
+       one column wide and slides by whole columns (0 / 100% / 200% of itself). */
     .segmented {
       position: relative;
-      display: grid; grid-template-columns: 1fr 1fr;
+      display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));   /* equal columns, never widened by a long sublabel */
       background: var(--panel);
       border: 1px solid var(--line-2);
       border-radius: 11px;
@@ -97,14 +98,15 @@
     }
     .segmented .indicator {
       position: absolute; top: 4px; left: 4px; bottom: 4px;
-      width: calc(50% - 4px);
+      width: calc((100% - 8px) / 3);   /* one of three equal columns inside the 4px padding */
       background: var(--evergreen);
       border-radius: 8px;
       box-shadow: 0 2px 8px -2px rgba(22,58,45,.5);
       transition: transform .28s cubic-bezier(.5,.1,.1,1);
       z-index: 0;
     }
-    .segmented:has(input[value="hrrr"]:checked) .indicator { transform: translateX(100%); }
+    .segmented:has(input[value="rrfs"]:checked) .indicator { transform: translateX(100%); }
+    .segmented:has(input[value="hrrr"]:checked) .indicator { transform: translateX(200%); }
     .segmented label {
       position: relative; z-index: 1;
       display: flex; flex-direction: column; align-items: center; gap: 1px;
@@ -112,7 +114,8 @@
       border-radius: 8px;
       transition: color .2s;
     }
-    .segmented label .name { font-weight: 600; font-size: 14px; letter-spacing: -.01em; }
+    .segmented label .name { font-weight: 600; font-size: 14px; letter-spacing: -.01em; white-space: nowrap; }
+    .segmented label .name .beta { font-weight: 500; font-size: 11px; opacity: .75; }
     .segmented label .res {
       font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: .04em;
       color: var(--ink-soft);
@@ -267,6 +270,11 @@
       #sidebar.open .sheet-close { display: flex; }
       .brand { display: none; }
       .controls { padding: 4px 18px 6px; }
+      /* Three toggle columns on a phone: ~109px each at 375px. The sublabel
+         ("1.3 km · 12h ago") needs ~95px at this size, so it stays on one line
+         down to ~360px and wraps gracefully below that. */
+      .segmented label { padding: 8px 2px; }
+      .segmented label .res { font-size: 9.5px; letter-spacing: .02em; }
       /* Collapsed by default (peek shows only the selectors); slides open on select. */
       .panel { max-height: 0; overflow: hidden; padding: 0 18px; opacity: 0;
         transition: max-height .34s cubic-bezier(.2,.7,.2,1), opacity .24s, padding .34s; }
@@ -317,8 +325,12 @@
             <span class="name">NAM</span><span class="res" data-model="nam" data-res="1.3 km">1.3 km</span>
           </label>
           <label>
+            <input type="radio" name="model" value="rrfs">
+            <span class="name">RRFS</span><span class="res" data-model="rrfs" data-res="1.3 km">1.3 km</span>
+          </label>
+          <label>
             <input type="radio" name="model" value="hrrr">
-            <span class="name">HRRR</span><span class="res" data-model="hrrr" data-res="1 km">1 km</span>
+            <span class="name">HRRR <span class="beta">(beta)</span></span><span class="res" data-model="hrrr" data-res="1.3 km">1.3 km</span>
           </label>
         </div>
         <div class="days single" id="days" role="group" aria-label="Forecast day"></div>
@@ -377,7 +389,7 @@
     }
 
     const DEFAULT_SITE = 'Poo_Poo_Point';   // auto-selected on load
-    let currentModel = 'nam';        // NAM default — timelier + carries the 2-day window
+    let currentModel = 'nam';        // NAM default (RRFS is its successor; HRRR is beta)
     let currentSite = null;
     let currentDate = null;          // selected forecast day (null → forecasts/latest)
     let selectedMarker = null;
@@ -393,7 +405,7 @@
     }
 
     async function loadMetadata() {
-      for (const model of ['nam', 'hrrr']) {
+      for (const model of ['nam', 'rrfs', 'hrrr']) {
         try {
           const resp = await fetch(`forecasts/latest/${model}/metadata.json`);
           if (resp.ok) metadata[model] = await resp.json();
