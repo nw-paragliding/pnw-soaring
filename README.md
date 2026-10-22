@@ -34,11 +34,11 @@ The crons live in [`cloudflare-trigger/wrangler.toml`](cloudflare-trigger/wrangl
 
 | Run | Model | Cron (UTC) | Local (PDT) | Coverage |
 |-----|-------|------------|-------------|----------|
-| Evening HRRR | HRRR | 01:15 | 6:15pm | Night-before / tomorrow (00z cycle) |
+| Evening HRRR | HRRR 1.33 km (beta) — HRRR 3 km → WRF 4 km → 1.33 km | 01:15 | 6:15pm | Night-before / tomorrow (00z cycle) |
 | Evening NAM | NAM → WRF 4 km → 1.33 km | 02:05 | 7:05pm | Overnight outlook, today + tomorrow (00z cycle) |
 | Evening RRFS | RRFS → WRF 4 km → 1.33 km | 02:05 (NAM cron) | 7:05pm | Same as NAM; waits for RRFS GRIB (~02:50z) |
-| Pre-dawn HRRR | HRRR | 07:15 | 12:15am | Pre-dawn refresh of today (06z cycle) |
-| Morning HRRR | HRRR | 13:00 | 6:00am | Freshest of today (12z cycle) |
+| Pre-dawn HRRR | HRRR 1.33 km (beta) — HRRR 3 km → WRF 4 km → 1.33 km | 07:15 | 12:15am | Pre-dawn refresh of today (06z cycle) |
+| Morning HRRR | HRRR 1.33 km (beta) — HRRR 3 km → WRF 4 km → 1.33 km | 13:00 | 6:00am | Freshest of today (12z cycle) |
 | Morning NAM | NAM → WRF 4 km → 1.33 km | 14:00 | 7:00am | Day-of update, today + tomorrow (12z cycle) |
 | Morning RRFS | RRFS → WRF 4 km → 1.33 km | 14:00 (NAM cron) | 7:00am | Same as NAM; waits for RRFS GRIB (~14:50z) |
 

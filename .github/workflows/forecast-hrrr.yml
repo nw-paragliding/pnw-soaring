@@ -27,6 +27,11 @@ jobs:
     # leg, which for any cycle reachable within 48h ran at *deep* forecast hours
     # (fhr 27–45) — the source of the garbage / wrong-window next-day forecasts.
     # NAM (84h reach) still carries the longer multi-day outlook.
+    #
+    # Since 2026-10-22 HRRR feeds the same DrJack 4 km → 1.33 km chain as the
+    # NAM/RRFS products (domains/cascades-hrrr.yaml; "HRRR (beta)" on the site)
+    # instead of the 3 km → 1 km nest, so it shares the NAM geo_em asset/cache
+    # and runs in the NAM product's auto --target-date mode.
     runs-on: ubuntu-24.04-arm
     # Budget: up to 4h sleep (from --not-before compensation) + ~15 min runtime
     timeout-minutes: 360
@@ -58,9 +63,12 @@ jobs:
           # can't reach, no cycle can. HRRR tops out at 48h.
           H=$(( 10#$(date -u +%H) ))
           CYC=$(printf '%02d' $(( (H / 6) * 6 )))
-          # Pin the run to this *extended* cycle (00/06/12/18z) — only those carry
-          # 48h of HRRR GRIB. Auto-cycle would grab the latest *hourly* cycle,
-          # which stops at 18h and leaves the afternoon as fill/garbage.
+          # The run itself is NOT pinned to this cycle: it uses the NAM product's
+          # auto --target-date mode, where the pipeline takes the freshest cycle
+          # whose files for the whole window are already on NOMADS and starts
+          # WRF at the window start (fhr >= 3). The HRRR registry lists only the
+          # 00/06/12/18z cycles (the ones with 48h of GRIB), so the 18h hourly
+          # cycles are never chosen.
           echo "CYC=$CYC" >> "$GITHUB_ENV"
           CYCLE_EPOCH=$(date -u -d "$(date -u +%F) ${CYC}:00:00Z" +%s)
           FHR_END=$(( (END_EPOCH - CYCLE_EPOCH) / 3600 ))
@@ -92,19 +100,19 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: geo_em/
-          # NB: geo_em cache key + release asset keep the "hrrr-1km" name on
-          # purpose — the release also holds the old 3km geo_em_hrrr.tar.gz, so
-          # renaming this to "hrrr" would fetch the wrong grids. Don't "finish"
-          # the rename here without re-bootstrapping + re-uploading the asset.
-          key: geo-em-cascades-hrrr-1km-v2
+          # Same grid as the NAM/RRFS product (domains/cascades.yaml geometry),
+          # so the NAM geo_em asset and cache key are shared. The old 1 km nest
+          # asset (geo_em_hrrr-1km.tar.gz, key geo-em-cascades-hrrr-1km-v2)
+          # stays on the release for rollback.
+          key: geo-em-cascades-nam-v2
 
       - name: Download geo_em from release (cache miss fallback)
         if: steps.reach.outputs.reachable == 'true' && steps.cache.outputs.cache-hit != 'true'
         run: |
           mkdir -p geo_em
-          gh release download geo-em-v1 --pattern 'geo_em_hrrr-1km.tar.gz' --dir .
-          tar xzf geo_em_hrrr-1km.tar.gz -C geo_em
-          rm geo_em_hrrr-1km.tar.gz
+          gh release download geo-em-v1 --pattern 'geo_em_nam-v2.tar.gz' --dir .
+          tar xzf geo_em_nam-v2.tar.gz -C geo_em
+          rm geo_em_nam-v2.tar.gz
           echo "Downloaded geo_em from release:"
           ls -lh geo_em/
         env:
@@ -125,7 +133,7 @@ jobs:
         if: steps.reach.outputs.reachable == 'true'
         run: |
           mkdir -p output
-          echo "Day 0 → soaring date $TARGET_DATE (cycle ${CYC}z, extended/48h)"
+          echo "Day 0 → soaring date $TARGET_DATE (auto-cycle, 00/06/12/18z only; newest ${CYC}z, 48h reach)"
 
           docker run --rm \
             -v ${{ github.workspace }}/geo_em:/mnt/geo_em:ro \
@@ -139,8 +147,7 @@ jobs:
                 --sites sites.csv \
                 --output-dir /mnt/output \
                 --num-procs 4 \
-                --target-date $TARGET_DATE \
-                --target-cycle $CYC
+                --target-date $TARGET_DATE
             "
 
       - name: Guard — did HRRR actually reach this day?
@@ -172,7 +179,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: geo_em/
-          key: geo-em-cascades-hrrr-1km-v2
+          key: geo-em-cascades-nam-v2
 
       - name: Upload windgrams
         if: steps.guard.outputs.deploy == 'true'
