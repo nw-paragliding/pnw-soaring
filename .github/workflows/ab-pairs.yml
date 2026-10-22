@@ -309,7 +309,10 @@ jobs:
           git commit -q -m "lab/ab: NAM vs RRFS vs HRRR for $TARGET_DATE ($CYCLE_DATE ${CYCLE}z)"
           for attempt in 1 2 3 4 5; do
             git push origin HEAD:gh-pages && { echo "Pushed on attempt $attempt"; exit 0; }
-            git fetch origin gh-pages && git rebase origin/gh-pages || { git rebase --abort; exit 1; }
+            # Replay ONLY this job's own commit (--onto ... HEAD~1): squash-gh-pages.yml
+            # may have rewritten gh-pages as a new root since our fetch, and a plain
+            # rebase onto an unrelated root would replay the whole history.
+            git fetch origin gh-pages && git rebase --onto origin/gh-pages HEAD~1 || { git rebase --abort; exit 1; }
             sleep $((RANDOM % 5 + 1))
           done
           echo "Failed to push after 5 attempts" >&2; exit 1
