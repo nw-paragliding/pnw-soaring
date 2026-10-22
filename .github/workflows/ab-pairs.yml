@@ -1,0 +1,318 @@
+name: A/B pairs → lab page
+
+# NAM vs RRFS vs HRRR A/B runs for the RRFS migration (rasp-windgram
+# RRFS_MIGRATION.md §5), published to an UNLISTED, no-index page on the site:
+#   https://forecast.nwparagliding.com/lab/ab/
+# Three arms per domain, all through the SAME WRF chain (4 km -> 1.33 km,
+# DrJack physics, same geo_em grid), differing only in the parent model:
+#   nam  - the domain YAML as is
+#   rrfs - `model: rrfs`
+#   hrrr - `model: hrrr` plus the registry overrides from rasp-windgram's
+#          examples/cascades-hrrr-drjack.yaml (WPS/WRF instead of the direct
+#          reader, Vtable.RAP.pressure.ncep, .idx subsets): HRRR as boundary
+#          conditions only, not the old HRRR 1 km nest.
+# Two comparisons per domain, each on its own page: NAM vs RRFS, NAM vs HRRR.
+# This is review material, not a forecast product. It never touches
+# forecasts/, index.html, R2 or the Cloudflare trigger. The pipeline image is
+# built from rasp-windgram (ref below, default main); the Phoenix test domain
+# comes from that repo's test-only ab/ directory and is not part of this repo.
+#
+# Start a run:
+#   * schedule: 22:30 UTC daily until 2026-11-02 (18z cycle → next soaring day)
+#   * workflow_dispatch (inputs below)
+#   * push to a feat/** branch with [ab <domains> [<cycle_date> <cycle> [<target_date>]]]
+#     in the commit message, e.g. [ab phoenix,cascades 2026-10-21 18 2026-10-22]
+#     (schedule/dispatch only work once this file is on main).
+
+on:
+  push:
+    branches: ['feat/**']
+  schedule:
+    - cron: '30 22 * * *'
+  workflow_dispatch:
+    inputs:
+      domains:
+        description: 'Comma-separated: phoenix (test fixture) and/or cascades (production grid); each runs NAM, RRFS and HRRR arms'
+        required: false
+        default: 'phoenix,cascades'
+      cycle_date:
+        description: 'Cycle date YYYY-MM-DD (blank = latest complete 18z)'
+        required: false
+        default: ''
+      cycle:
+        description: 'Cycle hour (00/06/12/18)'
+        required: false
+        default: ''
+      target_date:
+        description: 'Soaring date YYYY-MM-DD (blank = derived)'
+        required: false
+        default: ''
+      rasp_ref:
+        description: 'rasp-windgram ref to build the image from'
+        required: false
+        default: 'main'
+
+env:
+  RASP_REPO: nw-paragliding/rasp-windgram
+  WRF_IMAGE: ghcr.io/nw-paragliding/wrf-compiled:v4.5.2-arm64
+  GEOG_URL: https://www2.mmm.ucar.edu/wrf/src/wps_files/geog_low_res_mandatory.tar.gz
+  PAGE_DIR: lab/ab
+  LAST_DAY: '2026-11-02'   # last 18z cycle before NAM leaves NOMADS (2026-11-03 12Z)
+  # After NAM retires the pairs could continue as RRFS vs HRRR (not implemented).
+
+jobs:
+  params:
+    runs-on: ubuntu-24.04
+    if: github.event_name != 'push' || contains(github.event.head_commit.message, '[ab')
+    outputs:
+      domains_json: ${{ steps.p.outputs.domains_json }}
+      cycle_date: ${{ steps.p.outputs.cycle_date }}
+      cycle: ${{ steps.p.outputs.cycle }}
+      target_date: ${{ steps.p.outputs.target_date }}
+      rasp_ref: ${{ steps.p.outputs.rasp_ref }}
+      go: ${{ steps.p.outputs.go }}
+    steps:
+      - id: p
+        env:
+          MSG: ${{ github.event.head_commit.message }}
+        run: |
+          DOMAINS="${{ inputs.domains }}"; CYCLE_DATE="${{ inputs.cycle_date }}"; CYCLE="${{ inputs.cycle }}"
+          TARGET_DATE="${{ inputs.target_date }}"; RASP_REF="${{ inputs.rasp_ref }}"
+          if [ "${{ github.event_name }}" = "push" ]; then
+            TAG=$(printf '%s' "$MSG" | grep -o -E '\[ab( [A-Za-z0-9,-]+)*\]' | tail -1 | tr -d '[]')
+            read -r _ DOMAINS CYCLE_DATE CYCLE TARGET_DATE _ <<< "$TAG"
+          fi
+          TODAY=$(date -u +%F)
+          if [ "${{ github.event_name }}" = "schedule" ] && [ "$TODAY" \> "$LAST_DAY" ]; then
+            echo "NAM is retired (after $LAST_DAY); nothing to pair. Remove the schedule."
+            echo "go=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          [ -z "$DOMAINS" ] && DOMAINS="phoenix,cascades"
+          [ -z "$RASP_REF" ] && RASP_REF="main"
+          if [ -z "$CYCLE" ]; then
+            # Latest 18z cycle complete through f33 (~20:45Z): before 21Z use yesterday's.
+            H=$(date -u +%H)
+            if [ "$((10#$H))" -lt 21 ]; then CYCLE_DATE=$(date -u -d "$TODAY -1 day" +%F); else CYCLE_DATE=$TODAY; fi
+            CYCLE=18
+          fi
+          [ -z "$CYCLE_DATE" ] && CYCLE_DATE=$TODAY
+          if [ -z "$TARGET_DATE" ]; then
+            if [ "$((10#$CYCLE))" -le 12 ]; then TARGET_DATE="$CYCLE_DATE"; else TARGET_DATE=$(date -u -d "$CYCLE_DATE +1 day" +%F); fi
+          fi
+          DOMS_JSON=$(printf '%s' "$DOMAINS" | tr ', ' '\n\n' | grep -v '^$' | jq -R . | jq -cs .)
+          echo "domains=$DOMS_JSON cycle=$CYCLE_DATE ${CYCLE}z target=$TARGET_DATE rasp_ref=$RASP_REF"
+          { echo "domains_json=$DOMS_JSON"; echo "cycle_date=$CYCLE_DATE"; echo "cycle=$CYCLE";
+            echo "target_date=$TARGET_DATE"; echo "rasp_ref=$RASP_REF"; echo "go=true"; } >> "$GITHUB_OUTPUT"
+
+  run:
+    needs: params
+    if: needs.params.outputs.go == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        domain: ${{ fromJson(needs.params.outputs.domains_json) }}
+        model: [nam, rrfs, hrrr]
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 180
+    permissions:
+      contents: read
+      packages: read
+    env:
+      DOMAIN: ${{ matrix.domain }}
+      CYCLE_DATE: ${{ needs.params.outputs.cycle_date }}
+      CYCLE: ${{ needs.params.outputs.cycle }}
+      TARGET_DATE: ${{ needs.params.outputs.target_date }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: nw-paragliding/rasp-windgram
+          ref: ${{ needs.params.outputs.rasp_ref }}
+          path: rasp
+
+      - name: Free up disk space
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup \
+            /opt/hostedtoolcache /usr/local/share/boost 2>/dev/null || true
+          docker system prune -af >/dev/null 2>&1 || true
+          df -h /
+
+      - name: Prepare domain config (${{ matrix.domain }} / ${{ matrix.model }})
+        run: |
+          # Test-only domains come from the rasp-windgram branch (ab/), production
+          # domains from this repo (domains/ + sites/).
+          if [ -f "rasp/ab/$DOMAIN.yaml" ]; then
+            YAML="rasp/ab/$DOMAIN.yaml"; SITES="rasp/ab/$DOMAIN-sites.csv"
+          else
+            YAML="domains/$DOMAIN.yaml"; SITES="sites/issaquah-sites.csv"
+          fi
+          [ -f "$YAML" ] || { echo "::error::no domain config for '$DOMAIN'"; exit 1; }
+          sed -E "s/^model: *[a-z]+.*/model: ${{ matrix.model }}/" "$YAML" > ab-domain.yaml
+          # Runner GEOG = low-res package + 30s terrain/landuse add-ons.
+          grep -q '^geog_data_res:' ab-domain.yaml || echo "geog_data_res: gmted2010_30s+modis_30s_lake+lowres" >> ab-domain.yaml
+          if [ "${{ matrix.model }}" = "hrrr" ]; then
+            # HRRR through the DrJack chain: the registry overrides from the
+            # reference config (direct_reader .. idx subsets), not its geometry.
+            REF=rasp/examples/cascades-hrrr-drjack.yaml
+            [ -f "$REF" ] || { echo "::error::$REF missing (needs rasp-windgram >= 0.6.1)"; exit 1; }
+            { echo; echo "# ---- hrrr arm: overrides from $REF"; \
+              awk '/^direct_reader:/{p=1} /^# ---- everything below/{p=0} p' "$REF"; } >> ab-domain.yaml
+            grep -q '^direct_reader: *false' ab-domain.yaml || { echo "::error::hrrr override block not appended"; exit 1; }
+          fi
+          cp "$SITES" ab-sites.csv
+          grep -n -E '^(model|geog_data_res|utc_offset|direct_reader|vtable|sfc_vtable):' ab-domain.yaml
+
+      - name: Restore GEOG cache
+        id: geog
+        uses: actions/cache/restore@v4
+        with:
+          path: geog/
+          key: wps-geog-lowres-plus-30s-v1
+
+      - name: Download GEOG (low-res package + 30s terrain/landuse, ~0.6 GB)
+        if: steps.geog.outputs.cache-hit != 'true'
+        run: |
+          curl -fL --retry 3 -sS "$GEOG_URL" -o geog.tar.gz
+          mkdir -p geog && tar xzf geog.tar.gz -C geog --strip-components=1 && rm geog.tar.gz
+          for t in topo_gmted2010_30s modis_landuse_20class_30s_with_lakes; do
+            curl -fL --retry 3 -sS "https://www2.mmm.ucar.edu/wrf/src/wps_files/$t.tar.bz2" -o add.tar.bz2
+            tar xjf add.tar.bz2 -C geog && rm add.tar.bz2
+          done
+          du -sh geog
+
+      - name: Save GEOG cache
+        if: steps.geog.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: geog/
+          key: wps-geog-lowres-plus-30s-v1
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build windgram image from rasp-windgram@${{ needs.params.outputs.rasp_ref }}
+        run: docker build -f rasp/docker/Dockerfile.windgram --build-arg WRF_IMAGE=$WRF_IMAGE -t rasp-windgram:ab rasp
+
+      - name: Run pipeline
+        run: |
+          mkdir -p output debug
+          echo "$DOMAIN / ${{ matrix.model }}: cycle $CYCLE_DATE ${CYCLE}z -> soaring day $TARGET_DATE"
+          docker run --rm \
+            -v "$PWD/geog:/mnt/geog:ro" \
+            -v "$PWD/output:/mnt/output:rw" \
+            -v "$PWD/debug:/mnt/wrfout:rw" \
+            -v "$PWD/ab-domain.yaml:/opt/rasp/domain.yaml:ro" \
+            -v "$PWD/ab-sites.csv:/opt/rasp/sites.csv:ro" \
+            --entrypoint bash rasp-windgram:ab -c "
+              python3 -m rasp.pipeline domain.yaml --sites sites.csv --output-dir /mnt/output \
+                --num-procs 4 --date $CYCLE_DATE --cycle $CYCLE --target-date $TARGET_DATE; EC=\$?
+              cp /opt/rasp/runs/*/rsl.error.0000 /opt/rasp/runs/*/namelist.input \
+                 /opt/rasp/wps/namelist.wps /opt/rasp/wps/*.log /mnt/wrfout/ 2>/dev/null || true
+              exit \$EC"
+          rm -f debug/wrfout_*
+          echo "Rendered $(ls output/*.png 2>/dev/null | wc -l) windgrams"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ab-${{ matrix.domain }}-${{ matrix.model }}
+          path: output/
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ab-debug-${{ matrix.domain }}-${{ matrix.model }}
+          path: debug/
+          retention-days: 7
+
+  publish:
+    needs: [params, run]
+    if: needs.params.outputs.go == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    concurrency:
+      group: ab-pairs-publish
+    env:
+      CYCLE_DATE: ${{ needs.params.outputs.cycle_date }}
+      CYCLE: ${{ needs.params.outputs.cycle }}
+      TARGET_DATE: ${{ needs.params.outputs.target_date }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: nw-paragliding/rasp-windgram
+          ref: ${{ needs.params.outputs.rasp_ref }}
+          path: rasp
+      - uses: astral-sh/setup-uv@v5
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: ab-*
+          path: runs
+
+      - name: Compare and render each domain
+        run: |
+          mkdir -p out
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          GEN=$(date -u +%Y-%m-%dT%H:%MZ)
+          for d in $(echo '${{ needs.params.outputs.domains_json }}' | jq -r '.[]'); do
+            if [ -f "rasp/ab/$d.yaml" ]; then YAML="rasp/ab/$d.yaml"; SITES="rasp/ab/$d-sites.csv"; else YAML="domains/$d.yaml"; SITES="sites/issaquah-sites.csv"; fi
+            OFF=$(grep -E '^utc_offset:' "$YAML" | awk '{print $2}'); OFF=${OFF:--7}
+            # Two comparisons per domain, each skipped on its own when an arm is
+            # missing, so one failed arm never blocks the other pair.
+            for b in rrfs hrrr; do
+              B=$(echo "$b" | tr a-z A-Z); SUB="nam-vs-$b"
+              if [ ! -d "runs/ab-$d-nam" ] || [ ! -d "runs/ab-$d-$b" ]; then
+                echo "::warning::$d: NAM or $B arm missing, skipping NAM vs $B"; continue
+              fi
+              ( cd rasp && uv run --extra cube --with markdown python scripts/ab_compare.py \
+                  --a "../runs/ab-$d-nam" --b "../runs/ab-$d-$b" --labels NAM "$B" \
+                  --sites "../$SITES" --utc-offset "$OFF" --out "../out/$d/$SUB" ) > /dev/null
+              uv run --with markdown python site/lab/render_ab.py "out/$d/$SUB" "out/$d/$SUB/index.html" \
+                --title "$d — NAM vs $B, soaring day $TARGET_DATE" \
+                --meta "cycle=$CYCLE_DATE ${CYCLE}z" --meta "generated=$GEN" --meta "run=$RUN_URL"
+              { echo "## $d — NAM vs $B — $CYCLE_DATE ${CYCLE}z → $TARGET_DATE"; awk '/^## Pooled/,/^## Whole/' "out/$d/$SUB/compare.md"; } >> "$GITHUB_STEP_SUMMARY"
+            done
+            if [ -d "out/$d" ]; then
+              uv run --with markdown python site/lab/render_landing.py "out/$d" "out/$d/index.html" \
+                --title "$d — NAM vs RRFS vs HRRR, soaring day $TARGET_DATE" \
+                --meta "cycle=$CYCLE_DATE ${CYCLE}z" --meta "generated=$GEN" --meta "run=$RUN_URL"
+            fi
+          done
+          find out -maxdepth 2 | sort
+
+      - name: Publish to the unlisted lab page (gh-pages)
+        run: |
+          git fetch origin gh-pages
+          git worktree add pages origin/gh-pages
+          for d in $(ls out); do
+            DEST="pages/$PAGE_DIR/$d/$TARGET_DATE"
+            rm -rf "$DEST" "pages/$PAGE_DIR/$d/latest"
+            mkdir -p "$DEST" "pages/$PAGE_DIR/$d/latest"
+            cp -r "out/$d/." "$DEST/"
+            cp -r "out/$d/." "pages/$PAGE_DIR/$d/latest/"
+          done
+          # Keep 14 days of pairs.
+          CUTOFF=$(date -u -d '14 days ago' +%F)
+          for dir in pages/$PAGE_DIR/*/20??-??-??; do
+            [ -d "$dir" ] && [[ "$(basename "$dir")" < "$CUTOFF" ]] && rm -rf "$dir"
+          done
+          python3 site/lab/build_index.py pages
+          cd pages
+          git add -A "$PAGE_DIR"
+          git diff --cached --quiet && { echo "No changes"; exit 0; }
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git commit -q -m "lab/ab: NAM vs RRFS vs HRRR for $TARGET_DATE ($CYCLE_DATE ${CYCLE}z)"
+          for attempt in 1 2 3 4 5; do
+            git push origin HEAD:gh-pages && { echo "Pushed on attempt $attempt"; exit 0; }
+            git fetch origin gh-pages && git rebase origin/gh-pages || { git rebase --abort; exit 1; }
+            sleep $((RANDOM % 5 + 1))
+          done
+          echo "Failed to push after 5 attempts" >&2; exit 1
+
+      - name: Where to look
+        run: echo "https://forecast.nwparagliding.com/$PAGE_DIR/ (unlisted; noindex)" | tee -a "$GITHUB_STEP_SUMMARY"
