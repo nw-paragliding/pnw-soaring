@@ -51,8 +51,12 @@ Each tile's geo_em grids are cached in Actions under
 edited YAML, new windgram image) the job downloads the WPS GEOG data and runs geogrid itself.
 `bootstrap-geoem.yml` can pre-warm the caches.
 
-**Jobs per run:** NAM and RRFS run every tile for day 0 and day 1 = 14 arm jobs
-each; HRRR runs day 0 only = 7 jobs. Each run then commits once to gh-pages
+**Jobs per run:** NAM, RRFS and HRRR each run every tile for day 0 and day 1 =
+14 arm jobs. HRRR's cycles reach only 48 h, so a day HRRR cannot reach (day 1
+of the 01:15z run) ends its job in seconds with a notice and publishes nothing;
+HRRR's day-1 legs wait in their reach step for the cycle's window-end GRIB
+(f45 / f39) before starting WRF. HRRR fires in its own hours, so its 14 jobs fit
+the concurrency cap. Each run then commits once to gh-pages
 from a single `publish` job. RRFS's readiness polling runs in two small
 `wait-day0` / `wait-day1` jobs, so the arm runners start only once the GRIB is
 out. The free tier allows 20 concurrent jobs, so when NAM and RRFS fire
@@ -65,11 +69,11 @@ The crons live in [`cloudflare-trigger/wrangler.toml`](cloudflare-trigger/wrangl
 
 | Run | Model | Cron (UTC) | Local (PDT) | Coverage |
 |-----|-------|------------|-------------|----------|
-| Evening HRRR | HRRR 1.33 km (beta) — HRRR 3 km → WRF 4 km → 1.33 km | 01:15 | 6:15pm | Night-before / tomorrow (00z cycle) |
+| Evening HRRR | HRRR 1.33 km (beta) — HRRR 3 km → WRF 4 km → 1.33 km | 01:15 | 6:15pm | Night-before: tomorrow only (00z cycle; the next day would need f51 > 48 h, skipped) |
 | Evening NAM | NAM → WRF 4 km → 1.33 km | 02:05 | 7:05pm | Overnight outlook, today + tomorrow (00z cycle) |
 | Evening RRFS | RRFS → WRF 4 km → 1.33 km | 02:05 (NAM cron) | 7:05pm | Same as NAM; waits for RRFS GRIB (~02:50z) |
-| Pre-dawn HRRR | HRRR 1.33 km (beta) — HRRR 3 km → WRF 4 km → 1.33 km | 07:15 | 12:15am | Pre-dawn refresh of today (06z cycle) |
-| Morning HRRR | HRRR 1.33 km (beta) — HRRR 3 km → WRF 4 km → 1.33 km | 13:00 | 6:00am | Freshest of today (12z cycle) |
+| Pre-dawn HRRR | HRRR 1.33 km (beta) — HRRR 3 km → WRF 4 km → 1.33 km | 07:15 | 12:15am | Pre-dawn refresh, today + tomorrow (06z cycle; tomorrow ends at f45) |
+| Morning HRRR | HRRR 1.33 km (beta) — HRRR 3 km → WRF 4 km → 1.33 km | 13:00 | 6:00am | Freshest, today + tomorrow (12z cycle; tomorrow ends at f39) |
 | Morning NAM | NAM → WRF 4 km → 1.33 km | 14:00 | 7:00am | Day-of update, today + tomorrow (12z cycle) |
 | Morning RRFS | RRFS → WRF 4 km → 1.33 km | 14:00 (NAM cron) | 7:00am | Same as NAM; waits for RRFS GRIB (~14:50z) |
 

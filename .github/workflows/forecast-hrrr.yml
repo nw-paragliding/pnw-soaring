@@ -33,16 +33,21 @@ env:
 
 jobs:
   forecast:
-    # Single-day run per region tile (7 jobs): each dispatch renders ONE soaring
-    # day (day 0 = today UTC) on the cycle its fire time aligns to (Cloudflare
-    # crons → 00z/06z/12z). Today+tomorrow coverage comes from the *dispatch
-    # schedule*, not a parallel day-1 leg: the morning (12z) and pre-dawn (06z)
-    # runs render today; the evening (00z, 01:15z ≈ 6pm PDT) run's "today UTC" is
-    # tomorrow-PDT, so it's the night-before forecast. Dropping the old 2-day
-    # matrix removes the day-1 leg, which for any cycle reachable within 48h ran
-    # at *deep* forecast hours (fhr 27–45) — the source of the garbage /
-    # wrong-window next-day forecasts. NAM (84h reach) still carries the longer
-    # multi-day outlook.
+    # Seven region tiles x two soaring days (day 0 = base date, default today
+    # UTC; day 1 = base + 1) = 14 jobs, like NAM/RRFS. HRRR's 00/06/12/18z
+    # cycles reach 48 h, so whether a day is reachable depends on the dispatch:
+    #
+    #   dispatch   newest cycle  day 0 (window end)     day 1 (window end)
+    #   01:15z     00z           tomorrow-PDT (27 h)    skipped (51 h > 48 h)
+    #   07:15z     06z           today (21 h)           tomorrow (45 h)
+    #   13:00z     12z           today (15 h)           tomorrow (39 h)
+    #
+    # The reach step decides this per day: an out-of-reach day ends its job in
+    # seconds with a ::notice (job success, no artifact, nothing published).
+    # PR #41 (2026-07) dropped day 1 because its deep forecast hours (fhr 27–45)
+    # produced garbage; the cause was a WRF instability (NaN after hours of
+    # integration), fixed by `dynamics: {epssm: 0.5}` in every tile (windgram
+    # >= 0.7.3), so the second day is back.
     #
     # HRRR feeds the same DrJack 4 km → 1.33 km chain as the NAM/RRFS products:
     # the job's domain config is domains/<region>.yaml with `model: hrrr` and the
@@ -53,6 +58,7 @@ jobs:
       fail-fast: false
       matrix:
         region: ${{ fromJson(inputs.regions || '["issaquah","wenatchee","skykomish","chelan","baker","methow","waterville"]') }}
+        day: [0, 1]
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 360
     permissions:
@@ -61,16 +67,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check HRRR reach (day 0)
+      - name: Check HRRR reach (day ${{ matrix.day }})
         id: reach
+        env:
+          DAY: ${{ matrix.day }}
         run: |
-          # Cheap upfront 48h-horizon test, so an out-of-reach day (next-day in
-          # the evening run) exits in seconds instead of running a full WRF sim
-          # it would only discard. The post-render Guard below still backstops
-          # the publish-lag borderline case.
+          # Cheap upfront 48h-horizon test, so an out-of-reach day (day 1 in the
+          # 01:15z run) exits in seconds instead of running a full WRF sim it
+          # would only discard. The post-render Guard below still backstops the
+          # publish-lag borderline case.
           BASE="${{ inputs.target_date }}${{ github.event.client_payload.target_date }}"
           [ -z "$BASE" ] && BASE=$(date -u +%F)
-          TARGET_DATE=$(date -u -d "$BASE +0 days" +%F)
+          TARGET_DATE=$(date -u -d "$BASE +${DAY} days" +%F)
           echo "TARGET_DATE=$TARGET_DATE" >> "$GITHUB_ENV"
 
           # Soaring window for TARGET_DATE ends 8pm local (PDT=UTC-7) = 03:00z
@@ -85,21 +93,53 @@ jobs:
           CYC=$(printf '%02d' $(( (H / 6) * 6 )))
           # The run itself is NOT pinned to this cycle: it uses the NAM product's
           # auto --target-date mode, where the pipeline takes the freshest cycle
-          # whose files for the whole window are already on NOMADS and starts
+          # whose files for the whole window are already published and starts
           # WRF at the window start (fhr >= 3). The HRRR registry lists only the
           # 00/06/12/18z cycles (the ones with 48h of GRIB), so the 18h hourly
           # cycles are never chosen.
           echo "CYC=$CYC" >> "$GITHUB_ENV"
-          CYCLE_EPOCH=$(date -u -d "$(date -u +%F) ${CYC}:00:00Z" +%s)
+          CYC_DATE=$(date -u +%F)
+          CYCLE_EPOCH=$(date -u -d "$CYC_DATE ${CYC}:00:00Z" +%s)
           FHR_END=$(( (END_EPOCH - CYCLE_EPOCH) / 3600 ))
 
-          echo "Day 0 → $TARGET_DATE: window ends ${FHR_END}h past newest cycle (${CYC}z); HRRR reach 48h."
+          echo "Day $DAY → $TARGET_DATE: window ends ${FHR_END}h past newest cycle (${CYC}z); HRRR reach 48h."
           if [ "$FHR_END" -gt 48 ]; then
-            echo "::notice::HRRR can't reach $TARGET_DATE (${FHR_END}h > 48h horizon). Skipping this day — NAM carries it."
+            echo "::notice::HRRR can't reach $TARGET_DATE (day $DAY: ${FHR_END}h > 48h horizon). Skipping this day — NAM/RRFS carry it."
             echo "reachable=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "reachable=true" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
+
+          # Day 1 only: the dispatch fires ~15 min after its cycle starts
+          # publishing, before the deep hour that ends day 1's window (f45 for
+          # 06z, f39 for 12z, ~07:45z / ~13:40z on the AWS mirror). Left alone,
+          # auto mode would take the previous cycle six hours deeper (13:00z) or
+          # find no covering cycle at all (07:15z: 00z would need f51) and fall
+          # back to near-term data that the Guard then throws away. So wait for
+          # the newest cycle's window-end files (wrfprs + wrfsfc and their .idx,
+          # the pipeline's own readiness test). Day 0's window ends at f15–f27,
+          # which the pipeline already handles without waiting.
+          if [ "$DAY" -ge 1 ]; then
+            DC=$(date -u -d "$CYC_DATE" +%Y%m%d)
+            F=$(printf '%02d' "$FHR_END")
+            URLS=()
+            for k in prs sfc; do
+              u="${RASP_HRRR_ROOT}/hrrr.${DC}/conus/hrrr.t${CYC}z.wrf${k}f${F}.grib2"
+              URLS+=("$u" "$u.idx")
+            done
+            ready() { for u in "${URLS[@]}"; do curl -sfI -o /dev/null --max-time 20 "$u" || return 1; done; }
+            WAITED=0; MAX=75
+            until ready; do
+              if [ "$WAITED" -ge "$MAX" ]; then
+                echo "::notice::HRRR ${CYC}z f${F} not published after ${MAX} min; skipping $TARGET_DATE (day $DAY) rather than rendering an older, deeper cycle."
+                echo "reachable=false" >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
+              echo "HRRR ${CYC}z f${F} not published yet (waited ${WAITED} min); sleeping 3 min"
+              sleep 180; WAITED=$((WAITED + 3))
+            done
+            echo "HRRR ${CYC}z f${F} published (waited ${WAITED} min)."
+          fi
+          echo "reachable=true" >> "$GITHUB_OUTPUT"
 
       - name: Run forecast
         id: run
@@ -136,7 +176,7 @@ jobs:
         if: steps.guard.outputs.deploy == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: hrrr-${{ matrix.region }}-day0
+          name: hrrr-${{ matrix.region }}-day${{ matrix.day }}
           path: output/*.png
           retention-days: 7
 
@@ -150,13 +190,14 @@ jobs:
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         with:
           model: hrrr
-          day: 0
+          day: ${{ matrix.day }}
 
   publish:
-    # One gh-pages commit for every region (instead of one per job). Runs even
-    # when some legs failed or were skipped (out of reach), so one bad region
-    # never blocks the rest. Each dispatch's single day is the freshest
-    # forecast, so it updates /latest (latest_day 0).
+    # One gh-pages commit for every region-day (instead of one per job). Runs
+    # even when some legs failed or were skipped (out of reach), so one bad leg
+    # never blocks the rest; legs without an artifact are simply not published.
+    # Each leg lands in forecasts/<rendered date>/hrrr/<region>/ (so day 1 goes
+    # under date+1); only day 0 updates /latest (latest_day 0), as for NAM.
     needs: forecast
     if: always() && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
