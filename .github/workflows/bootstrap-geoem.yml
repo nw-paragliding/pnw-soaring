@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       domain:
-        description: 'Domain config (nam or hrrr)'
+        description: 'Domain config (nam, rrfs or hrrr)'
         required: true
         default: 'nam'
 
@@ -43,6 +43,14 @@ jobs:
               # Cache key keeps the hrrr-1km name (matches the release asset and
               # the forecast workflow's restore key); see forecast-hrrr.yml.
               echo "CACHE_KEY=geo-em-cascades-hrrr-1km-v1" >> $GITHUB_ENV
+              ;;
+            rrfs)
+              echo "CONFIG=domains/cascades-rrfs.yaml" >> $GITHUB_ENV
+              # The RRFS domain is geometrically identical to the NAM domain (only
+              # `model:` differs), so it shares the NAM geo_em cache key / release
+              # asset; forecast-rrfs.yml restores geo-em-cascades-nam-v2. You only
+              # need this branch if the RRFS geometry ever diverges from NAM's.
+              echo "CACHE_KEY=geo-em-cascades-nam-v1" >> $GITHUB_ENV
               ;;
             *)
               echo "CONFIG=domains/cascades.yaml" >> $GITHUB_ENV
