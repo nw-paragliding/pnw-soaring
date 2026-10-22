@@ -32,9 +32,9 @@ See [sites/issaquah.csv](sites/issaquah.csv) for the full list.
 | Run | Model | Cron (UTC) | Local (PDT) | Coverage |
 |-----|-------|------------|-------------|----------|
 | Evening NAM | NAM 3-domain (1.33km) | 5:00 UTC | 10pm | Next-day planning (00z cycle) |
-| Evening HRRR | HRRR d01 (3km) | 5:00 UTC | 10pm | Next-day planning (00z cycle) |
+| Evening HRRR | HRRR 1.33 km (beta) — HRRR 3 km into the DrJack 4 km → 1.33 km chain | 5:00 UTC | 10pm | Next-day planning (00z cycle) |
 | Morning NAM | NAM 3-domain (1.33km) | 16:30 UTC | 9:30am | Day-of update (12z cycle) |
-| Morning HRRR | HRRR d01 (3km) | 14:30 UTC | 7:30am | Day-of rapid refresh (12z cycle) |
+| Morning HRRR | HRRR 1.33 km (beta) — HRRR 3 km into the DrJack 4 km → 1.33 km chain | 14:30 UTC | 7:30am | Day-of rapid refresh (12z cycle) |
 
 ## Fork for Your Region
 
