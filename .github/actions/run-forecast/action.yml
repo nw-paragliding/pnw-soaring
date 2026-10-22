@@ -176,3 +176,14 @@ runs:
       with:
         path: geo_em/
         key: ${{ steps.prep.outputs.geo_key }}
+
+    # Small (~2 MB) diagnostic copy of the tile's grids, e.g. to check that
+    # neighbouring tiles' XLAT_M/XLONG_M agree on the shared lattice.
+    - name: Upload geo_em (diagnostic)
+      if: always() && hashFiles('geo_em/geo_em.d02.nc') != ''
+      continue-on-error: true
+      uses: actions/upload-artifact@v4
+      with:
+        name: geo-em-${{ inputs.model }}-${{ inputs.region }}-${{ inputs.target_date }}
+        path: geo_em/geo_em.d0*.nc
+        retention-days: 3
