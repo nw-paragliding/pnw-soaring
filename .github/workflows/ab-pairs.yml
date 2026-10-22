@@ -144,7 +144,7 @@ jobs:
           if [ -f "rasp/ab/$DOMAIN.yaml" ]; then
             YAML="rasp/ab/$DOMAIN.yaml"; SITES="rasp/ab/$DOMAIN-sites.csv"
           else
-            YAML="domains/$DOMAIN.yaml"; SITES="sites/issaquah-sites.csv"
+            YAML="domains/$DOMAIN.yaml"; SITES="sites/cascades-lab-sites.csv"
           fi
           [ -f "$YAML" ] || { echo "::error::no domain config for '$DOMAIN'"; exit 1; }
           sed -E "s/^model: *[a-z]+.*/model: ${{ matrix.model }}/" "$YAML" > ab-domain.yaml
@@ -259,7 +259,7 @@ jobs:
           RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           GEN=$(date -u +%Y-%m-%dT%H:%MZ)
           for d in $(echo '${{ needs.params.outputs.domains_json }}' | jq -r '.[]'); do
-            if [ -f "rasp/ab/$d.yaml" ]; then YAML="rasp/ab/$d.yaml"; SITES="rasp/ab/$d-sites.csv"; else YAML="domains/$d.yaml"; SITES="sites/issaquah-sites.csv"; fi
+            if [ -f "rasp/ab/$d.yaml" ]; then YAML="rasp/ab/$d.yaml"; SITES="rasp/ab/$d-sites.csv"; else YAML="domains/$d.yaml"; SITES="sites/cascades-lab-sites.csv"; fi
             OFF=$(grep -E '^utc_offset:' "$YAML" | awk '{print $2}'); OFF=${OFF:--7}
             # Two comparisons per domain, each skipped on its own when an arm is
             # missing, so one failed arm never blocks the other pair.
