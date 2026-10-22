@@ -7,7 +7,7 @@
 #   rrfs  `model: rrfs` swapped in, nothing else changes
 #   hrrr  `model: hrrr` swapped in, plus the DrJack-chain override keys
 #         (direct_reader .. sfc_idx_subset) copied verbatim from
-#         domains/cascades-hrrr.yaml: HRRR as initial/boundary conditions for
+#         domains/cascades-hrrr.yaml, the single source of truth for them: HRRR as initial/boundary conditions for
 #         the same 4 km -> 1.33 km chain, not the direct reader / 1 km nest.
 # The geometry is never touched, so all three models share the tile's geo_em.
 # Writes to out.yaml (default stdout).
@@ -23,6 +23,9 @@ case "$MODEL" in
   nam|rrfs)
     sed -E "s/^model: *[a-z]+.*/model: $MODEL/" "$SRC" > "$OUT" ;;
   hrrr)
+    # The block must end at the grid-section marker, or the reference file's own
+    # geometry (center_lat/lon ...) would be copied over the tile's.
+    grep -q '^# ---- grid + physics' "$HRRR_REF" || { echo "derive-domain: no '# ---- grid + physics' marker in $HRRR_REF" >&2; exit 1; }
     {
       sed -E 's/^model: *[a-z]+.*/model: hrrr/' "$SRC"
       echo
