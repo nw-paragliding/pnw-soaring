@@ -1,13 +1,14 @@
 name: Forecast (NAM)
 
+# RETIRED. NCEP removed NAM from NOMADS on 2026-11-03 12Z (SCN 26-47); RRFS
+# (forecast-rrfs.yml, same WRF chain) replaced it and the Cloudflare trigger
+# (cloudflare-trigger/) no longer dispatches run-nam. The workflow is kept for
+# manual runs only (Actions tab -> Run workflow) and fails as soon as the NAM
+# GRIB download finds nothing; delete it with the rest of the NAM cleanup.
+
 on:
-  # Fired by the Cloudflare trigger Worker (cloudflare-trigger/), which carries
-  # the target cycle in client_payload.cycle. repository_dispatch starts within
-  # seconds — unlike GitHub's throttled `schedule` events, which were running
-  # these forecasts ~5h late. The schedule lives in the Worker now. One dispatch
-  # starts the whole region x day matrix.
-  repository_dispatch:
-    types: [run-nam]
+  # Manual only. The repository_dispatch trigger (run-nam) was removed with the
+  # NAM retirement so that nothing can schedule this run by accident.
   workflow_dispatch:
     inputs:
       target_date:
