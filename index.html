@@ -433,7 +433,7 @@
 
     async function loadSites() {
       try {
-        const sites = await (await fetch('sites.json')).json();
+        const sites = await (await fetch('/sites.json')).json();
         updateMarkers(sites);
       } catch (e) { console.error('Failed to load sites:', e); }
     }
@@ -441,7 +441,7 @@
     async function loadMetadata() {
       for (const model of ['nam', 'rrfs', 'hrrr']) {
         try {
-          const resp = await fetch(`forecasts/latest/${model}/metadata.json`);
+          const resp = await fetch(`/forecasts/latest/${model}/metadata.json`);
           if (resp.ok) metadata[model] = await resp.json();
         } catch (e) {}
       }
@@ -493,7 +493,7 @@
         // what makes the night-before case read correctly.
         if (Date.now() > Date.parse(ds + 'T20:00:00-07:00')) continue;
         try {
-          const r = await fetch(`forecasts/${ds}/${model}/metadata.json`, { cache: 'no-cache' });
+          const r = await fetch(`/forecasts/${ds}/${model}/metadata.json`, { cache: 'no-cache' });
           if (r.ok) out.push({ date: ds, off, label: dayLabel(off, ds), sub: ds.slice(5) });
         } catch (e) {}
       }
@@ -508,7 +508,7 @@
         const b = document.createElement('button');
         b.innerHTML = `${d.label}<span class="sub">${d.sub}</span>`;
         b.classList.toggle('active', d.date === currentDate);
-        b.onclick = () => { currentDate = d.date; renderDays(days); updateWindgram(); syncHash(); };
+        b.onclick = () => { currentDate = d.date; renderDays(days); updateWindgram(); syncUrl(); };
         el.appendChild(b);
       });
     }
@@ -535,8 +535,8 @@
       // Windgrams are per region tile: forecasts/<date|latest>/<model>/<region>/.
       // A region folder that doesn't exist yet (new tile, failed run) 404s and
       // falls through to the "no forecast yet" state via img.onerror below.
-      const base = currentDate ? `forecasts/${currentDate}/${currentModel}`
-                               : `forecasts/latest/${currentModel}`;
+      const base = currentDate ? `/forecasts/${currentDate}/${currentModel}`
+                               : `/forecasts/latest/${currentModel}`;
       const src = `${base}/${encodeURIComponent(currentSite.region || 'issaquah')}/${encodeURIComponent(currentSite.name)}_windgram.png`;
 
       document.getElementById('site-name').textContent = prettyName(currentSite.name);
@@ -561,7 +561,7 @@
       selectedMarker = marker;
       if (marker && marker._icon) marker._icon.classList.add('selected');
       updateWindgram();
-      syncHash();
+      syncUrl();
     }
 
     function updateMarkers(sites) {
@@ -581,40 +581,56 @@
       // pre-selected, the panel shows its "pick a launch" prompt and the map
       // opens framed on every site.
       if (!applyLinkedSite(pendingLink.site)) {
-        if (pendingLink.site) syncHash();      // unknown site in the link: drop it from the bar
+        if (pendingLink.site) syncUrl();       // unknown site in the link: back to /
         fitAllSites();
       }
     }
 
     // ── Deep links ─────────────────────────────────────────────────
-    // #site=<name>[&model=nam|rrfs|hrrr][&day=YYYY-MM-DD], or a bare #<name>.
-    // Names match loosely (case, spaces, underscores and hyphens ignored), so
-    // #site=poo-poo-point and #Poo_Poo_Point both work. The address bar is kept
-    // in sync as the user clicks around, so it is always the link to share.
+    // /<name>[?model=nam|rrfs|hrrr][&day=YYYY-MM-DD], e.g. /Carnation or
+    // /poo-poo-point?model=rrfs. Names match loosely (case, spaces, underscores
+    // and hyphens ignored). GitHub Pages serves 404.html (a copy of this page,
+    // see deploy-site.yml) for any path it has no file for, which is how
+    // /Carnation reaches this script; that is also why every asset path above
+    // is root-absolute. The old #site=… and bare #<name> links keep working and
+    // are rewritten to the path form. The address bar is kept in sync as the
+    // user clicks around, so it is always the link to share.
     const MODELS = ['nam', 'rrfs', 'hrrr'];
     const siteKey = (name) => String(name).toLowerCase().replace(/[^a-z0-9]/g, '');
     let siteIndex = {};
-    function parseHash() {
-      const raw = location.hash.replace(/^#/, '');
-      const out = { site: null, model: null, day: null };
-      if (!raw) return out;
-      if (!raw.includes('=')) { out.site = decodeURIComponent(raw); return out; }
-      for (const [k, v] of new URLSearchParams(raw)) {
+    function readParams(params, out) {
+      for (const [k, v] of params) {
         if (k === 'site' && v) out.site = v;
         else if (k === 'model' && MODELS.includes(v)) out.model = v;
         else if (k === 'day' && /^\d{4}-\d{2}-\d{2}$/.test(v)) out.day = v;
       }
+    }
+    function parseLink() {
+      const out = { site: null, model: null, day: null };
+      // Path: a single segment that is not the page itself.
+      const seg = location.pathname.replace(/^\/+|\/+$/g, '');
+      if (seg && !seg.includes('/') && !/\.html?$/i.test(seg)) {
+        try { out.site = decodeURIComponent(seg); } catch (_) { out.site = seg; }
+      }
+      readParams(new URLSearchParams(location.search), out);
+      // Legacy hash links: #site=…&model=…&day=… or a bare #<name>.
+      const raw = location.hash.replace(/^#/, '');
+      if (raw) {
+        if (raw.includes('=')) readParams(new URLSearchParams(raw), out);
+        else if (!out.site) { try { out.site = decodeURIComponent(raw); } catch (_) { out.site = raw; } }
+      }
       return out;
     }
-    // Site always; model and day only when they differ from the page defaults,
-    // so everyday links stay short and don't pin a date that gets pruned.
-    function syncHash() {
-      if (!currentSite) { history.replaceState(null, '', location.pathname + location.search); return; }
+    // Site always (as the path); model and day only when they differ from the
+    // page defaults, so everyday links stay short and don't pin a date that
+    // gets pruned.
+    function syncUrl() {
+      if (!currentSite) { history.replaceState(null, '', '/'); return; }
       const p = new URLSearchParams();
-      p.set('site', currentSite.name);
       if (currentModel !== DEFAULT_MODEL) p.set('model', currentModel);
       if (currentDate && currentDays.length && currentDate !== currentDays[0].date) p.set('day', currentDate);
-      history.replaceState(null, '', '#' + p.toString());
+      const q = p.toString();
+      history.replaceState(null, '', '/' + encodeURIComponent(currentSite.name) + (q ? '?' + q : ''));
     }
     function applyLinkedSite(name) {
       const hit = name && siteIndex[siteKey(name)];
@@ -631,10 +647,10 @@
       }
       return true;
     }
-    window.addEventListener('hashchange', () => {
-      const h = parseHash();
-      if (h.site) applyLinkedSite(h.site);
-    });
+    // Back/forward and hand-edited hashes re-apply whatever the bar says.
+    for (const ev of ['popstate', 'hashchange']) {
+      window.addEventListener(ev, () => { const l = parseLink(); if (l.site) applyLinkedSite(l.site); });
+    }
     document.getElementById('copy-link').addEventListener('click', async (e) => {
       const btn = e.currentTarget;
       const url = location.href;
@@ -685,7 +701,7 @@
         currentModel = e.target.value;
         await loadDays();          // each model may offer a different set of days
         updateWindgram();
-        syncHash();
+        syncUrl();
       });
     });
 
@@ -698,7 +714,7 @@
     // A deep link's model/day are applied before the day set resolves; its site
     // is applied once sites.json has produced markers (updateMarkers).
     const DEFAULT_MODEL = document.querySelector('input[name="model"]:checked').value;
-    const pendingLink = parseHash();
+    const pendingLink = parseLink();
     if (pendingLink.model) {
       const r = document.querySelector(`input[name="model"][value="${pendingLink.model}"]`);
       if (r) { r.checked = true; currentModel = pendingLink.model; }
