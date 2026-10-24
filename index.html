@@ -43,7 +43,7 @@
       min-width: 380px;
       max-width: 640px;
       height: 100%;
-      overflow-y: auto;
+      overflow: hidden;              /* never scrolls: the windgram shrinks to fit instead */
       position: relative;
       background: var(--paper);
       /* faint topographic contour wash for atmosphere */
@@ -143,8 +143,12 @@
     .days button.active .sub { opacity: .8; }
 
     /* Windgram panel */
-    .panel { padding: 14px 24px 28px; flex: 1;
+    .panel { padding: 14px 24px 20px; flex: 1; min-height: 0;
+      display: flex; flex-direction: column;
       animation: rise .5s cubic-bezier(.2,.7,.2,1) .12s both; }
+    /* The windgram column shrinks with the viewport: header and actions keep
+       their size, the image takes what is left and scales to fit it. */
+    #windgram-content { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 
     .empty {
       margin-top: 6px;
@@ -170,17 +174,16 @@
       white-space: nowrap; text-align: right; flex: 0 0 auto;
     }
 
-    .wg-frame {
-      border: 1px solid var(--line-2);
-      border-radius: 14px;
-      overflow: hidden;
-      background: var(--panel);
-      box-shadow: var(--shadow);
+    .wg-frame { flex: 0 1 auto; min-height: 0; display: flex; }
+    .wg-frame img {
+      display: block; max-width: 100%; max-height: 100%; width: auto; height: auto;
+      cursor: zoom-in;
+      border: 1px solid var(--line-2); border-radius: 14px;
+      background: var(--panel); box-shadow: var(--shadow);
     }
-    .wg-frame img { width: 100%; display: block; cursor: zoom-in; }
     .no-data { padding: 40px 20px; text-align: center; color: var(--ink-soft); font-size: 14px; }
 
-    .actions { margin-top: 12px; display: flex; align-items: center; justify-content: space-between; }
+    .actions { margin-top: 12px; flex: none; display: flex; align-items: center; justify-content: space-between; }
     .open-link {
       font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 500;
       color: var(--evergreen); text-decoration: none;
@@ -188,6 +191,10 @@
     }
     .open-link:hover { border-color: var(--evergreen); }
     .reveal { animation: wgIn .4s cubic-bezier(.2,.7,.2,1) both; }
+
+    /* "Copy link" sits beside "Open full size" and dresses like it */
+    button.open-link { background: none; border: 0; border-bottom: 1px solid transparent;
+      padding: 0; cursor: pointer; font: inherit; }
 
     /* ── Map ───────────────────────────────────────────────────── */
     #map { flex: 1; height: 100%; background: #e4e4e2; }   /* matches the gray canvas while tiles load */
@@ -219,8 +226,6 @@
       100% { width: 46px; height: 46px; opacity: 0; }
     }
 
-    /* Hillshade tiles darken the grey canvas rather than paint over it */
-    .leaflet-layer.hillshade { mix-blend-mode: multiply; }
     /* Leaflet chrome to match */
     .leaflet-bar a {
       background: var(--panel); color: var(--ink); border-color: var(--line-2) !important;
@@ -357,6 +362,7 @@
           <div class="no-data" id="windgram-nodata" style="display:none"></div>
           <div class="actions">
             <a class="open-link" id="open-full" href="#" target="_blank" rel="noopener">Open full size ↗</a>
+            <button class="open-link" id="copy-link" type="button" title="Copy a link that opens this site">Copy link</button>
           </div>
         </div>
       </section>
@@ -374,16 +380,22 @@
   <script>
     // Rough statewide view until sites.json arrives; fitAllSites() then frames
     // every marker for whatever screen this is.
-    // zoomSnap 0.25 lets fitBounds settle on a quarter level, so the statewide frame
-    // fills a phone screen instead of dropping to the next whole zoom out.
+    // zoomSnap 0.25 lets the opening fitBounds settle on a quarter level, so the
+    // statewide frame fills a phone screen instead of dropping to the next whole
+    // zoom out. It is put back to 1 once the view is set (see settleZoomSnap):
+    // with quarter steps every wheel notch or trackpad tick became its own short
+    // zoom animation that interrupted the previous one, which read as stutter.
     const map = L.map('map', { zoomControl: false, zoomSnap: 0.25 }).setView([47.9, -121.0], 8);
+    const settleZoomSnap = () => { map.options.zoomSnap = 1; };
     L.control.zoom({ position: 'topright' }).addTo(map);   // clear of the brand pill
 
-    // Basemap: Esri's Light Gray canvas under Esri World Hillshade (multiplied
-    // in via CSS so the relief darkens the grey instead of covering it), with
-    // the Light Gray reference labels on top. All keyless, ~25 KB per 256 px
-    // tile for the three together versus ~45 KB for the OpenTopoMap tiles this
-    // replaces. Both services stop at level 16; Leaflet upsamples beyond.
+    // Basemap: Esri's Light Gray canvas under Esri World Hillshade at half
+    // opacity, with the Light Gray reference labels on top. All keyless,
+    // ~25 KB per 256 px tile for the three together versus ~45 KB for the
+    // OpenTopoMap tiles this replaced. The hillshade is composited with plain
+    // opacity, not a CSS blend mode: mix-blend-mode on a tile pane forces the
+    // compositor to re-blend the whole map every frame of a zoom animation and
+    // made zooming stutter. Both services stop at level 16; Leaflet upsamples.
     const esri = (service, opts = {}) => L.tileLayer(
       `https://server.arcgisonline.com/ArcGIS/rest/services/${service}/MapServer/tile/{z}/{y}/{x}`,
       { maxNativeZoom: 16, maxZoom: 17, ...opts });
@@ -391,7 +403,7 @@
       attribution: 'Basemap &copy; Esri, HERE, Garmin, OpenStreetMap contributors'
     }).addTo(map);
     esri('Elevation/World_Hillshade', {
-      className: 'hillshade', opacity: 0.75,
+      opacity: 0.5,
       attribution: 'Hillshade &copy; Esri, USGS, NASA, NGA'
     }).addTo(map);
     esri('Canvas/World_Light_Gray_Reference').addTo(map);
@@ -491,12 +503,14 @@
         const b = document.createElement('button');
         b.innerHTML = `${d.label}<span class="sub">${d.sub}</span>`;
         b.classList.toggle('active', d.date === currentDate);
-        b.onclick = () => { currentDate = d.date; renderDays(days); updateWindgram(); };
+        b.onclick = () => { currentDate = d.date; renderDays(days); updateWindgram(); syncHash(); };
         el.appendChild(b);
       });
     }
+    let currentDays = [];            // the day set of the selected model
     async function loadDays() {
       const days = await discoverDays(currentModel);
+      currentDays = days;
       if (!days.find(d => d.date === currentDate)) currentDate = days.length ? days[0].date : null;
       renderDays(days);
     }
@@ -542,6 +556,7 @@
       selectedMarker = marker;
       if (marker && marker._icon) marker._icon.classList.add('selected');
       updateWindgram();
+      syncHash();
     }
 
     function updateMarkers(sites) {
@@ -554,12 +569,79 @@
         marker.bindTooltip(label, { direction: 'top', offset: [0, -12] });
         marker.on('click', () => { selectSite(site, marker); openSheet(); });
         markers.push(marker);
+        siteIndex[siteKey(site.name)] = { site, marker };
       });
-      // No site is pre-selected: the panel shows its "pick a launch" prompt and
-      // the map opens framed on every site.
       siteBounds = L.latLngBounds(sites.map(s => [s.lat, s.lon]));
-      fitAllSites();
+      // A deep link (#site=…) opens on that site; otherwise nothing is
+      // pre-selected, the panel shows its "pick a launch" prompt and the map
+      // opens framed on every site.
+      if (!applyLinkedSite(pendingLink.site)) {
+        if (pendingLink.site) syncHash();      // unknown site in the link: drop it from the bar
+        fitAllSites();
+      }
     }
+
+    // ── Deep links ─────────────────────────────────────────────────
+    // #site=<name>[&model=nam|rrfs|hrrr][&day=YYYY-MM-DD], or a bare #<name>.
+    // Names match loosely (case, spaces, underscores and hyphens ignored), so
+    // #site=poo-poo-point and #Poo_Poo_Point both work. The address bar is kept
+    // in sync as the user clicks around, so it is always the link to share.
+    const MODELS = ['nam', 'rrfs', 'hrrr'];
+    const siteKey = (name) => String(name).toLowerCase().replace(/[^a-z0-9]/g, '');
+    let siteIndex = {};
+    function parseHash() {
+      const raw = location.hash.replace(/^#/, '');
+      const out = { site: null, model: null, day: null };
+      if (!raw) return out;
+      if (!raw.includes('=')) { out.site = decodeURIComponent(raw); return out; }
+      for (const [k, v] of new URLSearchParams(raw)) {
+        if (k === 'site' && v) out.site = v;
+        else if (k === 'model' && MODELS.includes(v)) out.model = v;
+        else if (k === 'day' && /^\d{4}-\d{2}-\d{2}$/.test(v)) out.day = v;
+      }
+      return out;
+    }
+    // Site always; model and day only when they differ from the page defaults,
+    // so everyday links stay short and don't pin a date that gets pruned.
+    function syncHash() {
+      if (!currentSite) { history.replaceState(null, '', location.pathname + location.search); return; }
+      const p = new URLSearchParams();
+      p.set('site', currentSite.name);
+      if (currentModel !== DEFAULT_MODEL) p.set('model', currentModel);
+      if (currentDate && currentDays.length && currentDate !== currentDays[0].date) p.set('day', currentDate);
+      history.replaceState(null, '', '#' + p.toString());
+    }
+    function applyLinkedSite(name) {
+      const hit = name && siteIndex[siteKey(name)];
+      if (!hit) return false;
+      selectSite(hit.site, hit.marker);
+      userMoved = true;                          // keep the resize re-fit off this view
+      map.setView(hit.marker.getLatLng(), 11, { animate: false });
+      settleZoomSnap();
+      if (isPhone()) {
+        openSheet();
+        // The open sheet covers roughly the lower three quarters of the screen;
+        // nudge the marker up into the strip that stays visible above it.
+        map.panBy([0, Math.round(map.getSize().y * 0.3)], { animate: false });
+      }
+      return true;
+    }
+    window.addEventListener('hashchange', () => {
+      const h = parseHash();
+      if (h.site) applyLinkedSite(h.site);
+    });
+    document.getElementById('copy-link').addEventListener('click', async (e) => {
+      const btn = e.currentTarget;
+      const url = location.href;
+      try {
+        if (navigator.share && isPhone()) { await navigator.share({ title: document.title, url }); return; }
+        await navigator.clipboard.writeText(url);
+        btn.textContent = 'Copied';
+        setTimeout(() => { btn.textContent = 'Copy link'; }, 1500);
+      } catch (_) {
+        window.prompt('Link to this site:', url);
+      }
+    });
 
     // Frame every site on load, on whatever screen this is. On a phone the map is
     // full-screen with the brand pill floating top-left and the selector sheet
@@ -584,6 +666,7 @@
       fitting = true;
       map.fitBounds(siteBounds, opts);
       fitting = false;
+      settleZoomSnap();
     }
     map.on('movestart', () => { if (!fitting) userMoved = true; });
     let fitTimer = null;
@@ -597,6 +680,7 @@
         currentModel = e.target.value;
         await loadDays();          // each model may offer a different set of days
         updateWindgram();
+        syncHash();
       });
     });
 
@@ -605,6 +689,16 @@
     // Grip toggles the windgram open/closed; selectors stay docked either way.
     document.getElementById('sheetGrip').addEventListener('click', () => sheet.classList.toggle('open'));
     map.on('click', closeSheet);   // empty-map taps (marker clicks don't propagate)
+
+    // A deep link's model/day are applied before the day set resolves; its site
+    // is applied once sites.json has produced markers (updateMarkers).
+    const DEFAULT_MODEL = document.querySelector('input[name="model"]:checked').value;
+    const pendingLink = parseHash();
+    if (pendingLink.model) {
+      const r = document.querySelector(`input[name="model"][value="${pendingLink.model}"]`);
+      if (r) { r.checked = true; currentModel = pendingLink.model; }
+    }
+    if (pendingLink.day) currentDate = pendingLink.day;   // kept only if loadDays finds it
 
     // Resolve the day set first (sets currentDate), then sites + metadata.
     (async () => {
