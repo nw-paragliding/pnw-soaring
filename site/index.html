@@ -372,7 +372,11 @@
 
   <script src="https://unpkg.com/leaflet@1.9/dist/leaflet.js"></script>
   <script>
-    const map = L.map('map', { zoomControl: false }).setView([47.55, -121.80], 11);
+    // Rough statewide view until sites.json arrives; fitAllSites() then frames
+    // every marker for whatever screen this is.
+    // zoomSnap 0.25 lets fitBounds settle on a quarter level, so the statewide frame
+    // fills a phone screen instead of dropping to the next whole zoom out.
+    const map = L.map('map', { zoomControl: false, zoomSnap: 0.25 }).setView([47.9, -121.0], 8);
     L.control.zoom({ position: 'topright' }).addTo(map);   // clear of the brand pill
 
     // Basemap: Esri's Light Gray canvas under Esri World Hillshade (multiplied
@@ -402,7 +406,6 @@
         .trim();
     }
 
-    const DEFAULT_SITE = 'Poo_Poo_Point';   // auto-selected on load
     let currentModel = 'nam';        // NAM default (RRFS is its successor; HRRR is beta)
     let currentSite = null;
     let currentDate = null;          // selected forecast day (null → forecasts/latest)
@@ -545,19 +548,49 @@
       markers.forEach(m => map.removeLayer(m));
       markers = [];
       const icon = L.divIcon({ html: '🪂', className: 'site-marker', iconSize: [26, 26], iconAnchor: [13, 13] });
-      let dflt = null;
       sites.forEach(site => {
         const label = prettyName(site.name);
         const marker = L.marker([site.lat, site.lon], { icon, title: label }).addTo(map);
         marker.bindTooltip(label, { direction: 'top', offset: [0, -12] });
         marker.on('click', () => { selectSite(site, marker); openSheet(); });
         markers.push(marker);
-        if (site.name === DEFAULT_SITE) dflt = { site, marker };
       });
-      // Pre-select the default site (renders the windgram) but leave the sheet
-      // closed on mobile — the map opens full-screen; tapping a site reveals it.
-      if (dflt && !currentSite) selectSite(dflt.site, dflt.marker);
+      // No site is pre-selected: the panel shows its "pick a launch" prompt and
+      // the map opens framed on every site.
+      siteBounds = L.latLngBounds(sites.map(s => [s.lat, s.lon]));
+      fitAllSites();
     }
+
+    // Frame every site on load, on whatever screen this is. On a phone the map is
+    // full-screen with the brand pill floating top-left and the selector sheet
+    // docked at the bottom, so those strips are padded out of the fit; on a
+    // desktop the map is its own flex box and only needs a margin. Re-fit on
+    // resize / rotation until the user pans or zooms by hand.
+    let siteBounds = null;
+    let userMoved = false;
+    let fitting = false;
+    const isPhone = () => window.matchMedia('(max-width: 720px)').matches;
+    function fitAllSites() {
+      if (!siteBounds || !siteBounds.isValid() || userMoved) return;
+      const opts = { maxZoom: 11, animate: false };
+      if (isPhone()) {
+        const pill = document.querySelector('.map-header');
+        const top = pill ? pill.getBoundingClientRect().bottom + 12 : 24;
+        opts.paddingTopLeft = [18, top];
+        opts.paddingBottomRight = [18, sheet.offsetHeight + 16];
+      } else {
+        opts.padding = [48, 48];
+      }
+      fitting = true;
+      map.fitBounds(siteBounds, opts);
+      fitting = false;
+    }
+    map.on('movestart', () => { if (!fitting) userMoved = true; });
+    let fitTimer = null;
+    window.addEventListener('resize', () => {
+      clearTimeout(fitTimer);
+      fitTimer = setTimeout(fitAllSites, 150);
+    });
 
     document.querySelectorAll('input[name="model"]').forEach(r => {
       r.addEventListener('change', async e => {
