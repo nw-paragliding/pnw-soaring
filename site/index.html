@@ -202,28 +202,33 @@
     /* Bottom-sheet affordances + floating brand — mobile only */
     .sheet-grip, .sheet-close, .map-header { display: none; }
 
-    /* Custom paraglider markers */
-    .site-marker {
-      text-align: center; line-height: 26px; font-size: 19px;
+    /* Custom paraglider markers. Leaflet positions .site-marker itself with an
+       inline transform on every pan and zoom, so that element must carry no
+       transition or transform of its own (a transition there made all 123
+       markers glide into place for 120 ms after each zoom, which read as
+       stutter). Hover / selected effects live on the inner glyph instead. */
+    .site-marker { text-align: center; line-height: 26px; font-size: 19px; cursor: pointer; }
+    .site-marker .glyph {
+      display: inline-block;
       transition: transform .12s cubic-bezier(.2,.7,.2,1);
-      cursor: pointer;
       filter: drop-shadow(0 1px 1px rgba(0,0,0,.35));
     }
-    .site-marker:hover { transform: scale(1.25); }
-    .site-marker.selected {
+    .site-marker:hover .glyph { transform: scale(1.25); }
+    .site-marker.selected .glyph {
       transform: scale(1.65);
       filter: drop-shadow(0 2px 3px rgba(224,102,42,.55));
     }
-    /* thermal ring under the selected marker */
+    /* thermal ring under the selected marker — animated with transform/opacity
+       only, so it never triggers layout while the map is animating */
     .site-marker.selected::after {
       content: ""; position: absolute; left: 50%; top: 56%;
-      width: 30px; height: 30px; transform: translate(-50%,-50%);
+      width: 46px; height: 46px; margin: -23px 0 0 -23px;
       border: 2px solid var(--thermal); border-radius: 50%;
       animation: ring 1.6s ease-out infinite;
     }
     @keyframes ring {
-      0% { width: 18px; height: 18px; opacity: .8; }
-      100% { width: 46px; height: 46px; opacity: 0; }
+      0% { transform: scale(.39); opacity: .8; }
+      100% { transform: scale(1); opacity: 0; }
     }
 
     /* Leaflet chrome to match */
@@ -403,7 +408,11 @@
     // made zooming stutter. Both services stop at level 16; Leaflet upsamples.
     const esri = (service, opts = {}) => L.tileLayer(
       `https://server.arcgisonline.com/ArcGIS/rest/services/${service}/MapServer/tile/{z}/{y}/{x}`,
-      { maxNativeZoom: 16, maxZoom: 17, ...opts });
+      // updateWhenZooming off: with three layers, rebuilding each one's tile
+      // DOM at every integer level of a pinch or fly-to stuttered; tiles now
+      // refresh once the animation ends. keepBuffer keeps a wider ring of
+      // already-loaded tiles so the edges are covered meanwhile.
+      { maxNativeZoom: 16, maxZoom: 17, updateWhenZooming: false, keepBuffer: 4, ...opts });
     esri('Canvas/World_Light_Gray_Base', {
       attribution: 'Basemap &copy; Esri, HERE, Garmin, OpenStreetMap contributors'
     }).addTo(map);
@@ -567,7 +576,7 @@
     function updateMarkers(sites) {
       markers.forEach(m => map.removeLayer(m));
       markers = [];
-      const icon = L.divIcon({ html: '🪂', className: 'site-marker', iconSize: [26, 26], iconAnchor: [13, 13] });
+      const icon = L.divIcon({ html: '<span class="glyph">🪂</span>', className: 'site-marker', iconSize: [26, 26], iconAnchor: [13, 13] });
       sites.forEach(site => {
         const label = prettyName(site.name);
         const marker = L.marker([site.lat, site.lon], { icon, title: label }).addTo(map);
