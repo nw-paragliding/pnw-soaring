@@ -4,7 +4,7 @@ Automated paragliding soaring forecasts for the Pacific Northwest, powered by [r
 
 ## What This Does
 
-GitHub Actions runs the WRF weather model several times a day using NAM, RRFS and
+GitHub Actions runs the WRF weather model several times a day using RRFS and
 HRRR input data, generates windgram forecasts for 123 flying sites and reference points across
 Washington, split over seven region tiles, and publishes them to a map-based site
 on GitHub Pages.
@@ -20,8 +20,9 @@ Click a site marker on the map to see its windgram.
 Washington is covered by seven independent WRF tiles. Each runs the same chain
 (parent model → WRF 4 km → WRF 1.33 km, 52 levels, DrJack physics) with a
 120 km × 120 km 1.33 km nest; the 4 km parent auto-sizes to 200 km. Each tile is
-one `domains/<region>.yaml` (the NAM config; the workflows derive the RRFS and
-HRRR configs from it at run time with `scripts/derive-domain.sh`) and one
+one `domains/<region>.yaml` (the tile's base config, still written as the NAM
+config: the workflows derive the RRFS and HRRR configs from it at run time with
+`scripts/derive-domain.sh`, which swaps the `model:` line) and one
 `sites/<region>-sites.csv`. The tiles share one map projection and grid lattice
 (the `lattice:` block, honoured by windgram >= 0.7.0) so their 1.33 km grid
 points coincide where they overlap.
@@ -51,7 +52,7 @@ Each tile's geo_em grids are cached in Actions under
 edited YAML, new windgram image) the job downloads the WPS GEOG data and runs geogrid itself.
 `bootstrap-geoem.yml` can pre-warm the caches.
 
-**Jobs per run:** NAM, RRFS and HRRR each run every tile for day 0 and day 1 =
+**Jobs per run:** RRFS and HRRR each run every tile for day 0 and day 1 =
 14 arm jobs. HRRR's cycles reach only 48 h, so a day HRRR cannot reach (day 1
 of the 01:15z run) ends its job in seconds with a notice and publishes nothing;
 HRRR's day-1 legs start only after a small `wait-day1` job
@@ -59,8 +60,8 @@ HRRR's day-1 legs start only after a small `wait-day1` job
 its day-0 legs start at once. Each run then commits once to gh-pages
 from a single `publish` job. RRFS's readiness polling likewise runs in two small
 `wait-day0` / `wait-day1` jobs, so the arm runners start only once the GRIB is
-out. The free tier allows 20 concurrent jobs, so when NAM and RRFS fire
-together some jobs queue briefly.
+out. The free tier allows 20 concurrent jobs, so a run's 14 legs never queue
+unless two models overlap (HRRR's 13:00z day-1 legs and the 14:00z RRFS run).
 
 ## Schedule
 
@@ -70,19 +71,21 @@ The crons live in [`cloudflare-trigger/wrangler.toml`](cloudflare-trigger/wrangl
 | Run | Model | Cron (UTC) | Local (PDT) | Coverage |
 |-----|-------|------------|-------------|----------|
 | Evening HRRR | HRRR 1.33 km (beta) — HRRR 3 km → WRF 4 km → 1.33 km | 01:15 | 6:15pm | Night-before: tomorrow only (00z cycle; the next day would need f51 > 48 h, skipped) |
-| Evening NAM | NAM → WRF 4 km → 1.33 km | 02:05 | 7:05pm | Overnight outlook, today + tomorrow (00z cycle) |
-| Evening RRFS | RRFS → WRF 4 km → 1.33 km | 02:05 (NAM cron) | 7:05pm | Same as NAM; waits for RRFS GRIB (~02:50z) |
+| Evening RRFS | RRFS → WRF 4 km → 1.33 km | 02:05 | 7:05pm | Overnight outlook, today + tomorrow (00z cycle; waits for the GRIB: f27 ~02:20z, f51 ~02:50z) |
 | Pre-dawn HRRR | HRRR 1.33 km (beta) — HRRR 3 km → WRF 4 km → 1.33 km | 07:15 | 12:15am | Pre-dawn refresh, today + tomorrow (06z cycle; tomorrow ends at f45) |
 | Morning HRRR | HRRR 1.33 km (beta) — HRRR 3 km → WRF 4 km → 1.33 km | 13:00 | 6:00am | Freshest, today + tomorrow (12z cycle; tomorrow ends at f39) |
-| Morning NAM | NAM → WRF 4 km → 1.33 km | 14:00 | 7:00am | Day-of update, today + tomorrow (12z cycle) |
-| Morning RRFS | RRFS → WRF 4 km → 1.33 km | 14:00 (NAM cron) | 7:00am | Same as NAM; waits for RRFS GRIB (~14:50z) |
+| Morning RRFS | RRFS → WRF 4 km → 1.33 km | 14:00 | 7:00am | Day-of update, today + tomorrow (12z cycle; waits for the GRIB: f27 ~14:20z, f51 ~14:50z) |
 
-RRFS has no cron of its own (Cloudflare's free tier allows 5): the two NAM ticks
-dispatch both `run-nam` and `run-rrfs`, and `forecast-rrfs.yml` polls the RRFS
-data root until the files for the cycle are published (~40 min after NAM's) before
-it runs. NAM is retired by NCEP on 2026-11-03 12Z; RRFS, which drives the identical
-WRF chain, replaces it. Until then both run and the site offers NAM (default),
-RRFS and HRRR. Removing NAM is a follow-up change.
+`forecast-rrfs.yml` polls the RRFS data root until the files for the cycle are
+published before its arm legs start (two small `wait-day0` / `wait-day1` jobs).
+NCEP retired NAM on 2026-11-03 12Z; RRFS, which drives the identical WRF chain,
+replaced it as the site's default model and took over NAM's two crons (the free
+tier allows 5, and until the retirement those two ticks dispatched both
+`run-nam` and `run-rrfs`). `forecast-nam.yml` is no longer dispatched and stays
+only for manual runs; the site's NAM button disappears by itself once the last
+NAM forecasts have aged out of the 7-day window. Removing what is left of NAM
+(the workflow, the toggle markup, `model: nam` as the tile configs' base, the
+`nam/` prefix in R2) is a follow-up change.
 
 ### Where the GRIB comes from
 
@@ -100,7 +103,7 @@ answer byte-range requests and do not throttle. They run ~1–4 min behind NOMAD
 Set the variable under Settings → Secrets and variables → Actions → Variables.
 No code change is needed. The RRFS wait gate polls the same root. HRRR needs
 windgram >= 0.7.2 for its root to take effect; older images always read HRRR
-from NOMADS. NAM stays on NOMADS (it retires 2026-11-03).
+from NOMADS.
 
 The Cloudflare trigger is unchanged by the region tiles: one dispatch starts the
 whole region × day matrix of a workflow.
@@ -134,7 +137,7 @@ repository size shown by GitHub lags behind the squash.
 
 1. Fork this repo
 2. Edit `domains/<region>.yaml` — change `center_lat`, `center_lon`, `target_dx_km`
-   (and the region list in the three `forecast-*.yml` matrices)
+   (and the region list in the `forecast-*.yml` matrices)
 3. Edit `sites/<region>-sites.csv` — add your flying sites
 4. Push — GitHub Actions will start generating forecasts for your region
 

@@ -104,7 +104,7 @@
   .segmented .indicator{position:absolute;top:4px;left:4px;bottom:4px;width:calc((100% - 8px) / 3);
     background:var(--evergreen);border-radius:8px;box-shadow:0 2px 8px -2px rgba(22,58,45,.5);
     transition:transform .28s cubic-bezier(.5,.1,.1,1);z-index:0}
-  .segmented:has(input[value="rrfs"]:checked) .indicator{transform:translateX(100%)}
+  .segmented:has(input[value="nam"]:checked) .indicator{transform:translateX(100%)}
   .segmented:has(input[value="hrrr"]:checked) .indicator{transform:translateX(200%)}
   .segmented label{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:1px;
     padding:8px 4px;cursor:pointer;user-select:none;border-radius:8px;transition:color .2s}
@@ -225,13 +225,13 @@
     <div class="controls">
       <div class="segmented" role="radiogroup" aria-label="Forecast model">
         <span class="indicator" aria-hidden="true"></span>
-        <label>
-          <input type="radio" name="model" value="nam" checked>
-          <span class="name">NAM</span><span class="res" data-model="nam" data-res="1.3 km">1.3 km</span>
-        </label>
         <label id="rrfs-opt">
-          <input type="radio" name="model" value="rrfs">
+          <input type="radio" name="model" value="rrfs" checked>
           <span class="name">RRFS</span><span class="res" data-model="rrfs" data-res="1.3 km">1.3 km</span>
+        </label>
+        <label id="nam-opt">
+          <input type="radio" name="model" value="nam">
+          <span class="name">NAM</span><span class="res" data-model="nam" data-res="1.3 km">1.3 km</span>
         </label>
         <label id="hrrr-opt">
           <input type="radio" name="model" value="hrrr">
@@ -274,7 +274,8 @@ const map = new maplibregl.Map({ container:"map",
   style:"https://tiles.openfreemap.org/styles/positron",
   center:[-121.86,47.46], zoom:10.4 });   // framed on the Tiger / Rattlesnake cluster
 
-let model="nam", goodModel="nam", currentDate=null, daysCache={}, cube=null, zlayer=null, tIdx=6, beforeLabelId;   // default ~2pm local (peak thermals)
+const DEFAULT_MODEL="rrfs";   // RRFS replaced NAM (retired by NCEP 2026-11-03); see MODELS below
+let model=DEFAULT_MODEL, goodModel=DEFAULT_MODEL, currentDate=null, daysCache={}, cube=null, zlayer=null, tIdx=6, beforeLabelId;   // default ~2pm local (peak thermals)
 
 function setupBasemap(){
   // Keep our raster layers under the style's labels so place names stay legible.
@@ -528,7 +529,7 @@ async function showWindgram(lng, lat, name, reveal=true){
 // amber when stale). Age is per-model run freshness, read from <model>/latest.
 // The resolution comes from the cube itself (dx_km), so it tracks whatever each
 // model's WRF chain actually ran at; data-res is only the pre-load fallback.
-const MODELS = ["nam","rrfs","hrrr"];   // toggle order; NAM is the default
+const MODELS = ["rrfs","nam","hrrr"];   // toggle order; RRFS is the default, NAM is retired (its button dims once its cube is gone)
 function timeAgo(ms){
   const h = ms/3.6e6;
   if(h < 1) return Math.max(1,Math.round(h*60))+"m ago";
@@ -596,13 +597,13 @@ document.querySelectorAll('input[name="model"]').forEach(r=>r.addEventListener("
 $("sheetGrip").addEventListener("click", ()=> $("panel").classList.toggle("open"));
 $("sheetClose").addEventListener("click", closeSheet);
 map.on("load", ()=>{
-  setupBasemap(); buildLegend(); loadSites(); loadModel("nam");
+  setupBasemap(); buildLegend(); loadSites(); loadModel(DEFAULT_MODEL);
   refreshToggleMeta();                                            // resolution · run age in every toggle button
-  // Dim any non-default model whose cube isn't published yet (RRFS until its
-  // first run lands; HRRR while in beta). If a click on one still fails to
+  // Dim any non-default model whose cube isn't published (NAM once its last
+  // cube is pruned; HRRR while in beta). If a click on one still fails to
   // load, loadModel() snaps the toggle back to goodModel — the last model that
   // did load — so the fallback works the same for all three.
-  for(const m of MODELS) if(m!=="nam") probeModel(m).then(ok=> setModelAvailable(m, ok));
+  for(const m of MODELS) if(m!==DEFAULT_MODEL) probeModel(m).then(ok=> setModelAvailable(m, ok));
   setTimeout(()=>map.resize(), 0);                                // ensure MapLibre fills the full-screen container on mobile
 });
 </script>

@@ -10,12 +10,12 @@ Cloudflare cron (wrangler.toml [triggers])
         │  fires on time
         ▼
 Worker (src/worker.js)  ──POST repository_dispatch──►  GitHub
-        │  type: run-forecast, client_payload.cycle = 0 | 12
+        │  type: run-hrrr | run-rrfs, client_payload.cycle = 0 | 6 | 12
         ▼
-forecast-hrrr.yml / forecast-hrrr-1km.yml / forecast-nam.yml
+forecast-hrrr.yml / forecast-rrfs.yml
         │  start within seconds (repository_dispatch is not throttled)
         ▼
-pipeline polls NOMADS for that cycle, runs, deploys to Pages
+pipeline waits for that cycle's GRIB, runs, deploys to Pages
 ```
 
 The **schedule is the `crons` list in `wrangler.toml`** — the single source of
@@ -41,12 +41,16 @@ Worker — code, schedule, and token — is live. No local `wrangler` needed.
 - Deploy: the **Deploy Cloudflare trigger** workflow should be green.
 - Health: `GET https://pnw-soaring-trigger.<subdomain>.workers.dev/` returns the
   config (it does **not** trigger a run).
-- End to end: at the next cron tick, a `run-forecast` dispatch appears and all
-  three forecast workflows start within seconds.
+- End to end: at the next cron tick, a `run-hrrr` or `run-rrfs` dispatch
+  appears and that forecast workflow starts within seconds.
 
 ## Changing cadence / cycles
 
-`wrangler.toml` `crons` and the matching `CRON_TO_CYCLE` map in `src/worker.js`
-must stay in sync (each cron string is a key in the map). Add a cron + map entry
-to add a run; the cycle value (`"0"`/`"12"`) flows to the pipeline as
-`--target-cycle`.
+`wrangler.toml` `crons` and the matching `CRON_MAP` in `src/worker.js` must
+stay in sync (each cron string is a key in the map, mapping to a list of
+dispatches). Add a cron + map entry to add a run; the free tier allows five
+crons. The cycle value (`"0"`/`"6"`/`"12"`) is `--target-cycle` for HRRR and
+informational for RRFS (auto-cycle).
+
+`forecast-nam.yml` (NAM, retired by NCEP on 2026-11-03) is not dispatched from
+here any more; it can only be run by hand from the Actions tab.

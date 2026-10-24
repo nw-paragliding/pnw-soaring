@@ -19,29 +19,33 @@ compatibility_date = "2026-01-01"
 # a workers.dev subdomain in the Cloudflare dashboard and set this to true.
 workers_dev = false
 
-# Forecast cadence. Crons are UTC. HRRR and NAM fire on SEPARATE schedules and
-# event types so each catches its own cycle promptly — NAM GRIB publishes ~40min
-# after HRRR, so a shared HRRR-timed dispatch made NAM (auto-cycle) grab the
-# stale previous cycle. Each cron maps to a LIST of {event_type, cycle} in
-# worker.js. Cloudflare's free tier caps a Worker at 5 cron triggers, all used
-# (3 HRRR + 2 NAM) — so RRFS has no cron of its own: the two NAM ticks dispatch
-# both run-nam and run-rrfs, and forecast-rrfs.yml waits out RRFS's ~40 min
-# later GRIB publication with its own NOMADS readiness gate.
+# Forecast cadence. Crons are UTC. HRRR and RRFS fire on SEPARATE schedules and
+# event types so each catches its own cycle promptly — RRFS GRIB publishes
+# ~1h after HRRR's, so a shared HRRR-timed dispatch would make the auto-cycle
+# models grab the stale previous cycle. Each cron maps to a LIST of
+# {event_type, cycle} in worker.js. Cloudflare's free tier caps a Worker at 5
+# cron triggers, all used (3 HRRR + 2 RRFS).
+#
+# NAM was retired by NCEP on 2026-11-03 12Z (SCN 26-47): its two crons became
+# the RRFS crons (the two ticks used to dispatch both run-nam and run-rrfs).
+# forecast-nam.yml is no longer dispatched from here; it stays in the repo for
+# manual runs only. forecast-rrfs.yml keeps its own readiness gate, which
+# absorbs the ~15 min between the tick and the cycle's last needed GRIB.
 [triggers]
 crons = [
   # HRRR — a little after HRRR GRIB publishes (~cycle+1h25). 3x/day (short reach).
   "15 1 * * *",   # 00z HRRR (~01:25z) — night-before / tomorrow
   "15 7 * * *",   # 06z HRRR (~07:25z) — pre-dawn refresh of today
   "0 13 * * *",   # 12z HRRR (~13:10z) — freshest of today
-  # NAM + RRFS — later, after NAM GRIB publishes (~cycle+2h). 2x/day (84h reach covers more).
-  "5 2 * * *",    # 00z NAM + RRFS (~02:05z) — overnight multi-day outlook
-  "0 14 * * *",   # 12z NAM + RRFS (~13:54z) — freshest midday
+  # RRFS — later (~cycle+2h; f27 lands ~02:20z / 14:20z, f51 ~30 min after). 2x/day (84h reach covers more).
+  "5 2 * * *",    # 00z RRFS (~02:05z) — overnight multi-day outlook
+  "0 14 * * *",   # 12z RRFS (~14:00z) — freshest midday
 ]
 
 # Non-secret config (the GitHub token is injected as an encrypted Worker secret
 # by the deploy workflow, not stored here). Event types are per-model — see the
-# CRON_MAP in worker.js; forecast-hrrr.yml listens for run-hrrr, forecast-nam.yml
-# for run-nam, forecast-rrfs.yml for run-rrfs.
+# CRON_MAP in worker.js; forecast-hrrr.yml listens for run-hrrr,
+# forecast-rrfs.yml for run-rrfs.
 [vars]
 GH_OWNER = "nw-paragliding"
 GH_REPO = "pnw-soaring"
