@@ -190,7 +190,7 @@
     .reveal { animation: wgIn .4s cubic-bezier(.2,.7,.2,1) both; }
 
     /* ── Map ───────────────────────────────────────────────────── */
-    #map { flex: 1; height: 100%; background: #dfe6d8; }
+    #map { flex: 1; height: 100%; background: #e4e4e2; }   /* matches the gray canvas while tiles load */
 
     /* Bottom-sheet affordances + floating brand — mobile only */
     .sheet-grip, .sheet-close, .map-header { display: none; }
@@ -219,6 +219,8 @@
       100% { width: 46px; height: 46px; opacity: 0; }
     }
 
+    /* Hillshade tiles darken the grey canvas rather than paint over it */
+    .leaflet-layer.hillshade { mix-blend-mode: multiply; }
     /* Leaflet chrome to match */
     .leaflet-bar a {
       background: var(--panel); color: var(--ink); border-color: var(--line-2) !important;
@@ -373,10 +375,22 @@
     const map = L.map('map', { zoomControl: false }).setView([47.55, -121.80], 11);
     L.control.zoom({ position: 'topright' }).addTo(map);   // clear of the brand pill
 
-    L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
-      maxZoom: 17,
-      attribution: '&copy; OpenTopoMap (CC-BY-SA)'
+    // Basemap: Esri's Light Gray canvas under Esri World Hillshade (multiplied
+    // in via CSS so the relief darkens the grey instead of covering it), with
+    // the Light Gray reference labels on top. All keyless, ~25 KB per 256 px
+    // tile for the three together versus ~45 KB for the OpenTopoMap tiles this
+    // replaces. Both services stop at level 16; Leaflet upsamples beyond.
+    const esri = (service, opts = {}) => L.tileLayer(
+      `https://server.arcgisonline.com/ArcGIS/rest/services/${service}/MapServer/tile/{z}/{y}/{x}`,
+      { maxNativeZoom: 16, maxZoom: 17, ...opts });
+    esri('Canvas/World_Light_Gray_Base', {
+      attribution: 'Basemap &copy; Esri, HERE, Garmin, OpenStreetMap contributors'
     }).addTo(map);
+    esri('Elevation/World_Hillshade', {
+      className: 'hillshade', opacity: 0.75,
+      attribution: 'Hillshade &copy; Esri, USGS, NASA, NGA'
+    }).addTo(map);
+    esri('Canvas/World_Light_Gray_Reference').addTo(map);
 
     // Site names arrive snake_case (Poo_Poo_Point) or smushed CamelCase
     // (TigerHikeLookout, MtSi). Render both as spaced words.
