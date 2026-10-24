@@ -286,6 +286,11 @@
       .panel { max-height: 0; overflow: hidden; padding: 0 18px; opacity: 0;
         transition: max-height .34s cubic-bezier(.2,.7,.2,1), opacity .24s, padding .34s; }
       #sidebar.open .panel { max-height: 72dvh; opacity: 1; padding: 4px 18px 30px; }
+      /* The sheet scrolls by design, so the desktop "shrink the windgram to the
+         height left" rule does not apply here: keep the image width-bound, or it
+         would scale up from nothing while the sheet's max-height animates open. */
+      .panel, #windgram-content, .wg-frame { display: block; }
+      .wg-frame img { width: 100%; max-height: none; }
 
       /* Floating brand pill over the map */
       .map-header {
