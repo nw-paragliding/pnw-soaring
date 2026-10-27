@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>PNW Soaring Forecast</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ink:       #1c2622;   /* deep evergreen-black text */
+      --ink-soft:  #4a554f;
+      --paper:     #f3efe6;   /* warm topo paper */
+      --paper-2:   #e9e2cf00; /* (unused placeholder) */
+      --panel:     #fbf9f4;
+      --evergreen: #1f5240;   /* primary */
+      --evergreen-d:#163a2d;
+      --thermal:   #e0662a;   /* lift / accent */
+      --sky:       #3d7ea6;
+      --line:      rgba(28,38,34,0.12);
+      --line-2:    rgba(28,38,34,0.18);
+      --stale:     #b67410;
+      --fresh:     #2f8f5b;
+      --shadow:    0 1px 2px rgba(28,38,34,.06), 0 8px 24px -12px rgba(28,38,34,.28);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      font-family: 'Bricolage Grotesque', system-ui, sans-serif;
+      color: var(--ink);
+      background: var(--paper);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    #app { display: flex; height: 100vh; height: 100dvh; overflow: hidden; }
+
+    /* ── Sidebar ───────────────────────────────────────────────── */
+    #sidebar {
+      flex: 0 0 40%;
+      min-width: 380px;
+      max-width: 640px;
+      height: 100%;
+      overflow: hidden;              /* never scrolls: the windgram shrinks to fit instead */
+      position: relative;
+      background: var(--paper);
+      /* faint topographic contour wash for atmosphere */
+      background-image:
+        radial-gradient(120% 80% at 100% 0%, rgba(31,82,64,.06), transparent 60%),
+        repeating-radial-gradient(circle at 18% -10%, transparent 0 22px, rgba(28,38,34,.025) 22px 23px);
+      border-right: 1px solid var(--line-2);
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Brand header — compact: wordmark + kicker share one row */
+    .brand {
+      padding: 13px 24px 11px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(31,82,64,.05), transparent);
+      animation: rise .5s cubic-bezier(.2,.7,.2,1) both;
+      display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+    }
+    .brand h1 {
+      font-weight: 800;
+      font-size: clamp(20px, 2.4vw, 26px);
+      letter-spacing: -0.025em;
+      line-height: 1;
+      color: var(--ink);
+    }
+    .brand h1 .lift { color: var(--thermal); }
+    .brand .kicker {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px; font-weight: 500;
+      letter-spacing: .14em; text-transform: uppercase;
+      color: var(--ink-soft);
+      white-space: nowrap;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .brand .kicker .glyph { color: var(--evergreen); font-size: 11px; }
+
+    /* Controls block */
+    .controls { padding: 13px 24px 3px; display: flex; flex-direction: column; gap: 9px;
+      animation: rise .5s cubic-bezier(.2,.7,.2,1) .06s both; }
+
+    /* Segmented model toggle — three options: NAM | RRFS | HRRR. The indicator is
+       one column wide and slides by whole columns (0 / 100% / 200% of itself). */
+    .segmented {
+      position: relative;
+      display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));   /* equal columns, never widened by a long sublabel */
+      background: var(--panel);
+      border: 1px solid var(--line-2);
+      border-radius: 11px;
+      padding: 4px;
+      box-shadow: inset 0 1px 2px rgba(28,38,34,.04);
+    }
+    .segmented .indicator {
+      position: absolute; top: 4px; left: 4px; bottom: 4px;
+      width: calc((100% - 8px) / 3);   /* one of three equal columns inside the 4px padding */
+      background: var(--evergreen);
+      border-radius: 8px;
+      box-shadow: 0 2px 8px -2px rgba(22,58,45,.5);
+      transition: transform .28s cubic-bezier(.5,.1,.1,1);
+      z-index: 0;
+    }
+    .segmented:has(input[value="rrfs"]:checked) .indicator { transform: translateX(100%); }
+    .segmented:has(input[value="hrrr"]:checked) .indicator { transform: translateX(200%); }
+    .segmented label {
+      position: relative; z-index: 1;
+      display: flex; flex-direction: column; align-items: center; gap: 1px;
+      padding: 8px 4px; cursor: pointer; user-select: none;
+      border-radius: 8px;
+      transition: color .2s;
+    }
+    .segmented label .name { font-weight: 600; font-size: 14px; letter-spacing: -.01em; white-space: nowrap; }
+    .segmented label .name .beta { font-weight: 500; font-size: 11px; opacity: .75; }
+    .segmented label .res {
+      font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: .04em;
+      color: var(--ink-soft);
+    }
+    .segmented input { position: absolute; opacity: 0; pointer-events: none; }
+    .segmented input:checked ~ .name,
+    .segmented label:has(input:checked) .name { color: #fff; }
+    .segmented label:has(input:checked) .res { color: rgba(255,255,255,.72); }
+    /* Stale data: make the model's age stand out (amber + bold). */
+    .segmented label .res.stale { color: var(--stale); font-weight: 600; }
+    .segmented label:has(input:checked) .res.stale { color: #f4b860; }
+
+    /* Day picker — one button per available forecast day (hidden if 0/1 day) */
+    .days { display: flex; gap: 6px; }
+    .days:empty, .days.single { display: none; }
+    .days button {
+      flex: 1; min-width: 64px; cursor: pointer;
+      font: 600 13px/1 'Bricolage Grotesque', system-ui, sans-serif;
+      padding: 6px 8px; border-radius: 8px;
+      border: 1px solid var(--line-2); background: var(--panel); color: var(--ink-soft);
+      transition: background .15s, color .15s, border-color .15s;
+    }
+    .days button .sub { display: block; font: 500 9px/1.4 'IBM Plex Mono', monospace; opacity: .65; }
+    .days button.active { background: var(--evergreen); color: #fff; border-color: var(--evergreen); }
+    .days button.active .sub { opacity: .8; }
+
+    /* Windgram panel */
+    .panel { padding: 14px 24px 20px; flex: 1; min-height: 0;
+      display: flex; flex-direction: column;
+      animation: rise .5s cubic-bezier(.2,.7,.2,1) .12s both; }
+    /* The windgram column shrinks with the viewport: header and actions keep
+       their size, the image takes what is left and scales to fit it. */
+    #windgram-content { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+
+    .empty {
+      margin-top: 6px;
+      border: 1px dashed var(--line-2);
+      border-radius: 14px;
+      padding: 48px 24px;
+      text-align: center;
+      color: var(--ink-soft);
+      background: rgba(251,249,244,.5);
+    }
+    .empty .mark { font-size: 34px; display: block; margin-bottom: 12px; filter: grayscale(.2); opacity:.85; }
+    .empty .lead { font-weight: 600; font-size: 15px; color: var(--ink); }
+    .empty .hint { font-size: 13px; margin-top: 4px; }
+
+    .micro { font: 500 9.5px/1 'IBM Plex Mono', monospace; letter-spacing: .16em;
+      text-transform: uppercase; color: var(--ink-soft); }
+    .site-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin: 7px 0 9px; }
+    .site-head h2 {
+      font-weight: 800; font-size: 17px; letter-spacing: -.01em; line-height: 1.1;
+    }
+    .site-head .coords {
+      font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: var(--ink-soft);
+      white-space: nowrap; text-align: right; flex: 0 0 auto;
+    }
+
+    .wg-frame { flex: 0 1 auto; min-height: 0; display: flex; }
+    .wg-frame img {
+      display: block; max-width: 100%; max-height: 100%; width: auto; height: auto;
+      cursor: zoom-in;
+      border: 1px solid var(--line-2); border-radius: 14px;
+      background: var(--panel); box-shadow: var(--shadow);
+    }
+    .no-data { padding: 40px 20px; text-align: center; color: var(--ink-soft); font-size: 14px; }
+
+    .actions { margin-top: 12px; flex: none; display: flex; align-items: center; justify-content: space-between; }
+    .open-link {
+      font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 500;
+      color: var(--evergreen); text-decoration: none;
+      border-bottom: 1px solid transparent; transition: border-color .15s;
+    }
+    .open-link:hover { border-color: var(--evergreen); }
+    .reveal { animation: wgIn .4s cubic-bezier(.2,.7,.2,1) both; }
+
+    /* "Copy link" sits beside "Open full size" and dresses like it */
+    button.open-link { background: none; border: 0; border-bottom: 1px solid transparent;
+      padding: 0; cursor: pointer; font: inherit; }
+
+    /* ── Table view: wxtofly's "blipspot" ──────────────────────────
+       The hourly numbers behind the chart, laid out as wxtofly.net/v2 did it
+       (js/blipspots.js there): three sections — Wind (knots), Thermal,
+       Clouds & Moisture — each opening with a time row, the rows in the same
+       order under DrJack's titles, wind cells as a direction arrow over the
+       speed, and cells tinted by value (wind red, W* yellow, heights blue,
+       cloud grey, rain green). The Chart | Table switch beside the panel
+       label flips between the two; a row title shows its meaning underneath. */
+    .wg-head { display: flex; align-items: center; justify-content: space-between; }
+    .view-toggle { display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--line-2);
+      border-radius: 7px; background: var(--panel); }
+    .view-toggle button {
+      font: 600 10px/1 'IBM Plex Mono', monospace; letter-spacing: .12em; text-transform: uppercase;
+      padding: 5px 10px; border: 0; border-radius: 5px; background: none; color: var(--ink-soft); cursor: pointer;
+      transition: background .15s, color .15s;
+    }
+    .view-toggle button:hover { color: var(--ink); }
+    .view-toggle button[aria-selected="true"] { background: var(--evergreen); color: #fff; }
+    .wg-table {
+      flex: 0 1 auto; min-height: 0; overflow: auto; -webkit-overflow-scrolling: touch;
+      border: 1px solid var(--line-2); border-radius: 14px; background: var(--panel); box-shadow: var(--shadow);
+    }
+    .wg-table table { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%;
+      font: 500 11px/1.2 'IBM Plex Mono', monospace; }
+    .wg-table th, .wg-table td { padding: 3px 5px; text-align: center; vertical-align: middle;
+      white-space: nowrap; border-bottom: 1px solid var(--line); }
+    .wg-table th.row {
+      position: sticky; left: 0; z-index: 1; background: var(--panel);
+      text-align: left; font: 500 11px/1.25 'Bricolage Grotesque', system-ui, sans-serif; color: var(--ink);
+      min-width: 132px; max-width: 160px; white-space: normal; cursor: help;
+      border-right: 1px solid var(--line-2);
+    }
+    .wg-table th.row .u { color: var(--ink-soft); font-size: 10px; }
+    .wg-table tr.time th, .wg-table tr.time td {
+      position: sticky; top: 0; z-index: 2;   /* the current section's hours stay in view */
+      background: var(--evergreen); color: #fff; font-weight: 600; border-bottom-color: var(--evergreen-d);
+    }
+    .wg-table tr.time th.row { z-index: 3; color: #fff; border-right-color: var(--evergreen-d); }
+    .wg-table tr.section th { font: 700 11.5px/1.2 'Bricolage Grotesque', system-ui, sans-serif;
+      color: var(--evergreen-d); background: rgba(31,82,64,.07); padding: 7px 8px; }
+    .wg-table tr.section td { background: rgba(31,82,64,.07); cursor: default; }
+    .wg-table tbody tr:hover td:not(.sec) { background-image: linear-gradient(rgba(28,38,34,.07), rgba(28,38,34,.07)); }
+    .wg-table td.wind { line-height: 1.05; padding-top: 2px; padding-bottom: 2px; }
+    .wg-table .arrow { display: block; width: 11px; height: 11px; margin: 0 auto 1px; }
+    .wg-table .arrow svg { display: block; width: 100%; height: 100%; fill: var(--ink); }
+    .wg-note { margin-top: 8px; font-size: 12px; line-height: 1.45; color: var(--ink-soft);
+      padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: rgba(251,249,244,.7); }
+    .wg-note b { color: var(--ink); }
+    .wg-note:empty { display: none; }
+
+    /* ── Map ───────────────────────────────────────────────────── */
+    #map { flex: 1; height: 100%; background: #e4e4e2; }   /* matches the gray canvas while tiles load */
+
+    /* Bottom-sheet affordances + floating brand — mobile only */
+    .sheet-grip, .sheet-close, .map-header { display: none; }
+
+    /* Custom paraglider markers. MapLibre positions .site-marker itself with an
+       inline transform on every frame of a pan or zoom, so that element must
+       carry no transition or transform of its own. Hover / selected effects
+       live on the inner glyph instead. */
+    .site-marker { width: 26px; height: 26px; text-align: center; line-height: 26px; font-size: 19px; cursor: pointer; }
+    .site-marker .glyph {
+      display: inline-block;
+      transition: transform .12s cubic-bezier(.2,.7,.2,1);
+      filter: drop-shadow(0 1px 1px rgba(0,0,0,.35));
+    }
+    .site-marker:hover .glyph { transform: scale(1.25); }
+    .site-marker.selected .glyph {
+      transform: scale(1.65);
+      filter: drop-shadow(0 2px 3px rgba(224,102,42,.55));
+    }
+    /* thermal ring under the selected marker — animated with transform/opacity
+       only, so it never triggers layout while the map is animating */
+    .site-marker.selected::after {
+      content: ""; position: absolute; left: 50%; top: 56%;
+      width: 46px; height: 46px; margin: -23px 0 0 -23px;
+      border: 2px solid var(--thermal); border-radius: 50%;
+      animation: ring 1.6s ease-out infinite;
+    }
+    @keyframes ring {
+      0% { transform: scale(.39); opacity: .8; }
+      100% { transform: scale(1); opacity: 0; }
+    }
+
+    /* MapLibre chrome to match */
+    .maplibregl-ctrl-group { background: var(--panel); border: 1px solid var(--line-2); box-shadow: var(--shadow); }
+    .maplibregl-ctrl-group button:hover { background: #fff; }
+    .maplibregl-ctrl-group button + button { border-top-color: var(--line-2); }
+    .site-tip .maplibregl-popup-content {
+      font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 500;
+      background: var(--evergreen-d); color: #fff; box-shadow: var(--shadow);
+      padding: 3px 8px; border-radius: 6px; pointer-events: none;
+    }
+    .site-tip .maplibregl-popup-tip { border-top-color: var(--evergreen-d); }
+    .maplibregl-ctrl-attrib { font-family: 'IBM Plex Mono', monospace; font-size: 10px; }
+
+    @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+    @keyframes wgIn { from { opacity: 0; transform: translateY(8px) scale(.99); } to { opacity: 1; transform: none; } }
+
+    /* ── Mobile: stack, give the map a small fixed share ───────── */
+    @media (max-width: 720px) {
+      /* Full-screen map; the forecast slides up as a dismissible bottom sheet. */
+      html, body { height: 100%; }
+      #app { display: block; height: 100dvh; }
+      #map { position: absolute; inset: 0; width: 100%; height: 100dvh; }
+
+      /* Persistent bottom bar: model/date selectors always docked at the bottom;
+         the windgram (.panel) collapses and slides up to reveal on selection. */
+      #sidebar {
+        position: fixed; left: 0; right: 0; bottom: 0;
+        width: 100%; min-width: 0; max-width: none; height: auto;
+        max-height: 88dvh;
+        border: 1px solid var(--line-2); border-bottom: none;
+        border-radius: 18px 18px 0 0;
+        box-shadow: 0 -10px 34px rgba(28,38,34,.22);
+        z-index: 1000;
+        overflow-y: auto; overscroll-behavior: contain;
+      }
+
+      .sheet-grip {
+        display: block; width: 40px; height: 4px; border-radius: 3px;
+        background: var(--line-2); margin: 9px auto 2px; cursor: pointer;
+      }
+      /* The ✕ only appears once expanded — it collapses back to the selector peek. */
+      .sheet-close {
+        display: none; align-items: center; justify-content: center;
+        position: absolute; top: 10px; right: 12px; width: 30px; height: 30px;
+        border: none; border-radius: 50%; background: var(--panel);
+        color: var(--ink-soft); font-size: 13px; cursor: pointer;
+        box-shadow: 0 1px 3px rgba(28,38,34,.18); z-index: 2;
+      }
+      #sidebar.open .sheet-close { display: flex; }
+      .brand { display: none; }
+      .controls { padding: 4px 18px 6px; }
+      /* Three toggle columns on a phone: ~109px each at 375px. The sublabel
+         ("1.3 km · 12h ago") needs ~95px at this size, so it stays on one line
+         down to ~360px and wraps gracefully below that. */
+      .segmented label { padding: 8px 2px; }
+      .segmented label .res { font-size: 9.5px; letter-spacing: .02em; }
+      /* Collapsed by default (peek shows only the selectors); slides open on select. */
+      .panel { max-height: 0; overflow: hidden; padding: 0 18px; opacity: 0;
+        transition: max-height .34s cubic-bezier(.2,.7,.2,1), opacity .24s, padding .34s; }
+      #sidebar.open .panel { max-height: 72dvh; opacity: 1; padding: 4px 18px 30px; }
+      /* The sheet scrolls by design, so the desktop "shrink the windgram to the
+         height left" rule does not apply here: keep the image width-bound, or it
+         would scale up from nothing while the sheet's max-height animates open. */
+      .panel, #windgram-content, .wg-frame { display: block; }
+      .wg-frame img { width: 100%; max-height: none; }
+      /* The table scrolls inside itself (both ways) so the sheet keeps its own scroll. */
+      .wg-table { max-height: 60dvh; }
+      .wg-table th.row { min-width: 112px; max-width: 136px; }
+
+      /* Floating brand pill over the map */
+      .map-header {
+        display: flex; flex-direction: column; gap: 1px;
+        position: fixed; top: 10px; left: 10px; z-index: 500;
+        padding: 7px 12px; border-radius: 12px;
+        background: rgba(243,239,230,.92); backdrop-filter: blur(3px);
+        border: 1px solid var(--line); box-shadow: var(--shadow);
+        pointer-events: none;
+      }
+      .map-header h1 { font-weight: 800; font-size: 17px; letter-spacing: -.02em;
+        line-height: 1; color: var(--ink); }
+      .map-header h1 .lift { color: var(--thermal); }
+      .map-header .kicker { font-family: 'IBM Plex Mono', monospace; font-size: 10px;
+        letter-spacing: .1em; text-transform: uppercase; color: var(--ink-soft); text-align: right; }
+      .map-header .glyph { color: var(--evergreen); }
+      /* Pill is click-through (pointer-events:none) so the map stays draggable;
+         re-enable just the v2 link so it's tappable. */
+      .map-header a { pointer-events: auto; display: inline-block; padding: 1px 0;
+        font-weight: 600; color: var(--thermal); text-decoration: none; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      * { animation: none !important; transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <aside id="sidebar">
+      <div class="sheet-grip" id="sheetGrip" aria-hidden="true"></div>
+      <button class="sheet-close" id="sheetClose" aria-label="Close forecast">✕</button>
+      <header class="brand">
+        <div class="wordmark">
+          <h1>PNW <span class="lift">Soaring</span></h1>
+        </div>
+        <div class="kicker"><span class="glyph">▲</span> Washington · thermal forecast</div>
+      </header>
+
+      <div class="controls">
+        <div class="segmented" role="radiogroup" aria-label="Forecast model">
+          <span class="indicator" aria-hidden="true"></span>
+          <label>
+            <input type="radio" name="model" value="nam" checked>
+            <span class="name">NAM</span><span class="res" data-model="nam" data-res="1.3 km">1.3 km</span>
+          </label>
+          <label>
+            <input type="radio" name="model" value="rrfs">
+            <span class="name">RRFS</span><span class="res" data-model="rrfs" data-res="1.3 km">1.3 km</span>
+          </label>
+          <label>
+            <input type="radio" name="model" value="hrrr">
+            <span class="name">HRRR <span class="beta">(beta)</span></span><span class="res" data-model="hrrr" data-res="1.3 km">1.3 km</span>
+          </label>
+        </div>
+        <div class="days single" id="days" role="group" aria-label="Forecast day"></div>
+      </div>
+
+      <section class="panel">
+        <div class="empty" id="windgram-empty">
+          <span class="mark">🪂</span>
+          <div class="lead">Pick a launch on the map</div>
+          <div class="hint">Tap a site to read its thermal &amp; wind forecast.</div>
+        </div>
+
+        <div id="windgram-content" style="display:none">
+          <div class="micro wg-head">
+            <span>Windgram</span>
+            <div class="view-toggle" role="tablist" aria-label="Chart or table">
+              <button type="button" role="tab" data-view="chart" aria-selected="true">Chart</button>
+              <button type="button" role="tab" data-view="table" aria-selected="false">Table</button>
+            </div>
+          </div>
+          <div class="site-head">
+            <h2 id="site-name"></h2>
+            <span class="coords" id="site-coords"></span>
+          </div>
+          <a class="wg-frame" id="windgram-link" href="#" target="_blank" rel="noopener">
+            <img id="windgram-img" alt="" />
+          </a>
+          <div class="wg-table" id="windgram-table" style="display:none"></div>
+          <div class="wg-note" id="windgram-note"></div>
+          <div class="no-data" id="windgram-nodata" style="display:none"></div>
+          <div class="actions">
+            <a class="open-link" id="open-full" href="#" target="_blank" rel="noopener">Open full size ↗</a>
+            <a class="open-link" id="open-data" href="#" target="_blank" rel="noopener" style="display:none">Raw data (JSON) ↗</a>
+            <button class="open-link" id="copy-link" type="button" title="Copy a link that opens this site">Copy link</button>
+          </div>
+        </div>
+      </section>
+    </aside>
+
+    <div id="map"></div>
+    <!-- Floating brand over the full-screen map (mobile only) -->
+    <div class="map-header">
+      <h1>PNW <span class="lift">Soaring</span></h1>
+      <span class="kicker">Washington</span>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script>
+    // Basemap: Esri's Light Gray canvas under Esri World Hillshade at half
+    // opacity, with the Light Gray reference labels on top — the same three
+    // keyless raster services as the Leaflet version (~25 KB per 256 px tile
+    // for the three together), now drawn by MapLibre GL on the GPU so wheel,
+    // trackpad and pinch zoom are continuous instead of one stepped animation
+    // per notch. Both services stop at level 16; MapLibre overzooms beyond.
+    //
+    // Zoom numbers here are MapLibre's (512 px world tiles): MapLibre zoom 10
+    // is the scale Leaflet called 11, so every zoom in this file is one lower
+    // than it used to be.
+    const esriTiles = (service) =>
+      [`https://server.arcgisonline.com/ArcGIS/rest/services/${service}/MapServer/tile/{z}/{y}/{x}`];
+    const map = new maplibregl.Map({
+      container: 'map',
+      style: {
+        version: 8,
+        sources: {
+          'esri-gray': { type: 'raster', tiles: esriTiles('Canvas/World_Light_Gray_Base'), tileSize: 256, maxzoom: 16,
+            attribution: 'Basemap &copy; Esri, HERE, Garmin, OpenStreetMap contributors' },
+          'esri-hillshade': { type: 'raster', tiles: esriTiles('Elevation/World_Hillshade'), tileSize: 256, maxzoom: 16,
+            attribution: 'Hillshade &copy; Esri, USGS, NASA, NGA' },
+          'esri-labels': { type: 'raster', tiles: esriTiles('Canvas/World_Light_Gray_Reference'), tileSize: 256, maxzoom: 16 },
+        },
+        layers: [
+          { id: 'bg', type: 'background', paint: { 'background-color': '#e4e4e2' } },
+          { id: 'gray', type: 'raster', source: 'esri-gray' },
+          { id: 'hillshade', type: 'raster', source: 'esri-hillshade', paint: { 'raster-opacity': 0.5 } },
+          { id: 'labels', type: 'raster', source: 'esri-labels' },
+        ],
+      },
+      // Rough statewide view until sites.json arrives; fitAllSites() then
+      // frames every marker for whatever screen this is.
+      center: [-121.0, 47.9], zoom: 7, minZoom: 5, maxZoom: 16,
+      attributionControl: false,
+      // A flat north-up map, as before: no rotate, no pitch.
+      dragRotate: false, pitchWithRotate: false, touchPitch: false,
+    });
+    map.touchZoomRotate.disableRotation();
+    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');   // clear of the brand pill
+    map.addControl(new maplibregl.AttributionControl({ compact: false }), 'bottom-right');
+
+    // Site names arrive snake_case (Poo_Poo_Point) or smushed CamelCase
+    // (TigerHikeLookout, MtSi). Render both as spaced words.
+    function prettyName(name) {
+      return name
+        .replace(/_/g, ' ')
+        .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
+    let currentModel = 'nam';        // NAM default (RRFS is its successor; HRRR is beta)
+    let currentSite = null;
+    let currentDate = null;          // selected forecast day (null → forecasts/latest)
+    let selectedMarker = null;
+    let markers = [];
+    let metadata = {};
+    const availableDays = {};        // model -> [{date, off, label, sub}]
+    let currentView = 'chart';       // 'chart' (the PNG) or 'table' (its blipspot JSON)
+    try { if (localStorage.getItem('wg-view') === 'table') currentView = 'table'; } catch (_) {}
+    let currentBlipUrl = null;       // <Site>_blipspot.json beside the current PNG
+    let imgFailed = false;           // the PNG 404ed: "no forecast yet"
+    const blipCache = new Map();     // url -> parsed JSON, or null when it is not there
+
+    async function loadSites() {
+      try {
+        const sites = await (await fetch('/sites.json')).json();
+        updateMarkers(sites);
+      } catch (e) { console.error('Failed to load sites:', e); }
+    }
+
+    async function loadMetadata() {
+      for (const model of ['nam', 'rrfs', 'hrrr']) {
+        try {
+          const resp = await fetch(`/forecasts/latest/${model}/metadata.json`);
+          if (resp.ok) metadata[model] = await resp.json();
+        } catch (e) {}
+      }
+      renderToggleMeta();
+    }
+
+    function timeAgo(d) {
+      const h = (Date.now() - d.getTime()) / 3.6e6;
+      if (h < 1) return `${Math.round(h * 60)}m ago`;
+      if (h < 24) return `${Math.round(h)}h ago`;
+      return `${Math.round(h / 24)}d ago`;
+    }
+
+    // Each toggle option shows that model's resolution + when it last ran,
+    // and flags the age (amber + bold) when the data is stale (>12h old).
+    function renderToggleMeta() {
+      document.querySelectorAll('.res[data-model]').forEach(el => {
+        const m = metadata[el.dataset.model];
+        if (!m) { el.textContent = el.dataset.res; el.classList.remove('stale'); return; }
+        const updated = new Date(m.generated);
+        const stale = (Date.now() - updated.getTime()) / 3.6e6 > 12;
+        el.textContent = `${el.dataset.res} · ${timeAgo(updated)}`;
+        el.classList.toggle('stale', stale);
+      });
+    }
+
+    // ── Day picker — probe which forecast days exist for a model ──────────
+    function dayLabel(off, dateStr) {
+      if (off === 0) return 'Today';
+      if (off === 1) return 'Tomorrow';
+      return new Date(dateStr + 'T12:00:00Z').toLocaleDateString(undefined, { weekday: 'short' });
+    }
+    async function discoverDays(model) {
+      if (availableDays[model]) return availableDays[model];
+      // Anchor "today" to the forecast's zone (America/Los_Angeles), NOT the
+      // browser's UTC date. In the evening, UTC has already rolled to the next
+      // day while PDT hasn't — so a UTC-based off=0 mislabels *tomorrow's*
+      // forecast as "Today" (and shifts the whole picker a day). en-CA gives a
+      // YYYY-MM-DD string; DST is handled by the timeZone option.
+      const [by, bm, bd] = new Date()
+        .toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
+        .split('-').map(Number);
+      const out = [];
+      for (let off = 0; off <= 2; off++) {
+        const d = new Date(Date.UTC(by, bm - 1, bd + off));
+        const ds = d.toISOString().slice(0, 10);
+        // Skip a day once its soaring window (~8pm local, PDT) has ended — so an
+        // evening visit shows "tomorrow + next-day", not a spent "today". This is
+        // what makes the night-before case read correctly.
+        if (Date.now() > Date.parse(ds + 'T20:00:00-07:00')) continue;
+        try {
+          const r = await fetch(`/forecasts/${ds}/${model}/metadata.json`, { cache: 'no-cache' });
+          if (r.ok) out.push({ date: ds, off, label: dayLabel(off, ds), sub: ds.slice(5) });
+        } catch (e) {}
+      }
+      availableDays[model] = out;
+      return out;
+    }
+    function renderDays(days) {
+      const el = document.getElementById('days');
+      el.innerHTML = '';
+      el.classList.toggle('single', days.length < 2);    // hide the picker if only one day
+      days.forEach(d => {
+        const b = document.createElement('button');
+        b.innerHTML = `${d.label}<span class="sub">${d.sub}</span>`;
+        b.classList.toggle('active', d.date === currentDate);
+        b.onclick = () => { currentDate = d.date; renderDays(days); updateWindgram(); syncUrl(); };
+        el.appendChild(b);
+      });
+    }
+    let currentDays = [];            // the day set of the selected model
+    async function loadDays() {
+      const days = await discoverDays(currentModel);
+      currentDays = days;
+      if (!days.find(d => d.date === currentDate)) currentDate = days.length ? days[0].date : null;
+      renderDays(days);
+    }
+
+    function updateWindgram() {
+      const empty = document.getElementById('windgram-empty');
+      const content = document.getElementById('windgram-content');
+      if (!currentSite) { empty.style.display = ''; content.style.display = 'none'; return; }
+      empty.style.display = 'none';
+      content.style.display = '';
+      content.classList.remove('reveal'); void content.offsetWidth; content.classList.add('reveal');
+
+      const img = document.getElementById('windgram-img');
+      const nodata = document.getElementById('windgram-nodata');
+      const link = document.getElementById('windgram-link');
+      const openFull = document.getElementById('open-full');
+      const openData = document.getElementById('open-data');
+      // Windgrams are per region tile: forecasts/<date|latest>/<model>/<region>/.
+      // A region folder that doesn't exist yet (new tile, failed run) 404s and
+      // falls through to the "no forecast yet" state via img.onerror below.
+      const base = currentDate ? `/forecasts/${currentDate}/${currentModel}`
+                               : `/forecasts/latest/${currentModel}`;
+      const src = `${base}/${encodeURIComponent(currentSite.region || 'issaquah')}/${encodeURIComponent(currentSite.name)}_windgram.png`;
+
+      document.getElementById('site-name').textContent = prettyName(currentSite.name);
+      document.getElementById('site-coords').textContent =
+        `${currentSite.lat.toFixed(4)}, ${currentSite.lon.toFixed(4)}`;
+      nodata.textContent = `No ${currentModel.toUpperCase()} forecast for this site yet.`;
+      imgFailed = false;
+      img.alt = `${prettyName(currentSite.name)} windgram`;
+      img.onerror = () => { imgFailed = true; applyView(); };
+      img.onload = () => { imgFailed = false; applyView(); };
+      img.src = src;
+      link.href = src; openFull.href = src;
+      // The table behind the chart sits beside the PNG as <Site>_blipspot.json.
+      currentBlipUrl = src.replace(/_windgram\.png$/, '_blipspot.json');
+      openData.href = currentBlipUrl;
+      applyView();
+    }
+
+    // ── Chart ⇄ table (wxtofly's "blipspot") ──────────────────────
+    // The Chart | Table switch beside the panel label picks the view (wxtofly
+    // flipped on a click of the image; an explicit switch is clearer).
+    // The sections, rows, titles and descriptions follow wxtofly.net/v2's
+    // blipspots.js / blipspotParam.js (DrJack's BLIPMAP notes); the numbers
+    // come from <Site>_blipspot.json, which rasp-windgram writes beside each
+    // PNG. 'wind' rows read <key>_kt / <key>_dir and draw an arrow pointing
+    // where the wind blows over the speed; 'tint' picks the cell colour rule.
+    // 'level' labels the three lowest model levels with their height AGL.
+    const BLIP_SECTIONS = [
+      { title: 'Wind (knots)', rows: [
+        { key: 'sfc_wind', wind: true, level: 'sfc', tint: 'wind', title: 'Surface',
+          desc: 'The speed and direction of the wind at the lowest available model level above the ground.' },
+        { key: 'wind10m', wind: true, tint: 'wind', title: '10 m',
+          desc: 'The speed and direction of the wind at 10 m above the ground.' },
+        { key: 'treetop_wind', wind: true, level: 'treetop', tint: 'wind', title: 'Tree-top level',
+          desc: 'The wind at the next model level above 10 m above the ground.' },
+        { key: 'above_treetop_wind', wind: true, level: 'above_treetop', tint: 'wind', title: 'Level above tree-top',
+          desc: 'The wind at the next model level above the tree-top level.' },
+        { key: 'bl_wind', wind: true, tint: 'wind', title: 'Boundary layer average',
+          desc: 'The speed and direction of the vector-averaged wind in the boundary layer.' },
+        { key: 'bltop_wind', wind: true, tint: 'wind', title: 'Boundary layer top',
+          desc: 'The speed and direction of the wind at the top of the boundary layer.' },
+        { key: 'bl_shear_kt', title: 'Wind shear', unit: 'kt',
+          desc: 'The vertical change in wind through the BL: the magnitude of the vector wind difference between the top and bottom of the BL. This is vertical wind shear; it does not indicate so-called "shear lines", which are horizontal changes of wind speed or direction.' },
+        { key: 'bl_convergence_cms', title: 'Max convergence', unit: 'cm/s',
+          desc: 'Maximum grid-area-averaged extensive upward or downward motion within the BL as created by horizontal wind convergence. Positive values go with local convergence lines; if CAPE is also large, thunderstorms can be triggered. Negative values (divergence) mean subsiding air, creating low-level inversions that limit thermalling heights. The model spreads a convergence line over a whole grid cell, so it greatly under-predicts the real upward motion.' },
+      ]},
+      { title: 'Thermal', rows: [
+        { key: 'bs_ratio', title: 'Buoyancy/shear ratio',
+          desc: 'Dry thermals may be broken up by vertical wind shear (wind changing with height) and unworkable if the B/S ratio is 5 or less (hang gliders can soar with smaller values than sailplanes). If convective clouds are present the real ratio is larger than calculated here, as cloudsuck is neglected.' },
+        { key: 'wstar_fpm', title: 'Thermal updraft velocity W*', unit: 'ft/min', tint: 'lift',
+          desc: 'Average dry thermal updraft strength near mid-BL height. Subtract the glider descent rate to get the average vario reading for cloudless thermals. Updrafts are stronger than this when convective clouds are present, since cloud condensation adds buoyancy aloft (cloudsuck is neglected). W* depends on both the surface heating and the BL depth.' },
+        { key: 'hcrit_agl_ft', title: 'Max soar [AGL]', unit: 'ft', tint: 'height',
+          desc: 'Maximum soaring altitude above ground with a 1.1 m/s (225 ft/min) sink rate.' },
+        { key: 'hcrit_ft', title: 'Max soar [1.1 m/s]', unit: 'ft ASL',
+          desc: 'Maximum soaring altitude ASL with a 1.1 m/s (225 ft/min) sink rate: the height at which the average dry updraft strength drops below 225 ft/min. Expected to give better numbers for the maximum cloudless thermalling height than the BL top, especially when mixing comes from wind shear rather than thermals. With clouds present the maximum may instead be limited by the cloud base. Being for dry thermals, it omits cloudsuck.' },
+        { key: 'hglider_ft', title: 'Max soar [cloud]', unit: 'ft ASL',
+          desc: 'The maximum soaring altitude expected when cumulus clouds are present: the dry maximum, capped at the cumulus cloud base (LCL). This is what the paraglider marks on the chart show.' },
+        { key: 'bl_top_ft', title: 'Boundary layer top [TI=0]', unit: 'ft ASL',
+          desc: 'Height of the top of the mixing layer, which for thermal convection is the average top of a dry thermal. Over flat terrain maximum thermalling heights will be lower, because of the glider descent rate and other factors. With clouds (which release additional buoyancy aloft, creating cloudsuck) the updraft top will be above this, but the maximum thermalling height is then limited by the cloud base. When the mixing comes from shear turbulence rather than thermals this parameter is not useful for glider flying.' },
+        { key: 'bl_depth_ft', title: 'Boundary layer depth', unit: 'ft',
+          desc: 'Depth of the layer mixed by thermals or (vertical) wind shear. Useful to judge which flight direction allows better thermalling when average surface elevations differ greatly by direction (with the same cautions as the BL top). Also an important determinant of thermal strength, as is the surface heating.' },
+        { key: 'bl_top_variability_ft', title: 'Boundary layer top variability', unit: 'ft',
+          desc: 'How much higher the BL top would be if the boundary layer were 1 °C warmer than forecast. Larger values mean more uncertainty and better thermalling over local hot spots or small-scale terrain the model cannot resolve, but also more sensitivity to errors in the forecast surface temperature. Small values usually mean a stable (inversion) layer caps thermal growth. Best read relative to what is typical for a site.' },
+        { key: 'sfc_heating_wm2', title: 'Surface heating', unit: 'W/m²',
+          desc: 'Heat transferred into the atmosphere by solar heating of the ground, creating thermals. An important determinant of thermal strength, as is the BL depth.' },
+        { key: 'mslp_mb', title: 'MSL pressure', unit: 'mb',
+          desc: 'Barometric pressure reduced to mean sea level, in millibars (hPa).' },
+      ]},
+      { title: 'Clouds & Moisture', rows: [
+        { key: 'bl_cloud_pct', title: 'Cloud cover [BL]', unit: '%', tint: 'cloud',
+          desc: 'Percentage cloud cover in the boundary layer, from a very simple relationship between cloud cover and the maximum relative humidity within the BL. An additional way of judging cloud formation within the BL, used with or instead of the other cloud parameters. The cloud base is not predicted but is expected to be below the BL top.' },
+        { key: 'rain_1h_mm', title: 'Rain accumulation', unit: 'mm', tint: 'rain',
+          desc: 'Rain accumulated over the last hour.' },
+        { key: 'td2_f', title: 'Surface dew point', unit: '°F',
+          desc: 'The dew point temperature 2 m above ground level.' },
+        { key: 'lcl_ft', title: 'CU lifted condensation level', unit: 'ft ASL',
+          desc: 'Estimated cloud base for small, non-extensive "puffy" clouds in the BL, if any form. The surface LCL is the level to which humid air must rise before it cools to its dew point, based on the surface mixing ratio, so it is relevant only to small clouds. Consider it the minimum possible cloud base.' },
+        { key: 'od_potential_ft', title: 'OD potential [if CU]', unit: 'ft',
+          desc: 'Over-development potential if cumulus are present: the BL top minus the BL condensation level. Positive values mean the BL is deep enough for extensive cloud (overcast development) to form.' },
+        { key: 'od_base_ft', title: 'OD base [all clouds]', unit: 'ft ASL',
+          desc: 'Estimated cloud base for extensive BL clouds (overcast development), if any form. The BL condensation level is based on the humidity averaged through the BL and is therefore relevant only to extensive clouds.' },
+        { key: 't2_f', title: 'Temperature [2 m]', unit: '°F',
+          desc: 'Temperature 2 m above the ground.' },
+      ]},
+    ];
+    // Cell tints, from wxtofly's blipspots.js (alpha scaled down for dark text on a light panel).
+    const TINTS = {
+      wind:   (s) => s == null ? '' : `rgba(255,0,0,${(s < 3 ? .1 : s < 5 ? .2 : s < 7 ? .3 : s < 9 ? .4 : s < 11 ? .5 : s < 13 ? .6 : s < 15 ? .6 : s < 17 ? .7 : s < 19 ? .8 : 1) * .72})`,
+      lift:   (v) => v == null || v < 200 ? '' : `rgba(255,204,0,${Math.min(v / 1000, 1) * .85})`,
+      height: (v) => v == null || v < 500 ? '' : `rgba(0,153,255,${Math.min(v / 5000, 1) * .6})`,
+      cloud:  (v) => v == null || v <= 0 ? '' : `rgba(128,128,128,${(v / 100) * .75})`,
+      rain:   (v) => v == null || v <= 0 ? '' : `rgba(0,204,0,${v < 2 ? .25 : v < 3 ? .45 : v < 4 ? .6 : v < 5 ? .75 : .9})`,
+    };
+    const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+    // An arrow pointing where the wind blows (the data gives the direction it blows from).
+    const arrow = (fromDeg) =>
+      `<span class="arrow" style="transform:rotate(${(fromDeg + 180) % 360}deg)" aria-label="from ${fromDeg}°">` +
+      `<svg viewBox="0 0 10 10"><path d="M5 0l3.6 4.6H6.3V10H3.7V4.6H1.4z"/></svg></span>`;
+    const fmtHour = (h) => h % 12 === 0 ? `12${h < 12 ? 'a' : 'p'}` : h < 12 ? `${h}a` : `${h - 12}p`;
+
+    function renderBlipspot(b) {
+      const hours = b.hours_local || [];
+      const n = hours.length;
+      const P = b.params || {};
+      const timeRow = `<tr class="time"><th class="row" scope="row">Time</th>${hours.map(h => `<td>${fmtHour(h)}</td>`).join('')}</tr>`;
+      let html = '<table><tbody>';
+      for (const sec of BLIP_SECTIONS) {
+        const rows = sec.rows.filter(r => P[r.wind ? r.key + '_kt' : r.key]);
+        if (!rows.length) continue;
+        html += `<tr class="section"><th class="row">${esc(sec.title)}</th><td class="sec" colspan="${n}"></td></tr>${timeRow}`;
+        for (const r of rows) {
+          const vals = P[r.wind ? r.key + '_kt' : r.key];
+          const dirs = r.wind ? P[r.key + '_dir'] : null;
+          const lvl = r.level && b.levels_agl_ft && b.levels_agl_ft[r.level] != null
+            ? ` <span class="u">~${Math.max(10, Math.round(b.levels_agl_ft[r.level] / 10) * 10)} ft</span>` : '';
+          const unit = r.unit ? ` <span class="u">(${esc(r.unit)})</span>` : '';
+          html += `<tr><th class="row" scope="row" data-title="${esc(r.title)}" data-desc="${esc(r.desc)}" title="${esc(r.desc)}">${esc(r.title)}${lvl}${unit}</th>`;
+          for (let i = 0; i < n; i++) {
+            const v = vals[i];
+            const bg = r.tint && TINTS[r.tint] ? TINTS[r.tint](v) : '';
+            const style = bg ? ` style="background-color:${bg}"` : '';
+            if (v == null) { html += `<td${style}>–</td>`; continue; }
+            if (r.wind) {
+              const d = dirs ? dirs[i] : null;
+              html += `<td class="wind"${style}>${d == null ? '' : arrow(d)}${v}</td>`;
+            } else {
+              html += `<td${style}>${v}</td>`;
+            }
+          }
+          html += '</tr>';
+        }
+      }
+      return html + '</tbody></table>';
+    }
+
+    const frame = document.getElementById('windgram-link');
+    const tableEl = document.getElementById('windgram-table');
+    const noteEl = document.getElementById('windgram-note');
+
+    function setView(v, remember = true) {
+      currentView = v === 'table' ? 'table' : 'chart';
+      if (remember) { try { localStorage.setItem('wg-view', currentView); } catch (_) {} }
+      applyView();
+      syncUrl();
+    }
+    // Shows whichever of chart / table / "no forecast yet" applies right now.
+    function applyView() {
+      const table = currentView === 'table';
+      document.querySelectorAll('.view-toggle button').forEach(b =>
+        b.setAttribute('aria-selected', String(b.dataset.view === currentView)));
+      frame.style.display = (!table && !imgFailed) ? '' : 'none';
+      document.getElementById('windgram-nodata').style.display = (!table && imgFailed) ? '' : 'none';
+      tableEl.style.display = table ? '' : 'none';
+      noteEl.textContent = '';
+      document.getElementById('open-full').style.display = table ? 'none' : '';
+      document.getElementById('open-data').style.display = table ? '' : 'none';
+      if (table && currentSite) loadBlipspot();
+    }
+    async function loadBlipspot() {
+      const url = currentBlipUrl;
+      if (!url) return;
+      let data = blipCache.get(url);
+      if (data === undefined) {
+        tableEl.innerHTML = '<div class="no-data">Loading the table…</div>';
+        try { const r = await fetch(url, { cache: 'no-cache' }); data = r.ok ? await r.json() : null; }
+        catch (_) { data = null; }
+        blipCache.set(url, data);
+      }
+      if (url !== currentBlipUrl || currentView !== 'table') return;   // moved on meanwhile
+      if (!data) {
+        tableEl.innerHTML = `<div class="no-data">No table for this ${currentModel.toUpperCase()} forecast yet — it comes with the next forecast run.</div>`;
+        return;
+      }
+      tableEl.innerHTML = renderBlipspot(data);
+      tableEl.scrollTop = 0;
+    }
+    // A row title explains itself under the table (tap-friendly; the title attribute covers hover).
+    tableEl.addEventListener('click', (e) => {
+      const th = e.target.closest('th.row[data-desc]');
+      if (th) noteEl.innerHTML = `<b>${esc(th.dataset.title)}</b> — ${esc(th.dataset.desc)}`;
+    });
+    document.querySelectorAll('.view-toggle button').forEach(b =>
+      b.addEventListener('click', () => setView(b.dataset.view)));
+
+    const sheet = document.getElementById('sidebar');
+    const openSheet  = () => sheet.classList.add('open');     // no-op on desktop (CSS)
+    const closeSheet = () => sheet.classList.remove('open');
+
+    function selectSite(site, marker) {
+      currentSite = site;
+      if (selectedMarker) selectedMarker.getElement().classList.remove('selected');
+      selectedMarker = marker;
+      if (marker) marker.getElement().classList.add('selected');
+      updateWindgram();
+      syncUrl();
+    }
+
+    // Hover name, like the old Leaflet tooltip (desktop only: touch has no hover).
+    const tip = new maplibregl.Popup({ closeButton: false, closeOnClick: false, anchor: 'bottom',
+                                       offset: 16, className: 'site-tip' });
+    const showTip = (marker, text) => tip.setLngLat(marker.getLngLat()).setText(text).addTo(map);
+    const hideTip = () => tip.remove();
+
+    function updateMarkers(sites) {
+      markers.forEach(m => m.remove());
+      markers = [];
+      siteIndex = {};
+      sites.forEach(site => {
+        const label = prettyName(site.name);
+        const el = document.createElement('div');
+        el.className = 'site-marker';
+        el.setAttribute('role', 'button');
+        el.setAttribute('aria-label', label);
+        el.innerHTML = '<span class="glyph">🪂</span>';
+        const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
+          .setLngLat([site.lon, site.lat]).addTo(map);
+        el.addEventListener('mouseenter', () => showTip(marker, label));
+        el.addEventListener('mouseleave', hideTip);
+        // Marker elements sit in the map's canvas container, so stop the click
+        // reaching the map's own click handler (which closes the sheet).
+        el.addEventListener('click', (e) => { e.stopPropagation(); selectSite(site, marker); openSheet(); });
+        markers.push(marker);
+        siteIndex[siteKey(site.name)] = { site, marker };
+      });
+      const lons = sites.map(s => s.lon), lats = sites.map(s => s.lat);
+      siteBounds = sites.length
+        ? [[Math.min(...lons), Math.min(...lats)], [Math.max(...lons), Math.max(...lats)]]
+        : null;
+      // A deep link (#site=…) opens on that site; otherwise nothing is
+      // pre-selected, the panel shows its "pick a launch" prompt and the map
+      // opens framed on every site.
+      if (!applyLinkedSite(pendingLink.site)) {
+        if (pendingLink.site) syncUrl();       // unknown site in the link: back to /
+        fitAllSites();
+      }
+    }
+
+    // ── Deep links ─────────────────────────────────────────────────
+    // /<name>[?model=nam|rrfs|hrrr][&day=YYYY-MM-DD][&view=table], e.g. /Carnation
+    // or /poo-poo-point?model=rrfs. Names match loosely (case, spaces, underscores
+    // and hyphens ignored). GitHub Pages serves 404.html (a copy of this page,
+    // see deploy-site.yml) for any path it has no file for, which is how
+    // /Carnation reaches this script; that is also why every asset path above
+    // is root-absolute. The old #site=… and bare #<name> links keep working and
+    // are rewritten to the path form. The address bar is kept in sync as the
+    // user clicks around, so it is always the link to share.
+    const MODELS = ['nam', 'rrfs', 'hrrr'];
+    const siteKey = (name) => String(name).toLowerCase().replace(/[^a-z0-9]/g, '');
+    let siteIndex = {};
+    function readParams(params, out) {
+      for (const [k, v] of params) {
+        if (k === 'site' && v) out.site = v;
+        else if (k === 'model' && MODELS.includes(v)) out.model = v;
+        else if (k === 'day' && /^\d{4}-\d{2}-\d{2}$/.test(v)) out.day = v;
+        else if (k === 'view' && (v === 'table' || v === 'chart')) out.view = v;
+      }
+    }
+    function parseLink() {
+      const out = { site: null, model: null, day: null, view: null };
+      // Path: a single segment that is not the page itself.
+      const seg = location.pathname.replace(/^\/+|\/+$/g, '');
+      if (seg && !seg.includes('/') && !/\.html?$/i.test(seg)) {
+        try { out.site = decodeURIComponent(seg); } catch (_) { out.site = seg; }
+      }
+      readParams(new URLSearchParams(location.search), out);
+      // Legacy hash links: #site=…&model=…&day=… or a bare #<name>.
+      const raw = location.hash.replace(/^#/, '');
+      if (raw) {
+        if (raw.includes('=')) readParams(new URLSearchParams(raw), out);
+        else if (!out.site) { try { out.site = decodeURIComponent(raw); } catch (_) { out.site = raw; } }
+      }
+      return out;
+    }
+    // Site always (as the path); model and day only when they differ from the
+    // page defaults, so everyday links stay short and don't pin a date that
+    // gets pruned.
+    function syncUrl() {
+      if (!currentSite) { history.replaceState(null, '', '/'); return; }
+      const p = new URLSearchParams();
+      if (currentModel !== DEFAULT_MODEL) p.set('model', currentModel);
+      if (currentDate && currentDays.length && currentDate !== currentDays[0].date) p.set('day', currentDate);
+      if (currentView === 'table') p.set('view', 'table');
+      const q = p.toString();
+      history.replaceState(null, '', '/' + encodeURIComponent(currentSite.name) + (q ? '?' + q : ''));
+    }
+    function applyLinkedSite(name) {
+      const hit = name && siteIndex[siteKey(name)];
+      if (!hit) return false;
+      selectSite(hit.site, hit.marker);
+      userMoved = true;                          // keep the resize re-fit off this view
+      // On a phone the open sheet covers roughly the lower three quarters of
+      // the screen, so the marker is placed up in the strip that stays visible.
+      const lift = isPhone() ? Math.round(map.getContainer().clientHeight * 0.3) : 0;
+      map.easeTo({ center: hit.marker.getLngLat(), zoom: 10, offset: [0, -lift], duration: 0 });
+      if (isPhone()) openSheet();
+      return true;
+    }
+    // Back/forward and hand-edited hashes re-apply whatever the bar says.
+    for (const ev of ['popstate', 'hashchange']) {
+      window.addEventListener(ev, () => { const l = parseLink(); if (l.site) applyLinkedSite(l.site); });
+    }
+    document.getElementById('copy-link').addEventListener('click', async (e) => {
+      const btn = e.currentTarget;
+      const url = location.href;
+      try {
+        if (navigator.share && isPhone()) { await navigator.share({ title: document.title, url }); return; }
+        await navigator.clipboard.writeText(url);
+        btn.textContent = 'Copied';
+        setTimeout(() => { btn.textContent = 'Copy link'; }, 1500);
+      } catch (_) {
+        window.prompt('Link to this site:', url);
+      }
+    });
+
+    // Frame every site on load, on whatever screen this is. On a phone the map is
+    // full-screen with the brand pill floating top-left and the selector sheet
+    // docked at the bottom, so those strips are padded out of the fit; on a
+    // desktop the map is its own flex box and only needs a margin. Re-fit on
+    // resize / rotation until the user pans or zooms by hand.
+    let siteBounds = null;
+    let userMoved = false;
+    const isPhone = () => window.matchMedia('(max-width: 720px)').matches;
+    function fitAllSites() {
+      if (!siteBounds || userMoved) return;
+      const h = map.getContainer().clientHeight;
+      const opts = { maxZoom: 10, animate: false };
+      if (isPhone()) {
+        const pill = document.querySelector('.map-header');
+        const top = pill ? pill.getBoundingClientRect().bottom + 12 : 24;
+        // Never let the padding swallow the map (MapLibre refuses such a fit).
+        const bottom = Math.min(sheet.offsetHeight + 16, Math.round(h * 0.6));
+        opts.padding = { top, bottom, left: 18, right: 18 };
+      } else {
+        opts.padding = 48;
+      }
+      map.fitBounds(siteBounds, opts);
+    }
+    // MapLibre marks user-driven moves with originalEvent; programmatic ones have none.
+    map.on('movestart', (e) => { if (e.originalEvent) userMoved = true; });
+    let fitTimer = null;
+    window.addEventListener('resize', () => {
+      clearTimeout(fitTimer);
+      fitTimer = setTimeout(fitAllSites, 150);
+    });
+
+    document.querySelectorAll('input[name="model"]').forEach(r => {
+      r.addEventListener('change', async e => {
+        currentModel = e.target.value;
+        await loadDays();          // each model may offer a different set of days
+        updateWindgram();
+        syncUrl();
+      });
+    });
+
+    // Dismiss the sheet: close button, grip tap, or tapping the open map.
+    document.getElementById('sheetClose').addEventListener('click', closeSheet);
+    // Grip toggles the windgram open/closed; selectors stay docked either way.
+    document.getElementById('sheetGrip').addEventListener('click', () => sheet.classList.toggle('open'));
+    map.on('click', closeSheet);   // empty-map taps (marker clicks don't propagate)
+
+    // A deep link's model/day are applied before the day set resolves; its site
+    // is applied once sites.json has produced markers (updateMarkers).
+    const DEFAULT_MODEL = document.querySelector('input[name="model"]:checked').value;
+    const pendingLink = parseLink();
+    if (pendingLink.model) {
+      const r = document.querySelector(`input[name="model"][value="${pendingLink.model}"]`);
+      if (r) { r.checked = true; currentModel = pendingLink.model; }
+    }
+    if (pendingLink.day) currentDate = pendingLink.day;   // kept only if loadDays finds it
+    if (pendingLink.view) currentView = pendingLink.view;  // a shared link's view wins over the remembered one
+
+    // Resolve the day set first (sets currentDate), then sites + metadata.
+    (async () => {
+      await loadDays();
+      loadSites();
+      loadMetadata();
+      setTimeout(() => map.resize(), 0);
+    })();
+  </script>
+</body>
+</html>

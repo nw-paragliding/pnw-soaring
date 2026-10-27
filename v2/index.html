@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PNW Soaring — v2 (beta)</title>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css"/>
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1c2622; --ink-soft:#566159; --paper:#f1ece1; --panel:#fbf9f4;
+    --evergreen:#1f5240; --thermal:#e0662a; --line:rgba(28,38,34,.12); --line-2:rgba(28,38,34,.18);
+    --stale:#b67410; --glass:rgba(248,245,238,.80);
+    --shadow:0 6px 24px -8px rgba(28,38,34,.45); --shadow-sm:0 2px 10px -3px rgba(28,38,34,.3);
+    --r:13px; --r-sm:8px;
+  }
+  *{margin:0;box-sizing:border-box} html,body{height:100%}
+  body{font-family:'Bricolage Grotesque',system-ui,sans-serif;color:var(--ink);background:var(--paper)}
+  #wrap{display:flex;height:100dvh}
+  #left{flex:1;position:relative}
+  #map{position:absolute;inset:0}
+  .maplibregl-ctrl-attrib-inner,.maplibregl-ctrl-attrib{font-family:'IBM Plex Mono',monospace;font-size:10px}
+
+  .micro{font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--ink-soft)}
+
+  /* ── Floating instrument cards over the map ───────────────────────── */
+  .bar{position:absolute;top:12px;right:12px;z-index:2;width:180px;
+    background:var(--glass);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+    border:1px solid var(--line);border-radius:var(--r-sm);padding:8px 11px 10px;box-shadow:var(--shadow-sm)}
+  .bar .val{display:block;font-weight:700;font-size:13px;letter-spacing:-.01em;margin:2px 0 7px}
+  #tslider{-webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:3px;
+    background:linear-gradient(90deg,var(--evergreen),#caa12a,var(--thermal));outline:none;cursor:pointer}
+  #tslider::-webkit-slider-thumb{-webkit-appearance:none;width:17px;height:17px;border-radius:50%;
+    background:#fff;border:2.5px solid var(--evergreen);box-shadow:0 1px 5px rgba(0,0,0,.35);cursor:grab}
+  #tslider::-moz-range-thumb{width:17px;height:17px;border-radius:50%;background:#fff;
+    border:2.5px solid var(--evergreen);box-shadow:0 1px 5px rgba(0,0,0,.35);cursor:grab}
+  #tslider:active::-webkit-slider-thumb{cursor:grabbing}
+
+  /* TOL legend — same instrument card; color bar at the overlay's opacity */
+  .legend{position:absolute;right:12px;top:50%;transform:translateY(-50%);z-index:1;pointer-events:none;
+    background:var(--glass);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+    border:1px solid var(--line);border-radius:var(--r-sm);padding:9px 10px;box-shadow:var(--shadow-sm)}
+  .legend-title{margin-bottom:7px}
+  .legend-body{display:flex;gap:7px}
+  .legend-bar{width:11px;height:clamp(150px,32vh,260px);border-radius:4px;opacity:.6;
+    box-shadow:inset 0 0 0 1px rgba(0,0,0,.16)}
+  .legend-ticks{position:relative;width:32px;font:500 9.5px/1 'IBM Plex Mono',monospace;color:var(--ink-soft)}
+  .legend-ticks span{position:absolute;transform:translateY(-50%);white-space:nowrap}
+
+  /* cursor-following Top-of-lift readout */
+  .tolhover{position:absolute;z-index:3;pointer-events:none;display:none;
+    background:rgba(28,38,34,.92);color:#fff;padding:4px 9px;border-radius:7px;
+    font:600 11.5px 'IBM Plex Mono',monospace;box-shadow:0 2px 9px rgba(0,0,0,.35);
+    transform:translate(14px,-50%);white-space:nowrap}
+  .tolhover::before{content:"TOL ";font-weight:500;font-size:9px;letter-spacing:.12em;opacity:.55}
+
+  /* ── Launch / landing site markers ──────────────────────────────────── */
+  /* NB: don't set position OR transform/transition on .ll-marker — MapLibre adds
+     .maplibregl-marker (position:absolute) and owns its transform for geo-anchoring.
+     A position:relative here drops pins into normal flow and they drift on pan/zoom. */
+  .ll-marker{width:26px;height:26px;cursor:pointer}
+  .ll-marker:hover{z-index:6}
+  .ll-ico{display:flex;align-items:center;justify-content:center;width:26px;height:26px;
+    border-radius:50% 50% 50% 2px;transform:rotate(-45deg);transform-origin:center;
+    transition:transform .12s;border:2px solid #fff;box-shadow:0 2px 7px rgba(0,0,0,.42)}
+  .ll-marker:hover .ll-ico{transform:rotate(-45deg) scale(1.16)}
+  .ll-ico svg{width:15px;height:15px;display:block;transform:rotate(45deg)}
+  .ll-marker.launch  .ll-ico{background:var(--evergreen)}
+  .ll-marker.landing .ll-ico{background:#2f6f93}
+  .ll-name{position:absolute;left:32px;top:3px;white-space:nowrap;
+    font:600 11px 'IBM Plex Mono',monospace;color:var(--ink);
+    background:var(--glass);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+    padding:2px 7px;border-radius:6px;border:1px solid var(--line);box-shadow:var(--shadow-sm);
+    opacity:0;pointer-events:none;transition:opacity .12s}
+  .ll-marker:hover .ll-name{opacity:1}
+
+  /* ── Left sidebar (matches v1: left side, flex 0 0 40%, 380–640px) ───── */
+  #panel{order:-1;flex:0 0 40%;min-width:380px;max-width:640px;border-right:1px solid var(--line);overflow:auto;
+    background:linear-gradient(180deg,#f5f0e6,var(--paper) 240px)}
+  #panel>*{animation:rise .5s both}
+  #panel>*:nth-child(2){animation-delay:.05s} #panel>*:nth-child(3){animation-delay:.1s}
+  #panel>*:nth-child(4){animation-delay:.15s} #panel>*:nth-child(5){animation-delay:.2s}
+  @keyframes rise{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:none}}
+  .bar,.legend{animation:rise .55s both .12s}
+
+  /* Header — mirrors v1: full-width bordered brand + kicker, same padding/height */
+  .brand{padding:13px 24px 11px;border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg,rgba(31,82,64,.05),transparent);
+    display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+  .brand h1{font-weight:800;font-size:clamp(20px,2.4vw,26px);letter-spacing:-.025em;line-height:1;color:var(--ink)}
+  .brand .lift{color:var(--thermal)}
+  .kicker{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:500;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--ink-soft);white-space:nowrap;display:flex;align-items:center;gap:6px}
+  .kicker .glyph{color:var(--evergreen);font-size:11px}
+  .kicker a{color:var(--thermal);text-decoration:none}
+  .controls{padding:13px 24px 3px;display:flex;flex-direction:column;gap:9px}
+  .panel-body{padding:8px 24px 30px}
+
+  /* Segmented model toggle — identical to v1: three options NAM | RRFS | HRRR; the
+     one-column-wide indicator slides by whole columns (0 / 100% / 200% of itself) */
+  .segmented{position:relative;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));background:var(--panel);
+    border:1px solid var(--line-2);border-radius:11px;padding:4px;box-shadow:inset 0 1px 2px rgba(28,38,34,.04)}
+  .segmented .indicator{position:absolute;top:4px;left:4px;bottom:4px;width:calc((100% - 8px) / 3);
+    background:var(--evergreen);border-radius:8px;box-shadow:0 2px 8px -2px rgba(22,58,45,.5);
+    transition:transform .28s cubic-bezier(.5,.1,.1,1);z-index:0}
+  .segmented:has(input[value="rrfs"]:checked) .indicator{transform:translateX(100%)}
+  .segmented:has(input[value="hrrr"]:checked) .indicator{transform:translateX(200%)}
+  .segmented label{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:1px;
+    padding:8px 4px;cursor:pointer;user-select:none;border-radius:8px;transition:color .2s}
+  .segmented label .name{font-weight:600;font-size:14px;letter-spacing:-.01em;white-space:nowrap}
+  .segmented label .name .beta{font-weight:500;font-size:11px;opacity:.75}
+  .segmented label .res{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.04em;color:var(--ink-soft)}
+  .segmented input{position:absolute;opacity:0;pointer-events:none}
+  .segmented label:has(input:checked) .name{color:#fff}
+  .segmented label:has(input:checked) .res{color:rgba(255,255,255,.72)}
+  .segmented label .res.stale{color:var(--stale);font-weight:600}
+  .segmented label:has(input:checked) .res.stale{color:#f4b860}
+  /* Day picker — identical to v1 */
+  .days{display:flex;gap:6px}
+  .days:empty,.days.single{display:none}
+  .days button{flex:1;min-width:64px;cursor:pointer;font:600 13px/1 'Bricolage Grotesque',system-ui,sans-serif;
+    padding:6px 8px;border-radius:8px;border:1px solid var(--line-2);background:var(--panel);color:var(--ink-soft);
+    transition:background .15s,color .15s,border-color .15s}
+  .days button .sub{display:block;font:500 9px/1.4 'IBM Plex Mono',monospace;opacity:.65}
+  .days button.active{background:var(--evergreen);color:#fff;border-color:var(--evergreen)}
+  .days button.active .sub{opacity:.8}
+  /* Unavailable model (cube not published) — dim + not clickable */
+  .segmented label.disabled{cursor:not-allowed;opacity:.45}
+  .segmented label.disabled .res{color:var(--thermal);font-weight:600}
+
+  #wgwrap{margin-top:2px}
+  .wg-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin:9px 0 7px}
+  .site-name{font-weight:800;font-size:17px;letter-spacing:-.01em}
+  .coords{font:500 10.5px 'IBM Plex Mono',monospace;color:var(--ink-soft);text-align:right;flex:0 0 auto}
+  #wg{width:100%;border:1px solid var(--line);border-radius:11px;background:#fff;box-shadow:var(--shadow-sm)}
+
+  .note{font:500 12px/1.5 'IBM Plex Mono',monospace;background:#fff7ec;
+    border:1px solid #f0d9b8;border-radius:10px;padding:11px 13px;margin-top:2px;color:#9a6212}
+  .hint{font:500 12.5px/1.55 'Bricolage Grotesque',sans-serif;color:var(--ink-soft);margin-top:16px;
+    padding:12px 14px;background:rgba(31,82,64,.05);border:1px dashed var(--line);border-radius:10px}
+
+  /* ── Bottom-sheet affordances + floating brand — mobile only (mirrors v1) ── */
+  .sheet-grip,.sheet-close,.map-header{display:none}
+  @media (max-width:720px){
+    /* Full-screen map; the panel slides up as a dismissible bottom sheet. */
+    #wrap{display:block;height:100dvh}
+    #left{position:absolute;inset:0}
+    #map{position:absolute;inset:0}
+    /* Persistent bottom bar: the model/date selectors are always docked at the
+       bottom; the windgram (.panel-body) collapses to nothing and slides up to
+       reveal itself when a point is selected. */
+    #panel{order:0;flex:none;position:fixed;left:0;right:0;bottom:0;
+      width:100%;min-width:0;max-width:none;height:auto;max-height:88dvh;
+      border:1px solid var(--line-2);border-right:none;border-bottom:none;
+      border-radius:18px 18px 0 0;box-shadow:0 -10px 34px rgba(28,38,34,.22);
+      z-index:1000;overflow-y:auto;overscroll-behavior:contain}
+    .sheet-grip{display:block;width:40px;height:4px;border-radius:3px;
+      background:var(--line-2);margin:9px auto 2px;cursor:pointer}
+    /* The ✕ only appears once expanded — it collapses back to the selector peek. */
+    .sheet-close{display:none;align-items:center;justify-content:center;position:absolute;
+      top:10px;right:12px;width:30px;height:30px;border:none;border-radius:50%;
+      background:var(--panel);color:var(--ink-soft);font-size:13px;cursor:pointer;
+      box-shadow:0 1px 3px rgba(28,38,34,.18);z-index:2}
+    #panel.open .sheet-close{display:flex}
+    .brand{display:none}
+    .controls{padding:4px 18px 6px}
+    /* Three toggle columns on a phone (~109px each at 375px): trim the sublabel so
+       "1.3 km · 12h ago" stays on one line down to ~360px, wrapping below that. */
+    .segmented label{padding:8px 2px}
+    .segmented label .res{font-size:9.5px;letter-spacing:.02em}
+    /* Collapsed by default (peek shows only the selectors); slides open on select. */
+    .panel-body{max-height:0;overflow:hidden;padding:0 18px;opacity:0;
+      transition:max-height .34s cubic-bezier(.2,.7,.2,1),opacity .24s,padding .34s}
+    #panel.open .panel-body{max-height:72dvh;opacity:1;padding:4px 18px 26px}
+    /* Floating brand pill over the map */
+    .map-header{display:flex;flex-direction:column;gap:1px;position:fixed;top:10px;left:10px;
+      z-index:500;padding:7px 12px;border-radius:12px;background:rgba(243,239,230,.92);
+      backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);
+      border:1px solid var(--line);box-shadow:var(--shadow);pointer-events:none}
+    .map-header h1{font-weight:800;font-size:17px;letter-spacing:-.02em;line-height:1;color:var(--ink)}
+    .map-header h1 .lift{color:var(--thermal)}
+    .map-header .kicker{font-family:'IBM Plex Mono',monospace;font-size:10px;
+      letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);text-align:right}
+    .map-header .glyph{color:var(--evergreen)}
+    /* The pill is click-through (pointer-events:none) so the map stays draggable
+       underneath; re-enable just the v1 link so it stays tappable. */
+    .map-header a{pointer-events:auto;display:inline-block;padding:1px 0;font-weight:600}
+    /* Declutter map overlays: drop the tall legend, keep the time slider top-right */
+    .legend{display:none}
+    .bar{top:10px;right:10px;left:auto;width:170px}
+  }
+  @media (prefers-reduced-motion:reduce){ *{animation:none!important;transition:none!important} }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="left">
+    <div id="map"></div>
+    <div class="bar">
+      <span class="micro">Top of lift</span>
+      <span class="val" id="tlabel">—</span>
+      <input id="tslider" type="range" min="0" max="0" value="0">
+    </div>
+    <div class="legend" id="legend" style="display:none">
+      <div class="legend-title micro">Top of lift</div>
+      <div class="legend-body">
+        <div class="legend-bar" id="legendBar"></div>
+        <div class="legend-ticks" id="legendTicks"></div>
+      </div>
+    </div>
+    <div class="tolhover" id="tolhover"></div>
+    <div class="map-header">
+      <h1>PNW <span class="lift">Soaring</span></h1>
+      <div class="kicker"><a href="/">← return to v1</a></div>
+    </div>
+  </div>
+  <div id="panel">
+    <div class="sheet-grip" id="sheetGrip" aria-hidden="true"></div>
+    <button class="sheet-close" id="sheetClose" aria-label="Close forecast">✕</button>
+    <header class="brand">
+      <div class="wordmark"><h1>PNW <span class="lift">Soaring</span></h1></div>
+      <div class="kicker"><span class="glyph">▲</span> Beta · soaring cube · <a href="/">← v1</a></div>
+    </header>
+    <div class="controls">
+      <div class="segmented" role="radiogroup" aria-label="Forecast model">
+        <span class="indicator" aria-hidden="true"></span>
+        <label>
+          <input type="radio" name="model" value="nam" checked>
+          <span class="name">NAM</span><span class="res" data-model="nam" data-res="1.3 km">1.3 km</span>
+        </label>
+        <label id="rrfs-opt">
+          <input type="radio" name="model" value="rrfs">
+          <span class="name">RRFS</span><span class="res" data-model="rrfs" data-res="1.3 km">1.3 km</span>
+        </label>
+        <label id="hrrr-opt">
+          <input type="radio" name="model" value="hrrr">
+          <span class="name">HRRR <span class="beta">(beta)</span></span><span class="res" data-model="hrrr" data-res="1 km">1 km</span>
+        </label>
+      </div>
+      <div class="days" id="days"></div>
+    </div>
+    <div class="panel-body">
+      <div id="status"></div>
+      <div id="wgwrap" style="display:none">
+        <div class="micro">Windgram</div>
+        <div class="wg-head">
+          <span class="site-name" id="site-name"></span>
+          <span class="coords" id="coords"></span>
+        </div>
+        <canvas id="wg" width="540" height="430"></canvas>
+      </div>
+      <div class="hint" id="hint" style="display:none">Click anywhere on the map for a windgram — generated in your browser from the forecast cube.</div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import * as zarr from "https://esm.sh/zarrita@0.4.0";
+import { renderWindgram } from "./windgram.js";   // faithful TS port of rasp-windgram/windgram.py (built from windgram-ts/)
+const maplibregl = window.maplibregl;
+
+// Cube hosting: Cloudflare R2 (per-model "latest"). Override for testing with ?cube=<base>.
+const CUBE_BASE = new URLSearchParams(location.search).get("cube")
+  || "https://pub-de96e47b1e91464bb2959747602c1914.r2.dev";   // R2 public (r2.dev) bucket: nw-paragliding-forecasts
+const cubeUrl = (m, d) => `${CUBE_BASE}/${m}/${d || "latest"}/soaring.zarr`;
+const TOL_CMAP = ["#3a4fa0","#2f7fb0","#5fa84a","#e6c34a","#d97b34","#9e3b2e"];
+const TOL_CLIM = [1500, 10500];   // ft ASL — overlay color limits + legend range
+
+// Basemap: the DEM + labels combo from glide-range — OpenFreeMap Positron base,
+// an AWS terrarium hillshade for terrain relief, and peak/water labels pulled
+// from the OpenMapTiles vector source on top.
+const map = new maplibregl.Map({ container:"map",
+  style:"https://tiles.openfreemap.org/styles/positron",
+  center:[-121.86,47.46], zoom:10.4 });   // framed on the Tiger / Rattlesnake cluster
+
+let model="nam", goodModel="nam", currentDate=null, daysCache={}, cube=null, zlayer=null, tIdx=6, beforeLabelId;   // default ~2pm local (peak thermals)
+
+function setupBasemap(){
+  // Keep our raster layers under the style's labels so place names stay legible.
+  const firstSymbol = map.getStyle().layers.find(l=>l.type==="symbol");
+  beforeLabelId = firstSymbol ? firstSymbol.id : undefined;
+
+  map.addSource("terrain-dem", { type:"raster-dem",
+    tiles:["https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"],
+    encoding:"terrarium", tileSize:256, maxzoom:15,
+    attribution:'Terrain © <a href="https://registry.opendata.aws/terrain-tiles/">AWS Terrain Tiles</a>' });
+  map.addLayer({ id:"hillshade", type:"hillshade", source:"terrain-dem", paint:{
+    "hillshade-exaggeration":0.55, "hillshade-shadow-color":"#4a3e28",
+    "hillshade-highlight-color":"#ffffff", "hillshade-accent-color":"#000000",
+    "hillshade-illumination-direction":335 } }, beforeLabelId);
+
+  // Extra peak + water-name labels from the OpenMapTiles source (Positron is
+  // sparse with these). Added on top so they read over the TOL overlay.
+  if(map.getSource("openmaptiles")){
+    const sym = map.getStyle().layers.find(l=>l.type==="symbol" && l.layout && l.layout["text-font"]);
+    const fontStack = sym ? sym.layout["text-font"] : ["Noto Sans Regular"];
+    map.addLayer({ id:"peak-labels", type:"symbol", source:"openmaptiles",
+      "source-layer":"mountain_peak", minzoom:7, filter:["has","name"], layout:{
+        "text-field":["concat",["coalesce",["get","name_en"],["get","name"],""],
+          ["case",["has","ele"],["concat","\n",["to-string",["get","ele"]]," m"],""]],
+        "text-font":fontStack, "text-size":["interpolate",["linear"],["zoom"],8,10,14,13],
+        "text-anchor":"top", "text-offset":[0,0.3], "text-max-width":8,
+        "symbol-sort-key":["-",10000,["coalesce",["get","ele"],0]] },
+      paint:{ "text-color":"#3c2f14", "text-halo-color":"#ffffff", "text-halo-width":1.5 } });
+    map.addLayer({ id:"water-name-labels", type:"symbol", source:"openmaptiles",
+      "source-layer":"water_name", minzoom:7,
+      filter:["all",["has","name"],["==",["geometry-type"],"Point"]], layout:{
+        "text-field":["coalesce",["get","name_en"],["get","name"]], "text-font":fontStack,
+        "text-size":["interpolate",["linear"],["zoom"],8,10,14,13], "text-max-width":8,
+        "text-letter-spacing":0.05 },
+      paint:{ "text-color":"#2a5b7a", "text-halo-color":"#ffffff", "text-halo-width":1.3 } });
+  }
+}
+const $ = id => document.getElementById(id);
+const status = (msg,warn) => { $("status").innerHTML = msg ? `<div class="note">${msg}</div>` : ""; };
+
+const HINT = "Click anywhere on the map for a windgram — generated in your browser from the forecast cube.";
+
+// ── Day picker — probe which dated cubes exist on R2 (today/tomorrow), ───────
+// anchored to the forecast zone (PDT) like v1, skipping a spent day past 8pm.
+function dayLabel(off, ds){
+  if(off===0) return "Today";
+  if(off===1) return "Tomorrow";
+  return new Date(ds+"T12:00:00Z").toLocaleDateString(undefined, {weekday:"short"});
+}
+async function discoverDays(m){
+  if(daysCache[m]) return daysCache[m];
+  const [by,bm,bd] = new Date().toLocaleDateString("en-CA",{timeZone:"America/Los_Angeles"}).split("-").map(Number);
+  const out=[];
+  for(let off=0; off<=2; off++){
+    const d=new Date(Date.UTC(by,bm-1,bd+off));
+    const ds=d.toISOString().slice(0,10);
+    if(Date.now() > Date.parse(ds+"T20:00:00-07:00")) continue;   // skip a day once its soaring window is spent
+    let ok=false;
+    try{ let r=await fetch(cubeUrl(m,ds)+"/zarr.json",{method:"HEAD"}); if(r.status===405) r=await fetch(cubeUrl(m,ds)+"/zarr.json"); ok=r.ok; }catch(e){}
+    if(ok) out.push({ date:ds, off, label:dayLabel(off,ds), sub:ds.slice(5) });
+  }
+  daysCache[m]=out;
+  return out;
+}
+function renderDays(days){
+  const el=$("days"); el.innerHTML="";
+  el.classList.toggle("single", days.length<2);   // hide the picker when there's only one day
+  days.forEach(d=>{
+    const b=document.createElement("button");
+    b.innerHTML=`${d.label}<span class="sub">${d.sub}</span>`;
+    b.classList.toggle("active", d.date===currentDate);
+    b.onclick=()=>{ if(d.date!==currentDate) loadModel(model, d.date); };
+    el.appendChild(b);
+  });
+}
+
+async function loadModel(m, date){
+  model = m; $("wgwrap").style.display="none"; $("hint").style.display="none";
+  status("Loading "+m.toUpperCase()+" cube…");
+  // Resolve which forecast day to load + render the day picker.
+  const days = await discoverDays(m);
+  if(!date || !days.find(d=>d.date===date)) date = days.length ? days[0].date : "latest";
+  currentDate = date;
+  renderDays(days);
+  try {
+    const store = new zarr.FetchStore(cubeUrl(m, currentDate));
+    const root = zarr.root(store);
+    const open = n => zarr.open(root.resolve(n), {kind:"array"});
+    cube = { store, root, open,
+      lat: await zarr.get(await open("lat")), lon: await zarr.get(await open("lon")),
+      hours:(await zarr.get(await open("time"))).data, pres:(await zarr.get(await open("level"))).data,
+      cacheA:{} };
+    cube.Y = cube.lat.shape[0]; cube.X = cube.lat.shape[1];
+    cube.T = cube.hours.length; cube.L = cube.pres.length;
+    // Native LCC extent + CRS for the map overlay. The CRS travels with the cube
+    // as a CF grid_mapping (crs_wkt); hand it straight to zarr-layer along with
+    // edge bounds and which dims are spatial. Per-cube so NAM/RRFS/HRRR each
+    // project correctly. (zarr-layer ≥0.5.1 handles the spherical-earth WKT correctly.)
+    try {
+      const gm = (await (await fetch(cubeUrl(m, currentDate)+"/spatial_ref/zarr.json")).json()).attributes;
+      cube.crs = gm.crs_wkt;
+      const xa=(await zarr.get(await open("x"))).data, ya=(await zarr.get(await open("y"))).data;
+      const xs=xa[1]-xa[0], ys=ya[1]-ya[0];
+      cube.bounds=[ xa[0]-xs/2, Math.min(ya[0],ya[ya.length-1])-Math.abs(ys)/2,
+                    xa[xa.length-1]+xs/2, Math.max(ya[0],ya[ya.length-1])+Math.abs(ys)/2 ];
+    } catch(e){ console.warn("[overlay] projection metadata unavailable:", e); }
+    // Local-time labels for the slider: the cube's time axis is UTC hour-of-day
+    // on its soaring date (wrapping past midnight); render each in the viewer's
+    // local zone (machine TZ — for PNW users that's PDT, the forecast zone).
+    try {
+      const rootAttrs = (await (await fetch(cubeUrl(m, currentDate)+"/zarr.json")).json()).attributes || {};
+      const d0 = rootAttrs.date;
+      cube.date = d0; cube.dxKm = rootAttrs.dx_km;   // for the windgram title (date + grid resolution)
+      if (d0) {
+        const [Y,M,D] = d0.split("-").map(Number);
+        let dayOff=0, prev=-1;
+        cube.localTimes = Array.from(cube.hours).map(h=>{
+          h=h|0; if(prev>=0 && h<prev) dayOff++; prev=h;
+          return new Date(Date.UTC(Y,M-1,D+dayOff,h))
+            .toLocaleTimeString([], {hour:"numeric", timeZoneName:"short"});
+        });
+      }
+    } catch(e){ /* fall back to UTC labels */ }
+    setupTime(); await setOverlay(tIdx); await refreshHoverSlice(); status("");
+    $("legend").style.display = "";                              // TOL scale for the overlay
+    $("hint").textContent = HINT; $("hint").style.display = "";   // cube ready → invite a click
+    goodModel = m;                                               // remember the last model that loaded
+    showWindgram(lastSite.lng, lastSite.lat, lastSite.name, false); // default windgram; keep the mobile sheet closed (map opens full-screen)
+  } catch(e){
+    // No warning box — just log and snap the toggle back to the model that's
+    // currently up (the failed model's cube isn't published yet).
+    console.warn(`[cube] ${m.toUpperCase()} unavailable:`, e);
+    status("");
+    model = goodModel;
+    const r = document.querySelector(`input[name="model"][value="${goodModel}"]`);
+    if(r) r.checked = true;
+    if(!cube){ $("hint").style.display = "none"; }   // nothing loaded at all (initial-load failure)
+  }
+}
+
+function timeLabel(ti){
+  return cube.localTimes ? cube.localTimes[ti] : `${String(cube.hours[ti]|0).padStart(2,"0")}:00 UTC`;
+}
+function setupTime(){
+  const s=$("tslider"); s.max=cube.T-1; s.value=tIdx=Math.min(tIdx,cube.T-1);
+  $("tlabel").textContent = timeLabel(tIdx);
+  // Drive time in place via setSelector — recreating the layer per tick races
+  // and tears the overlay off the map. Build it once in setOverlay().
+  s.oninput=()=>{
+    tIdx=+s.value; $("tlabel").textContent = timeLabel(tIdx);
+    if(zlayer) zlayer.setSelector({ time:{ selected: tIdx, type:"index" } });
+    refreshHoverSlice();
+  };
+}
+
+async function setOverlay(ti){
+  $("tlabel").textContent = timeLabel(ti);
+  try {
+    const { ZarrLayer } = await import("https://esm.sh/@carbonplan/zarr-layer");
+    if(zlayer && map.getLayer("tol")) map.removeLayer("tol");
+    zlayer = new ZarrLayer({ id:"tol", source:cubeUrl(model), variable:"tol_ft",
+      zarrVersion:3, proj4:cube.crs, bounds:cube.bounds, spatialDimensions:{lat:"y",lon:"x"},
+      selector:{ time: { selected: ti, type:"index" } },   // ti is an index, not a UTC-hour value
+      clim:TOL_CLIM, colormap:TOL_CMAP, opacity:0.6 });
+    // Add unconditionally — setOverlay only runs after the style is loaded, and
+    // map.loaded() can read false while the DEM tiles are still streaming, which
+    // would wrongly defer this to a one-shot 'load' that already fired.
+    map.addLayer(zlayer, map.getLayer(beforeLabelId) ? beforeLabelId : undefined);
+  } catch(e){ console.error("[overlay] failed:", e); }
+}
+
+function buildLegend(){
+  $("legendBar").style.background = `linear-gradient(to top, ${TOL_CMAP.join(",")})`;
+  const [lo,hi]=TOL_CLIM;
+  $("legendTicks").innerHTML = [10000,8000,6000,4000,2000].map(v=>
+    `<span style="top:${(100*(1-(v-lo)/(hi-lo))).toFixed(1)}%">${v/1000}k ft</span>`).join("");
+}
+
+const acc = v => (...ix) => v.data[ix.reduce((s,k,i)=>s+k*v.stride[i],0)];
+function nearest(lng,la){
+  const lat=acc(cube.lat), lon=acc(cube.lon); let best=1e9,by=0,bx=0;
+  for(let j=0;j<cube.Y;j++)for(let i=0;i<cube.X;i++){
+    const d=(lat(j,i)-la)**2+(lon(j,i)-lng)**2; if(d<best){best=d;by=j;bx=i;} }
+  return [by,bx,lat(by,bx),lon(by,bx)];
+}
+
+// Top-of-lift hover readout — cache the current time's TOL slice in JS so a
+// mousemove is a fast in-memory lookup, not a fetch.
+let hoverTol = null;
+async function refreshHoverSlice(){
+  hoverTol = null;
+  try {
+    cube.tolCache = cube.tolCache || {};
+    if(!cube.tolCache[tIdx]) cube.tolCache[tIdx] = acc(await zarr.get(await cube.open("tol_ft"),[tIdx,null,null]));
+    hoverTol = cube.tolCache[tIdx];
+  } catch(e){ /* hover unavailable */ }
+}
+map.on("mousemove", e=>{
+  const el=$("tolhover");
+  if(!cube || !hoverTol){ el.style.display="none"; return; }
+  const [yi,xi,la,lo]=nearest(e.lngLat.lng,e.lngLat.lat);
+  if(Math.abs(la-e.lngLat.lat)>0.02 || Math.abs(lo-e.lngLat.lng)>0.02){ el.style.display="none"; return; }   // outside the cube
+  const v=hoverTol(yi,xi);
+  el.style.left=e.point.x+"px"; el.style.top=e.point.y+"px"; el.style.display="block";
+  el.textContent = isFinite(v) ? `${Math.round(v).toLocaleString()} ft` : "—";
+});
+map.on("mouseout", ()=>{ $("tolhover").style.display="none"; });
+// Pull a single grid column out of the cube and materialise it into the plain
+// [time][level] / [time] arrays the windgram library expects (WindgramData).
+async function column(yi,xi){
+  const g3=async n=>{ const v=await zarr.get(await cube.open(n),[null,null,yi,xi]);   // (T,L)
+    const a=[]; for(let t=0;t<cube.T;t++){ const r=[]; for(let k=0;k<cube.L;k++) r.push(v.data[t*v.stride[0]+k*v.stride[1]]); a.push(r); } return a; };
+  const s2=async n=>{ const v=await zarr.get(await cube.open(n),[null,yi,xi]);          // (T,)
+    const a=[]; for(let t=0;t<cube.T;t++) a.push(v.data[t*v.stride[0]]); return a; };
+  // All-integer selection returns a bare scalar (no .data) in zarrita — read it directly.
+  const t0=async n=>{ const v=await zarr.get(await cube.open(n),[yi,xi]); return typeof v==="number"?v:v.data[0]; };
+  return {
+    hoursUtc: Array.from(cube.hours).map(h=>h|0),
+    terrainFt: await t0("terrain_ft"),
+    ghFt: await g3("gh_ft"), tc: await g3("tc"), td: await g3("td"), rh: await g3("rh"),
+    uKt: await g3("u_kt"), vKt: await g3("v_kt"),
+    pblhM: await s2("pblh_m"), hfx: await s2("hfx"), lh: await s2("lh"),
+    t2K: await s2("t2_k"), sfcpMb: await s2("sfcp_mb"),
+  };
+}
+
+// The site shown on initial load and re-rendered when the model is switched.
+let lastSite = { lng:-122.00819, lat:47.49927, name:"Poo Poo Point" };
+
+// Mobile bottom-sheet (no-op on desktop, where .open does nothing in CSS).
+const openSheet = ()=> $("panel").classList.add("open");
+const closeSheet = ()=> $("panel").classList.remove("open");
+
+async function showWindgram(lng, lat, name, reveal=true){
+  if(!cube) return;
+  lastSite = { lng, lat, name };
+  const [yi,xi,la,lo]=nearest(lng,lat);
+  $("hint").textContent="loading column…"; $("hint").style.display="";
+  try {
+    const data = await column(yi,xi);
+    $("wgwrap").style.display=""; $("hint").style.display="none";
+    $("site-name").textContent = name || `${la.toFixed(3)}, ${lo.toFixed(3)}`;
+    $("coords").textContent = `${la.toFixed(3)}, ${lo.toFixed(3)} · terrain ${Math.round(data.terrainFt)} ft`;
+    renderWindgram($("wg"), data);
+    if(reveal) openSheet();   // a tap on the map/a marker raises the sheet on mobile
+  } catch(err){ $("hint").textContent="column unavailable: "+(err&&err.message||err); }
+}
+
+// Toggle-button helpers ───────────────────────────────────────────────────
+// Resolution + run age in each button's sublabel (the v1 style: "1.3 km · 5h ago",
+// amber when stale). Age is per-model run freshness, read from <model>/latest.
+// The resolution comes from the cube itself (dx_km), so it tracks whatever each
+// model's WRF chain actually ran at; data-res is only the pre-load fallback.
+const MODELS = ["nam","rrfs","hrrr"];   // toggle order; NAM is the default
+function timeAgo(ms){
+  const h = ms/3.6e6;
+  if(h < 1) return Math.max(1,Math.round(h*60))+"m ago";
+  if(h < 24) return Math.round(h)+"h ago";
+  return Math.round(h/24)+"d ago";
+}
+async function refreshToggleMeta(){
+  for(const m of MODELS){
+    const el = document.querySelector(`.res[data-model="${m}"]`);
+    if(!el) continue;
+    try{
+      const a = (await (await fetch(cubeUrl(m,"latest")+"/zarr.json")).json()).attributes || {};
+      const res = a.dx_km ? (a.dx_km>=1?`${a.dx_km.toFixed(1)} km`:`${Math.round(a.dx_km*1000)} m`) : el.dataset.res;
+      if(a.date){
+        const [Y,M,D] = a.date.split("-").map(Number);
+        const age = Date.now() - Date.UTC(Y,M-1,D, parseInt(a.cycle,10)||0);
+        el.textContent = age>0 ? `${res} · ${timeAgo(age)}` : res;
+        el.classList.toggle("stale", age/3.6e6 > 12);
+      } else el.textContent = res;
+    }catch(e){ /* unavailable model handled by probeModel/setModelAvailable */ }
+  }
+}
+// Gracefully disable a model's button when its cube isn't published.
+function setModelAvailable(m, ok){
+  const input = document.querySelector(`input[name="model"][value="${m}"]`);
+  const label = input && input.closest("label");
+  if(!input || !label) return;
+  input.disabled = !ok;
+  label.classList.toggle("disabled", !ok);
+  if(!ok){ const el=document.querySelector(`.res[data-model="${m}"]`); if(el) el.textContent="unavailable"; }
+}
+async function probeModel(m){
+  try{
+    let r = await fetch(cubeUrl(m)+"/zarr.json", {method:"HEAD"});
+    if(r.status===405) r = await fetch(cubeUrl(m)+"/zarr.json");   // some R2 setups reject HEAD
+    return r.ok;
+  }catch(e){ return false; }
+}
+
+// ── Launch / landing site markers (./sites.json) — click to drop a windgram ──
+const SITE_GLYPH = {
+  // paraglider canopy + lines = launch
+  launch:`<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13c3-5 15-5 18 0"/><path d="M7 13l5 5 5-5"/></svg>`,
+  // target = landing zone
+  landing:`<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.4" fill="#fff" stroke="none"/></svg>`,
+};
+async function loadSites(){
+  let sites;
+  try { sites = await (await fetch("./sites.json",{cache:"no-cache"})).json(); }
+  catch(e){ console.warn("[sites] list unavailable:", e); return; }
+  for(const s of sites){
+    const el=document.createElement("div");
+    el.className="ll-marker "+(s.type==="landing"?"landing":"launch");
+    el.innerHTML=`<span class="ll-ico">${SITE_GLYPH[s.type]||SITE_GLYPH.launch}</span><span class="ll-name">${s.name}</span>`;
+    el.title=`${s.name} (${s.type})`;
+    el.addEventListener("click", ev=>{ ev.stopPropagation(); showWindgram(s.lon, s.lat, s.name); });
+    new maplibregl.Marker({element:el, anchor:"bottom"}).setLngLat([s.lon,s.lat]).addTo(map);
+  }
+}
+
+map.on("click", e=> showWindgram(e.lngLat.lng, e.lngLat.lat));
+document.querySelectorAll('input[name="model"]').forEach(r=>r.addEventListener("change",e=>{ if(!e.target.disabled) loadModel(e.target.value, currentDate); }));
+// The grip toggles the windgram open/closed (selectors stay docked either way);
+// the ✕ collapses back to the selector peek.
+$("sheetGrip").addEventListener("click", ()=> $("panel").classList.toggle("open"));
+$("sheetClose").addEventListener("click", closeSheet);
+map.on("load", ()=>{
+  setupBasemap(); buildLegend(); loadSites(); loadModel("nam");
+  refreshToggleMeta();                                            // resolution · run age in every toggle button
+  // Dim any non-default model whose cube isn't published yet (RRFS until its
+  // first run lands; HRRR while in beta). If a click on one still fails to
+  // load, loadModel() snaps the toggle back to goodModel — the last model that
+  // did load — so the fallback works the same for all three.
+  for(const m of MODELS) if(m!=="nam") probeModel(m).then(ok=> setModelAvailable(m, ok));
+  setTimeout(()=>map.resize(), 0);                                // ensure MapLibre fills the full-screen container on mobile
+});
+</script>
+</body>
+</html>

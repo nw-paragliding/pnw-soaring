@@ -1,0 +1,740 @@
+[
+  {
+    "name": "Bridal",
+    "lat": 49.171,
+    "lon": -121.748,
+    "region": "baker"
+  },
+  {
+    "name": "DeRoche",
+    "lat": 49.204,
+    "lon": -122.112,
+    "region": "baker"
+  },
+  {
+    "name": "Elk",
+    "lat": 49.12,
+    "lon": -121.76,
+    "region": "baker"
+  },
+  {
+    "name": "HorseFly",
+    "lat": 49.281,
+    "lon": -121.9875,
+    "region": "baker"
+  },
+  {
+    "name": "Little_Nick",
+    "lat": 49.188,
+    "lon": -122.145,
+    "region": "baker"
+  },
+  {
+    "name": "Pattison",
+    "lat": 49.17396,
+    "lon": -122.17672,
+    "region": "baker"
+  },
+  {
+    "name": "Ranch",
+    "lat": 49.2344,
+    "lon": -121.928,
+    "region": "baker"
+  },
+  {
+    "name": "RUCcompare",
+    "lat": 49.14,
+    "lon": -121.99,
+    "region": "baker"
+  },
+  {
+    "name": "SumasCa",
+    "lat": 49.121,
+    "lon": -122.126,
+    "region": "baker"
+  },
+  {
+    "name": "Woodside",
+    "lat": 49.247,
+    "lon": -121.89,
+    "region": "baker"
+  },
+  {
+    "name": "Church_Mt",
+    "lat": 48.927991,
+    "lon": -121.872999,
+    "region": "baker"
+  },
+  {
+    "name": "Iron",
+    "lat": 48.48,
+    "lon": -121.94,
+    "region": "baker"
+  },
+  {
+    "name": "Lookout_Mountain",
+    "lat": 48.55221,
+    "lon": -121.32937,
+    "region": "baker"
+  },
+  {
+    "name": "MtBaker",
+    "lat": 48.775198,
+    "lon": -121.811142,
+    "region": "baker"
+  },
+  {
+    "name": "Sauk",
+    "lat": 48.52,
+    "lon": -121.6,
+    "region": "baker"
+  },
+  {
+    "name": "TableMt",
+    "lat": 48.779,
+    "lon": -121.658,
+    "region": "baker"
+  },
+  {
+    "name": "TwinSisters",
+    "lat": 48.708182,
+    "lon": -121.98555,
+    "region": "baker"
+  },
+  {
+    "name": "Anderson",
+    "lat": 48.6471,
+    "lon": -122.2631,
+    "region": "baker"
+  },
+  {
+    "name": "AndersonLZ",
+    "lat": 48.67215,
+    "lon": -122.264828,
+    "region": "baker"
+  },
+  {
+    "name": "BigFoot",
+    "lat": 48.7785,
+    "lon": -122.238,
+    "region": "baker"
+  },
+  {
+    "name": "BJ",
+    "lat": 48.86,
+    "lon": -122.11,
+    "region": "baker"
+  },
+  {
+    "name": "BJ35",
+    "lat": 48.849,
+    "lon": -122.059,
+    "region": "baker"
+  },
+  {
+    "name": "BJHG",
+    "lat": 48.8595,
+    "lon": -122.097,
+    "region": "baker"
+  },
+  {
+    "name": "BJLZN",
+    "lat": 48.86,
+    "lon": -122.145,
+    "region": "baker"
+  },
+  {
+    "name": "BJLZS",
+    "lat": 48.8535,
+    "lon": -122.144,
+    "region": "baker"
+  },
+  {
+    "name": "BJN",
+    "lat": 48.876,
+    "lon": -122.11,
+    "region": "baker"
+  },
+  {
+    "name": "BJPortBailoutLZ",
+    "lat": 48.813,
+    "lon": -122.131,
+    "region": "baker"
+  },
+  {
+    "name": "Black",
+    "lat": 48.982,
+    "lon": -122.006,
+    "region": "baker"
+  },
+  {
+    "name": "BlackLZ",
+    "lat": 48.9657,
+    "lon": -122.07,
+    "region": "baker"
+  },
+  {
+    "name": "BlackNo",
+    "lat": 48.99,
+    "lon": -122.042,
+    "region": "baker"
+  },
+  {
+    "name": "Blanchard",
+    "lat": 48.615,
+    "lon": -122.4,
+    "region": "baker"
+  },
+  {
+    "name": "BlanchardLZ",
+    "lat": 48.57,
+    "lon": -122.4,
+    "region": "baker"
+  },
+  {
+    "name": "Casino",
+    "lat": 48.83523,
+    "lon": -122.1993,
+    "region": "baker"
+  },
+  {
+    "name": "Cultus",
+    "lat": 48.43361,
+    "lon": -122.16248,
+    "region": "baker"
+  },
+  {
+    "name": "KBVS",
+    "lat": 48.47083,
+    "lon": -122.42083,
+    "region": "baker"
+  },
+  {
+    "name": "Lippy1",
+    "lat": 48.9569,
+    "lon": -122.05,
+    "region": "baker"
+  },
+  {
+    "name": "Lookout",
+    "lat": 48.68,
+    "lon": -122.36,
+    "region": "baker"
+  },
+  {
+    "name": "Lyman",
+    "lat": 48.5948,
+    "lon": -122.1611,
+    "region": "baker"
+  },
+  {
+    "name": "N_Nooksack_Valley",
+    "lat": 48.8895,
+    "lon": -122.149,
+    "region": "baker"
+  },
+  {
+    "name": "NPorter",
+    "lat": 48.8352,
+    "lon": -122.088,
+    "region": "baker"
+  },
+  {
+    "name": "Red",
+    "lat": 48.932,
+    "lon": -122.118,
+    "region": "baker"
+  },
+  {
+    "name": "RUC_bli_compare",
+    "lat": 48.74,
+    "lon": -122.38,
+    "region": "baker"
+  },
+  {
+    "name": "Serpentine",
+    "lat": 48.95,
+    "lon": -122.17,
+    "region": "baker"
+  },
+  {
+    "name": "SPorter",
+    "lat": 48.813,
+    "lon": -122.099,
+    "region": "baker"
+  },
+  {
+    "name": "Stewart",
+    "lat": 48.77,
+    "lon": -122.27,
+    "region": "baker"
+  },
+  {
+    "name": "StewartLZ",
+    "lat": 48.77,
+    "lon": -122.39,
+    "region": "baker"
+  },
+  {
+    "name": "StickyL",
+    "lat": 48.97,
+    "lon": -122.02,
+    "region": "baker"
+  },
+  {
+    "name": "Sumas",
+    "lat": 48.9211,
+    "lon": -122.229,
+    "region": "baker"
+  },
+  {
+    "name": "SumasLZ",
+    "lat": 48.92,
+    "lon": -122.29,
+    "region": "baker"
+  },
+  {
+    "name": "SumasNE",
+    "lat": 48.93,
+    "lon": -122.167,
+    "region": "baker"
+  },
+  {
+    "name": "Eagle_Creek",
+    "lat": 47.6685,
+    "lon": -120.5601,
+    "region": "chelan"
+  },
+  {
+    "name": "Round_Mt",
+    "lat": 47.79731,
+    "lon": -120.81699,
+    "region": "chelan"
+  },
+  {
+    "name": "Snowgrass",
+    "lat": 47.68573,
+    "lon": -120.934868,
+    "region": "chelan"
+  },
+  {
+    "name": "Chelan",
+    "lat": 47.81,
+    "lon": -120.03,
+    "region": "chelan"
+  },
+  {
+    "name": "Carne_Mt",
+    "lat": 48.08784,
+    "lon": -120.80395,
+    "region": "chelan"
+  },
+  {
+    "name": "GlacierPk",
+    "lat": 48.114194,
+    "lon": -121.112781,
+    "region": "chelan"
+  },
+  {
+    "name": "McAllester_Mt",
+    "lat": 48.39812,
+    "lon": -120.6534,
+    "region": "chelan"
+  },
+  {
+    "name": "TupshinPk",
+    "lat": 48.29701,
+    "lon": -120.75031,
+    "region": "chelan"
+  },
+  {
+    "name": "Tiger",
+    "lat": 47.503,
+    "lon": -121.975,
+    "region": "issaquah"
+  },
+  {
+    "name": "TigerHikeLookout",
+    "lat": 47.508,
+    "lon": -121.985,
+    "region": "issaquah"
+  },
+  {
+    "name": "TigerLZ",
+    "lat": 47.498,
+    "lon": -122.021,
+    "region": "issaquah"
+  },
+  {
+    "name": "Poo_Poo_Point",
+    "lat": 47.49927,
+    "lon": -122.00819,
+    "region": "issaquah"
+  },
+  {
+    "name": "West_Tiger_3",
+    "lat": 47.5119,
+    "lon": -121.99032,
+    "region": "issaquah"
+  },
+  {
+    "name": "West_Tiger_2",
+    "lat": 47.50887,
+    "lon": -121.98513,
+    "region": "issaquah"
+  },
+  {
+    "name": "West_Tiger_1",
+    "lat": 47.50394,
+    "lon": -121.97565,
+    "region": "issaquah"
+  },
+  {
+    "name": "East_Tiger",
+    "lat": 47.48868,
+    "lon": -121.94691,
+    "region": "issaquah"
+  },
+  {
+    "name": "Taylor_Mountain",
+    "lat": 47.45332,
+    "lon": -121.89468,
+    "region": "issaquah"
+  },
+  {
+    "name": "Mitchell_Hill",
+    "lat": 47.55096,
+    "lon": -121.93743,
+    "region": "issaquah"
+  },
+  {
+    "name": "Grand_Ridge_Park",
+    "lat": 47.55045,
+    "lon": -121.98245,
+    "region": "issaquah"
+  },
+  {
+    "name": "Issaquah_Highlands",
+    "lat": 47.54634,
+    "lon": -122.00423,
+    "region": "issaquah"
+  },
+  {
+    "name": "Rattlesnake",
+    "lat": 47.466792,
+    "lon": -121.823934,
+    "region": "issaquah"
+  },
+  {
+    "name": "Green_Mtn_Launch",
+    "lat": 47.5121111,
+    "lon": -121.6777222,
+    "region": "issaquah"
+  },
+  {
+    "name": "Green_Mtn_LZ",
+    "lat": 47.4874722,
+    "lon": -121.6756111,
+    "region": "issaquah"
+  },
+  {
+    "name": "MtSi",
+    "lat": 47.507751,
+    "lon": -121.739688,
+    "region": "issaquah"
+  },
+  {
+    "name": "Mt_Washington",
+    "lat": 47.426,
+    "lon": -121.69885,
+    "region": "issaquah"
+  },
+  {
+    "name": "SquakMountain",
+    "lat": 47.50434,
+    "lon": -122.04735,
+    "region": "issaquah"
+  },
+  {
+    "name": "McDonald",
+    "lat": 47.33466,
+    "lon": -121.88212,
+    "region": "issaquah"
+  },
+  {
+    "name": "Carnation",
+    "lat": 47.64334,
+    "lon": -121.93639,
+    "region": "issaquah"
+  },
+  {
+    "name": "5_Mile",
+    "lat": 47.6145,
+    "lon": -121.691243,
+    "region": "issaquah"
+  },
+  {
+    "name": "Grand_Prospect",
+    "lat": 47.47162,
+    "lon": -121.82094,
+    "region": "issaquah"
+  },
+  {
+    "name": "Bandera_Mountain",
+    "lat": 47.41984,
+    "lon": -121.55438,
+    "region": "issaquah"
+  },
+  {
+    "name": "Mailbox_Peak",
+    "lat": 47.46226,
+    "lon": -121.63947,
+    "region": "issaquah"
+  },
+  {
+    "name": "Bergseth",
+    "lat": 47.243289,
+    "lon": -121.924084,
+    "region": "issaquah"
+  },
+  {
+    "name": "Alta_Mountain",
+    "lat": 47.44114,
+    "lon": -121.33289,
+    "region": "issaquah"
+  },
+  {
+    "name": "Chimney_Rock",
+    "lat": 47.5083,
+    "lon": -121.28903,
+    "region": "issaquah"
+  },
+  {
+    "name": "Crystal_Mt",
+    "lat": 46.934,
+    "lon": -121.5,
+    "region": "issaquah"
+  },
+  {
+    "name": "PochPeak",
+    "lat": 46.953543,
+    "lon": -121.929131,
+    "region": "issaquah"
+  },
+  {
+    "name": "Rainier",
+    "lat": 46.85284,
+    "lon": -121.760126,
+    "region": "issaquah"
+  },
+  {
+    "name": "Rampart",
+    "lat": 47.38733,
+    "lon": -121.36333,
+    "region": "issaquah"
+  },
+  {
+    "name": "PooPooPoint",
+    "lat": 47.4674,
+    "lon": -121.9876,
+    "region": "issaquah"
+  },
+  {
+    "name": "ManningPark",
+    "lat": 49.06369,
+    "lon": -120.90952,
+    "region": "methow"
+  },
+  {
+    "name": "Boston_Peak",
+    "lat": 48.49568,
+    "lon": -121.0365,
+    "region": "methow"
+  },
+  {
+    "name": "Bowen",
+    "lat": 48.4675151,
+    "lon": -120.105028,
+    "region": "methow"
+  },
+  {
+    "name": "Eldorado_Peak",
+    "lat": 48.53763,
+    "lon": -121.13428,
+    "region": "methow"
+  },
+  {
+    "name": "Goat_Peak",
+    "lat": 48.634,
+    "lon": -120.403,
+    "region": "methow"
+  },
+  {
+    "name": "LibertyBell",
+    "lat": 48.515695,
+    "lon": -120.656376,
+    "region": "methow"
+  },
+  {
+    "name": "Mazama",
+    "lat": 48.59,
+    "lon": -120.4,
+    "region": "methow"
+  },
+  {
+    "name": "Silver_Star",
+    "lat": 48.549,
+    "lon": -120.587,
+    "region": "methow"
+  },
+  {
+    "name": "Washington_Pass",
+    "lat": 48.501,
+    "lon": -120.656,
+    "region": "methow"
+  },
+  {
+    "name": "Index_Launch",
+    "lat": 47.83572,
+    "lon": -121.53549,
+    "region": "skykomish"
+  },
+  {
+    "name": "Index_LZ",
+    "lat": 47.81783,
+    "lon": -121.56702,
+    "region": "skykomish"
+  },
+  {
+    "name": "Penthouse",
+    "lat": 48.333,
+    "lon": -121.713,
+    "region": "skykomish"
+  },
+  {
+    "name": "Pilchuck",
+    "lat": 48.057732,
+    "lon": -121.792871,
+    "region": "skykomish"
+  },
+  {
+    "name": "Snowking",
+    "lat": 48.407782,
+    "lon": -121.277504,
+    "region": "skykomish"
+  },
+  {
+    "name": "Stickney",
+    "lat": 47.910819,
+    "lon": -121.61396,
+    "region": "skykomish"
+  },
+  {
+    "name": "Whitechuck",
+    "lat": 48.207287,
+    "lon": -121.414833,
+    "region": "skykomish"
+  },
+  {
+    "name": "Whitehorse",
+    "lat": 48.211233,
+    "lon": -121.677547,
+    "region": "skykomish"
+  },
+  {
+    "name": "Arlington",
+    "lat": 48.165,
+    "lon": -122.15,
+    "region": "skykomish"
+  },
+  {
+    "name": "HarveyField",
+    "lat": 47.906,
+    "lon": -122.101,
+    "region": "skykomish"
+  },
+  {
+    "name": "JordanRidge",
+    "lat": 48.13585,
+    "lon": -121.981316,
+    "region": "skykomish"
+  },
+  {
+    "name": "Farmer",
+    "lat": 47.61,
+    "lon": -119.82,
+    "region": "waterville"
+  },
+  {
+    "name": "Mansfield",
+    "lat": 47.82,
+    "lon": -119.65,
+    "region": "waterville"
+  },
+  {
+    "name": "Cleman",
+    "lat": 46.835715,
+    "lon": -120.893219,
+    "region": "wenatchee"
+  },
+  {
+    "name": "Domerie",
+    "lat": 47.266184,
+    "lon": -121.127815,
+    "region": "wenatchee"
+  },
+  {
+    "name": "Enchantments",
+    "lat": 47.488,
+    "lon": -120.801,
+    "region": "wenatchee"
+  },
+  {
+    "name": "Icicle_Ridge",
+    "lat": 47.563,
+    "lon": -120.723,
+    "region": "wenatchee"
+  },
+  {
+    "name": "Lion_Rock",
+    "lat": 47.268,
+    "lon": -120.586,
+    "region": "wenatchee"
+  },
+  {
+    "name": "MissionPeak",
+    "lat": 47.284819,
+    "lon": -120.442486,
+    "region": "wenatchee"
+  },
+  {
+    "name": "RedTop",
+    "lat": 47.302981,
+    "lon": -120.759087,
+    "region": "wenatchee"
+  },
+  {
+    "name": "Tibbetts",
+    "lat": 47.573,
+    "lon": -120.488,
+    "region": "wenatchee"
+  },
+  {
+    "name": "Tumwater",
+    "lat": 47.597,
+    "lon": -120.695,
+    "region": "wenatchee"
+  },
+  {
+    "name": "Baldy",
+    "lat": 46.798297,
+    "lon": -120.427008,
+    "region": "wenatchee"
+  },
+  {
+    "name": "Swakane",
+    "lat": 47.58003,
+    "lon": -120.31043,
+    "region": "wenatchee"
+  }
+]
