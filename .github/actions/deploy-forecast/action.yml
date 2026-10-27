@@ -33,9 +33,12 @@ runs:
       run: |
         # Layout (region level added under the existing date/model dirs):
         #   forecasts/<date>/<model>/metadata.json             (day picker probe)
-        #   forecasts/<date>/<model>/<region>/<Site>_windgram.png + metadata.json
+        #   forecasts/<date>/<model>/<region>/<Site>_windgram.png + <Site>_blipspot.json + metadata.json
         #   forecasts/latest/<model>/metadata.json              (toggle freshness)
-        #   forecasts/latest/<model>/<region>/<Site>_windgram.png + metadata.json
+        #   forecasts/latest/<model>/<region>/<Site>_windgram.png + <Site>_blipspot.json + metadata.json
+        # <Site>_blipspot.json is the hourly table behind the chart (windgram
+        # image >= 0.8.0 writes it beside each PNG; older images produce none and
+        # the site's Table view then says "no table yet").
         shopt -s nullglob
         LEGS=("$ARTS"/"$MODEL"-*-day*)
         if [ ${#LEGS[@]} -eq 0 ]; then
@@ -61,8 +64,8 @@ runs:
           DATE=$(basename "${PNGS[0]}" | cut -d_ -f1)
           DEST="pages/forecasts/${DATE}/${MODEL}/${REGION}"
           rm -rf "$DEST"; mkdir -p "$DEST"
-          for f in "${PNGS[@]}"; do
-            cp "$f" "$DEST/$(basename "$f" | sed 's/^[0-9-]*_//')"
+          for f in "${PNGS[@]}" "$leg"/*_blipspot.json; do
+            cp "$f" "$DEST/$(basename "$f" | sed 's/^[0-9-]*_//')"   # drop the date prefix
           done
           echo "{\"model\":\"${MODEL}\",\"region\":\"${REGION}\",\"date\":\"${DATE}\",\"generated\":\"${GEN}\",\"windgrams\":${#PNGS[@]}}" > "$DEST/metadata.json"
           case " $DATES " in *" $DATE "*) ;; *) DATES="$DATES $DATE" ;; esac
