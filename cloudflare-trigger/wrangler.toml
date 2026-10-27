@@ -27,10 +27,10 @@ workers_dev = false
 # cron triggers, all used (3 HRRR + 2 RRFS).
 #
 # NAM was retired by NCEP on 2026-11-03 12Z (SCN 26-47): its two crons became
-# the RRFS crons (the two ticks used to dispatch both run-nam and run-rrfs).
-# forecast-nam.yml is no longer dispatched from here; it stays in the repo for
-# manual runs only. forecast-rrfs.yml keeps its own readiness gate, which
-# absorbs the ~15 min between the tick and the cycle's last needed GRIB.
+# the RRFS crons (the two ticks used to dispatch both run-nam and run-rrfs;
+# forecast-nam.yml was deleted with the retirement). forecast-rrfs.yml keeps
+# its own readiness gate, which absorbs the ~15 min between the tick and the
+# cycle's last needed GRIB.
 [triggers]
 crons = [
   # HRRR — a little after HRRR GRIB publishes (~cycle+1h25). 3x/day (short reach).

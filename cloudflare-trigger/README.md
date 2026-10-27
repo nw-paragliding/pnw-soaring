@@ -52,5 +52,5 @@ dispatches). Add a cron + map entry to add a run; the free tier allows five
 crons. The cycle value (`"0"`/`"6"`/`"12"`) is `--target-cycle` for HRRR and
 informational for RRFS (auto-cycle).
 
-`forecast-nam.yml` (NAM, retired by NCEP on 2026-11-03) is not dispatched from
-here any more; it can only be run by hand from the Actions tab.
+`run-nam` is no longer an event type: NAM was retired by NCEP on 2026-11-03 and
+`forecast-nam.yml` was deleted with it.

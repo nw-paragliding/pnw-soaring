@@ -81,11 +81,10 @@ published before its arm legs start (two small `wait-day0` / `wait-day1` jobs).
 NCEP retired NAM on 2026-11-03 12Z; RRFS, which drives the identical WRF chain,
 replaced it as the site's default model and took over NAM's two crons (the free
 tier allows 5, and until the retirement those two ticks dispatched both
-`run-nam` and `run-rrfs`). `forecast-nam.yml` is no longer dispatched and stays
-only for manual runs; the site's NAM button disappears by itself once the last
-NAM forecasts have aged out of the 7-day window. Removing what is left of NAM
-(the workflow, the toggle markup, `model: nam` as the tile configs' base, the
-`nam/` prefix in R2) is a follow-up change.
+`run-nam` and `run-rrfs`). `forecast-nam.yml` is gone; the site's NAM button
+disappears by itself once the last NAM forecasts have aged out of the 7-day
+window. Removing what is left of NAM (the toggle markup, `model: nam` as the
+tile configs' base, the `nam/` prefix in R2) is a follow-up change.
 
 ### Where the GRIB comes from
 
