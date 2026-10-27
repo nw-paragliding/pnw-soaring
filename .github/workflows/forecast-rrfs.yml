@@ -102,7 +102,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: rrfs-${{ matrix.region }}-day0
-          path: output/*.png
+          path: |
+            output/*.png
+            output/*_blipspot.json
           retention-days: 7
 
       # Disabled while UPLOAD_CUBES is 'false'. When on, only the home tile writes the v2 soaring cube: R2 keeps its
@@ -174,7 +176,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: rrfs-${{ matrix.region }}-day1
-          path: output/*.png
+          path: |
+            output/*.png
+            output/*_blipspot.json
           retention-days: 7
 
       # Disabled while UPLOAD_CUBES is 'false'. When on, only the home tile writes the v2 soaring cube: R2 keeps its

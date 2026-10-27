@@ -42,8 +42,10 @@ that sits at least 10 km inside a tile's 1.33 km nest edge (outside the ~7 km
 boundary relaxation zone), each in the tile where it sits deepest; `# edge`
 marks the ones only 10–15 km inside. Windgrams are published per tile at
 `forecasts/<date>/<model>/<region>/<Site>_windgram.png` (and
-`forecasts/latest/<model>/<region>/`); the site loads each marker's windgram
-from its tile. The v2 page (`/v2`, interactive cube) is unlinked and its R2 cube upload is off
+`forecasts/latest/<model>/<region>/`), each with its `<Site>_blipspot.json`
+beside it — the hourly table wxtofly showed when you clicked a windgram
+(written by rasp-windgram >= 0.8.0; the site's Table view reads it); the site
+loads each marker's windgram from its tile. The v2 page (`/v2`, interactive cube) is unlinked and its R2 cube upload is off
 for now (`UPLOAD_CUBES: 'false'` in the forecast workflows), so it goes stale;
 when re-enabled only the `issaquah` tile uploads a cube.
 
