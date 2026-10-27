@@ -120,7 +120,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: hrrr-${{ matrix.region }}-day0
-          path: output/*.png
+          path: |
+            output/*.png
+            output/*_blipspot.json
           retention-days: 7
 
       # Only the home tile writes the v2 soaring cube; publishing is main-only.
@@ -211,7 +213,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: hrrr-${{ matrix.region }}-day1
-          path: output/*.png
+          path: |
+            output/*.png
+            output/*_blipspot.json
           retention-days: 7
 
       # Only the home tile writes the v2 soaring cube; publishing is main-only.
