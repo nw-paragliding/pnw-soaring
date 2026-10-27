@@ -177,7 +177,7 @@
     .wg-frame { flex: 0 1 auto; min-height: 0; display: flex; }
     .wg-frame img {
       display: block; max-width: 100%; max-height: 100%; width: auto; height: auto;
-      cursor: pointer;                       /* click: the table behind the chart */
+      cursor: zoom-in;
       border: 1px solid var(--line-2); border-radius: 14px;
       background: var(--panel); box-shadow: var(--shadow);
     }
@@ -202,15 +202,17 @@
        Clouds & Moisture — each opening with a time row, the rows in the same
        order under DrJack's titles, wind cells as a direction arrow over the
        speed, and cells tinted by value (wind red, W* yellow, heights blue,
-       cloud grey, rain green). Click the chart for the table, the numbers to
-       get back; a row title shows its meaning underneath. */
+       cloud grey, rain green). The Chart | Table switch beside the panel
+       label flips between the two; a row title shows its meaning underneath. */
     .wg-head { display: flex; align-items: center; justify-content: space-between; }
     .view-toggle { display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--line-2);
       border-radius: 7px; background: var(--panel); }
     .view-toggle button {
-      font: 600 9.5px/1 'IBM Plex Mono', monospace; letter-spacing: .12em; text-transform: uppercase;
-      padding: 4px 8px; border: 0; border-radius: 5px; background: none; color: var(--ink-soft); cursor: pointer;
+      font: 600 10px/1 'IBM Plex Mono', monospace; letter-spacing: .12em; text-transform: uppercase;
+      padding: 5px 10px; border: 0; border-radius: 5px; background: none; color: var(--ink-soft); cursor: pointer;
+      transition: background .15s, color .15s;
     }
+    .view-toggle button:hover { color: var(--ink); }
     .view-toggle button[aria-selected="true"] { background: var(--evergreen); color: #fff; }
     .wg-table {
       flex: 0 1 auto; min-height: 0; overflow: auto; -webkit-overflow-scrolling: touch;
@@ -220,7 +222,6 @@
       font: 500 11px/1.2 'IBM Plex Mono', monospace; }
     .wg-table th, .wg-table td { padding: 3px 5px; text-align: center; vertical-align: middle;
       white-space: nowrap; border-bottom: 1px solid var(--line); }
-    .wg-table td { cursor: pointer; }      /* click the numbers: back to the chart */
     .wg-table th.row {
       position: sticky; left: 0; z-index: 1; background: var(--panel);
       text-align: left; font: 500 11px/1.25 'Bricolage Grotesque', system-ui, sans-serif; color: var(--ink);
@@ -422,10 +423,10 @@
             <h2 id="site-name"></h2>
             <span class="coords" id="site-coords"></span>
           </div>
-          <div class="wg-frame" id="windgram-frame" title="Click for the table behind the chart">
+          <a class="wg-frame" id="windgram-link" href="#" target="_blank" rel="noopener">
             <img id="windgram-img" alt="" />
-          </div>
-          <div class="wg-table" id="windgram-table" style="display:none" title="Click the numbers to go back to the chart"></div>
+          </a>
+          <div class="wg-table" id="windgram-table" style="display:none"></div>
           <div class="wg-note" id="windgram-note"></div>
           <div class="no-data" id="windgram-nodata" style="display:none"></div>
           <div class="actions">
@@ -610,6 +611,7 @@
 
       const img = document.getElementById('windgram-img');
       const nodata = document.getElementById('windgram-nodata');
+      const link = document.getElementById('windgram-link');
       const openFull = document.getElementById('open-full');
       const openData = document.getElementById('open-data');
       // Windgrams are per region tile: forecasts/<date|latest>/<model>/<region>/.
@@ -628,7 +630,7 @@
       img.onerror = () => { imgFailed = true; applyView(); };
       img.onload = () => { imgFailed = false; applyView(); };
       img.src = src;
-      openFull.href = src;
+      link.href = src; openFull.href = src;
       // The table behind the chart sits beside the PNG as <Site>_blipspot.json.
       currentBlipUrl = src.replace(/_windgram\.png$/, '_blipspot.json');
       openData.href = currentBlipUrl;
@@ -636,6 +638,8 @@
     }
 
     // ── Chart ⇄ table (wxtofly's "blipspot") ──────────────────────
+    // The Chart | Table switch beside the panel label picks the view (wxtofly
+    // flipped on a click of the image; an explicit switch is clearer).
     // The sections, rows, titles and descriptions follow wxtofly.net/v2's
     // blipspots.js / blipspotParam.js (DrJack's BLIPMAP notes); the numbers
     // come from <Site>_blipspot.json, which rasp-windgram writes beside each
@@ -750,7 +754,7 @@
       return html + '</tbody></table>';
     }
 
-    const frame = document.getElementById('windgram-frame');
+    const frame = document.getElementById('windgram-link');
     const tableEl = document.getElementById('windgram-table');
     const noteEl = document.getElementById('windgram-note');
 
@@ -791,11 +795,10 @@
       tableEl.innerHTML = renderBlipspot(data);
       tableEl.scrollTop = 0;
     }
-    frame.addEventListener('click', () => setView('table'));
+    // A row title explains itself under the table (tap-friendly; the title attribute covers hover).
     tableEl.addEventListener('click', (e) => {
       const th = e.target.closest('th.row[data-desc]');
-      if (th) { noteEl.innerHTML = `<b>${esc(th.dataset.title)}</b> — ${esc(th.dataset.desc)}`; return; }
-      if (e.target.closest('td:not(.sec)')) setView('chart');
+      if (th) noteEl.innerHTML = `<b>${esc(th.dataset.title)}</b> — ${esc(th.dataset.desc)}`;
     });
     document.querySelectorAll('.view-toggle button').forEach(b =>
       b.addEventListener('click', () => setView(b.dataset.view)));
