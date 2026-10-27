@@ -4,7 +4,7 @@
   <title>PNW Soaring Forecast</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta charset="utf-8">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -43,7 +43,7 @@
       min-width: 380px;
       max-width: 640px;
       height: 100%;
-      overflow-y: auto;
+      overflow: hidden;              /* never scrolls: the windgram shrinks to fit instead */
       position: relative;
       background: var(--paper);
       /* faint topographic contour wash for atmosphere */
@@ -146,8 +146,12 @@
     .days button.active .sub { opacity: .8; }
 
     /* Windgram panel */
-    .panel { padding: 14px 24px 28px; flex: 1;
+    .panel { padding: 14px 24px 20px; flex: 1; min-height: 0;
+      display: flex; flex-direction: column;
       animation: rise .5s cubic-bezier(.2,.7,.2,1) .12s both; }
+    /* The windgram column shrinks with the viewport: header and actions keep
+       their size, the image takes what is left and scales to fit it. */
+    #windgram-content { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 
     .empty {
       margin-top: 6px;
@@ -173,17 +177,16 @@
       white-space: nowrap; text-align: right; flex: 0 0 auto;
     }
 
-    .wg-frame {
-      border: 1px solid var(--line-2);
-      border-radius: 14px;
-      overflow: hidden;
-      background: var(--panel);
-      box-shadow: var(--shadow);
+    .wg-frame { flex: 0 1 auto; min-height: 0; display: flex; }
+    .wg-frame img {
+      display: block; max-width: 100%; max-height: 100%; width: auto; height: auto;
+      cursor: zoom-in;
+      border: 1px solid var(--line-2); border-radius: 14px;
+      background: var(--panel); box-shadow: var(--shadow);
     }
-    .wg-frame img { width: 100%; display: block; cursor: zoom-in; }
     .no-data { padding: 40px 20px; text-align: center; color: var(--ink-soft); font-size: 14px; }
 
-    .actions { margin-top: 12px; display: flex; align-items: center; justify-content: space-between; }
+    .actions { margin-top: 12px; flex: none; display: flex; align-items: center; justify-content: space-between; }
     .open-link {
       font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 500;
       color: var(--evergreen); text-decoration: none;
@@ -192,48 +195,55 @@
     .open-link:hover { border-color: var(--evergreen); }
     .reveal { animation: wgIn .4s cubic-bezier(.2,.7,.2,1) both; }
 
+    /* "Copy link" sits beside "Open full size" and dresses like it */
+    button.open-link { background: none; border: 0; border-bottom: 1px solid transparent;
+      padding: 0; cursor: pointer; font: inherit; }
+
     /* ── Map ───────────────────────────────────────────────────── */
-    #map { flex: 1; height: 100%; background: #dfe6d8; }
+    #map { flex: 1; height: 100%; background: #e4e4e2; }   /* matches the gray canvas while tiles load */
 
     /* Bottom-sheet affordances + floating brand — mobile only */
     .sheet-grip, .sheet-close, .map-header { display: none; }
 
-    /* Custom paraglider markers */
-    .site-marker {
-      text-align: center; line-height: 26px; font-size: 19px;
+    /* Custom paraglider markers. MapLibre positions .site-marker itself with an
+       inline transform on every frame of a pan or zoom, so that element must
+       carry no transition or transform of its own. Hover / selected effects
+       live on the inner glyph instead. */
+    .site-marker { width: 26px; height: 26px; text-align: center; line-height: 26px; font-size: 19px; cursor: pointer; }
+    .site-marker .glyph {
+      display: inline-block;
       transition: transform .12s cubic-bezier(.2,.7,.2,1);
-      cursor: pointer;
       filter: drop-shadow(0 1px 1px rgba(0,0,0,.35));
     }
-    .site-marker:hover { transform: scale(1.25); }
-    .site-marker.selected {
+    .site-marker:hover .glyph { transform: scale(1.25); }
+    .site-marker.selected .glyph {
       transform: scale(1.65);
       filter: drop-shadow(0 2px 3px rgba(224,102,42,.55));
     }
-    /* thermal ring under the selected marker */
+    /* thermal ring under the selected marker — animated with transform/opacity
+       only, so it never triggers layout while the map is animating */
     .site-marker.selected::after {
       content: ""; position: absolute; left: 50%; top: 56%;
-      width: 30px; height: 30px; transform: translate(-50%,-50%);
+      width: 46px; height: 46px; margin: -23px 0 0 -23px;
       border: 2px solid var(--thermal); border-radius: 50%;
       animation: ring 1.6s ease-out infinite;
     }
     @keyframes ring {
-      0% { width: 18px; height: 18px; opacity: .8; }
-      100% { width: 46px; height: 46px; opacity: 0; }
+      0% { transform: scale(.39); opacity: .8; }
+      100% { transform: scale(1); opacity: 0; }
     }
 
-    /* Leaflet chrome to match */
-    .leaflet-bar a {
-      background: var(--panel); color: var(--ink); border-color: var(--line-2) !important;
-    }
-    .leaflet-bar a:hover { background: #fff; }
-    .leaflet-tooltip {
+    /* MapLibre chrome to match */
+    .maplibregl-ctrl-group { background: var(--panel); border: 1px solid var(--line-2); box-shadow: var(--shadow); }
+    .maplibregl-ctrl-group button:hover { background: #fff; }
+    .maplibregl-ctrl-group button + button { border-top-color: var(--line-2); }
+    .site-tip .maplibregl-popup-content {
       font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 500;
-      background: var(--evergreen-d); color: #fff; border: none; box-shadow: var(--shadow);
-      padding: 3px 8px; border-radius: 6px;
+      background: var(--evergreen-d); color: #fff; box-shadow: var(--shadow);
+      padding: 3px 8px; border-radius: 6px; pointer-events: none;
     }
-    .leaflet-tooltip-top::before { border-top-color: var(--evergreen-d); }
-    .leaflet-container { font-family: 'IBM Plex Mono', monospace; }
+    .site-tip .maplibregl-popup-tip { border-top-color: var(--evergreen-d); }
+    .maplibregl-ctrl-attrib { font-family: 'IBM Plex Mono', monospace; font-size: 10px; }
 
     @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
     @keyframes wgIn { from { opacity: 0; transform: translateY(8px) scale(.99); } to { opacity: 1; transform: none; } }
@@ -282,6 +292,11 @@
       .panel { max-height: 0; overflow: hidden; padding: 0 18px; opacity: 0;
         transition: max-height .34s cubic-bezier(.2,.7,.2,1), opacity .24s, padding .34s; }
       #sidebar.open .panel { max-height: 72dvh; opacity: 1; padding: 4px 18px 30px; }
+      /* The sheet scrolls by design, so the desktop "shrink the windgram to the
+         height left" rule does not apply here: keep the image width-bound, or it
+         would scale up from nothing while the sheet's max-height animates open. */
+      .panel, #windgram-content, .wg-frame { display: block; }
+      .wg-frame img { width: 100%; max-height: none; }
 
       /* Floating brand pill over the map */
       .map-header {
@@ -358,6 +373,7 @@
           <div class="no-data" id="windgram-nodata" style="display:none"></div>
           <div class="actions">
             <a class="open-link" id="open-full" href="#" target="_blank" rel="noopener">Open full size ↗</a>
+            <button class="open-link" id="copy-link" type="button" title="Copy a link that opens this site">Copy link</button>
           </div>
         </div>
       </section>
@@ -371,15 +387,48 @@
     </div>
   </div>
 
-  <script src="https://unpkg.com/leaflet@1.9/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
   <script>
-    const map = L.map('map', { zoomControl: false }).setView([47.55, -121.80], 11);
-    L.control.zoom({ position: 'topright' }).addTo(map);   // clear of the brand pill
-
-    L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
-      maxZoom: 17,
-      attribution: '&copy; OpenTopoMap (CC-BY-SA)'
-    }).addTo(map);
+    // Basemap: Esri's Light Gray canvas under Esri World Hillshade at half
+    // opacity, with the Light Gray reference labels on top — the same three
+    // keyless raster services as the Leaflet version (~25 KB per 256 px tile
+    // for the three together), now drawn by MapLibre GL on the GPU so wheel,
+    // trackpad and pinch zoom are continuous instead of one stepped animation
+    // per notch. Both services stop at level 16; MapLibre overzooms beyond.
+    //
+    // Zoom numbers here are MapLibre's (512 px world tiles): MapLibre zoom 10
+    // is the scale Leaflet called 11, so every zoom in this file is one lower
+    // than it used to be.
+    const esriTiles = (service) =>
+      [`https://server.arcgisonline.com/ArcGIS/rest/services/${service}/MapServer/tile/{z}/{y}/{x}`];
+    const map = new maplibregl.Map({
+      container: 'map',
+      style: {
+        version: 8,
+        sources: {
+          'esri-gray': { type: 'raster', tiles: esriTiles('Canvas/World_Light_Gray_Base'), tileSize: 256, maxzoom: 16,
+            attribution: 'Basemap &copy; Esri, HERE, Garmin, OpenStreetMap contributors' },
+          'esri-hillshade': { type: 'raster', tiles: esriTiles('Elevation/World_Hillshade'), tileSize: 256, maxzoom: 16,
+            attribution: 'Hillshade &copy; Esri, USGS, NASA, NGA' },
+          'esri-labels': { type: 'raster', tiles: esriTiles('Canvas/World_Light_Gray_Reference'), tileSize: 256, maxzoom: 16 },
+        },
+        layers: [
+          { id: 'bg', type: 'background', paint: { 'background-color': '#e4e4e2' } },
+          { id: 'gray', type: 'raster', source: 'esri-gray' },
+          { id: 'hillshade', type: 'raster', source: 'esri-hillshade', paint: { 'raster-opacity': 0.5 } },
+          { id: 'labels', type: 'raster', source: 'esri-labels' },
+        ],
+      },
+      // Rough statewide view until sites.json arrives; fitAllSites() then
+      // frames every marker for whatever screen this is.
+      center: [-121.0, 47.9], zoom: 7, minZoom: 5, maxZoom: 16,
+      attributionControl: false,
+      // A flat north-up map, as before: no rotate, no pitch.
+      dragRotate: false, pitchWithRotate: false, touchPitch: false,
+    });
+    map.touchZoomRotate.disableRotation();
+    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');   // clear of the brand pill
+    map.addControl(new maplibregl.AttributionControl({ compact: false }), 'bottom-right');
 
     // Site names arrive snake_case (Poo_Poo_Point) or smushed CamelCase
     // (TigerHikeLookout, MtSi). Render both as spaced words.
@@ -391,11 +440,11 @@
         .trim();
     }
 
-    const DEFAULT_SITE = 'Poo_Poo_Point';   // auto-selected on load
     // Toggle order. RRFS is the default: it replaced NAM, which NCEP retired on
     // 2026-11-03 (same WRF chain). NAM stays listed only while it still has
     // forecasts to show (pruneModels() hides it once they have aged out of the
-    // 7-day window); HRRR is beta.
+    // 7-day window); HRRR is beta. DEFAULT_MODEL is also what syncUrl() leaves
+    // out of a link, and parseLink() accepts only models in MODELS.
     const MODELS = ['rrfs', 'nam', 'hrrr'];
     const DEFAULT_MODEL = 'rrfs';
     let currentModel = DEFAULT_MODEL;
@@ -408,7 +457,7 @@
 
     async function loadSites() {
       try {
-        const sites = await (await fetch('sites.json')).json();
+        const sites = await (await fetch('/sites.json')).json();
         updateMarkers(sites);
       } catch (e) { console.error('Failed to load sites:', e); }
     }
@@ -416,7 +465,7 @@
     async function loadMetadata() {
       await Promise.all(MODELS.map(async model => {
         try {
-          const resp = await fetch(`forecasts/latest/${model}/metadata.json`);
+          const resp = await fetch(`/forecasts/latest/${model}/metadata.json`);
           if (resp.ok) metadata[model] = await resp.json();
         } catch (e) {}
       }));
@@ -502,7 +551,7 @@
         // what makes the night-before case read correctly.
         if (Date.now() > Date.parse(ds + 'T20:00:00-07:00')) continue;
         try {
-          const r = await fetch(`forecasts/${ds}/${model}/metadata.json`, { cache: 'no-cache' });
+          const r = await fetch(`/forecasts/${ds}/${model}/metadata.json`, { cache: 'no-cache' });
           if (r.ok) out.push({ date: ds, off, label: dayLabel(off, ds), sub: ds.slice(5) });
         } catch (e) {}
       }
@@ -517,12 +566,14 @@
         const b = document.createElement('button');
         b.innerHTML = `${d.label}<span class="sub">${d.sub}</span>`;
         b.classList.toggle('active', d.date === currentDate);
-        b.onclick = () => { currentDate = d.date; renderDays(days); updateWindgram(); };
+        b.onclick = () => { currentDate = d.date; renderDays(days); updateWindgram(); syncUrl(); };
         el.appendChild(b);
       });
     }
+    let currentDays = [];            // the day set of the selected model
     async function loadDays() {
       const days = await discoverDays(currentModel);
+      currentDays = days;
       if (!days.find(d => d.date === currentDate)) currentDate = days.length ? days[0].date : null;
       renderDays(days);
     }
@@ -542,8 +593,8 @@
       // Windgrams are per region tile: forecasts/<date|latest>/<model>/<region>/.
       // A region folder that doesn't exist yet (new tile, failed run) 404s and
       // falls through to the "no forecast yet" state via img.onerror below.
-      const base = currentDate ? `forecasts/${currentDate}/${currentModel}`
-                               : `forecasts/latest/${currentModel}`;
+      const base = currentDate ? `/forecasts/${currentDate}/${currentModel}`
+                               : `/forecasts/latest/${currentModel}`;
       const src = `${base}/${encodeURIComponent(currentSite.region || 'issaquah')}/${encodeURIComponent(currentSite.name)}_windgram.png`;
 
       document.getElementById('site-name').textContent = prettyName(currentSite.name);
@@ -564,29 +615,157 @@
 
     function selectSite(site, marker) {
       currentSite = site;
-      if (selectedMarker && selectedMarker._icon) selectedMarker._icon.classList.remove('selected');
+      if (selectedMarker) selectedMarker.getElement().classList.remove('selected');
       selectedMarker = marker;
-      if (marker && marker._icon) marker._icon.classList.add('selected');
+      if (marker) marker.getElement().classList.add('selected');
       updateWindgram();
+      syncUrl();
     }
 
+    // Hover name, like the old Leaflet tooltip (desktop only: touch has no hover).
+    const tip = new maplibregl.Popup({ closeButton: false, closeOnClick: false, anchor: 'bottom',
+                                       offset: 16, className: 'site-tip' });
+    const showTip = (marker, text) => tip.setLngLat(marker.getLngLat()).setText(text).addTo(map);
+    const hideTip = () => tip.remove();
+
     function updateMarkers(sites) {
-      markers.forEach(m => map.removeLayer(m));
+      markers.forEach(m => m.remove());
       markers = [];
-      const icon = L.divIcon({ html: '🪂', className: 'site-marker', iconSize: [26, 26], iconAnchor: [13, 13] });
-      let dflt = null;
+      siteIndex = {};
       sites.forEach(site => {
         const label = prettyName(site.name);
-        const marker = L.marker([site.lat, site.lon], { icon, title: label }).addTo(map);
-        marker.bindTooltip(label, { direction: 'top', offset: [0, -12] });
-        marker.on('click', () => { selectSite(site, marker); openSheet(); });
+        const el = document.createElement('div');
+        el.className = 'site-marker';
+        el.setAttribute('role', 'button');
+        el.setAttribute('aria-label', label);
+        el.innerHTML = '<span class="glyph">🪂</span>';
+        const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
+          .setLngLat([site.lon, site.lat]).addTo(map);
+        el.addEventListener('mouseenter', () => showTip(marker, label));
+        el.addEventListener('mouseleave', hideTip);
+        // Marker elements sit in the map's canvas container, so stop the click
+        // reaching the map's own click handler (which closes the sheet).
+        el.addEventListener('click', (e) => { e.stopPropagation(); selectSite(site, marker); openSheet(); });
         markers.push(marker);
-        if (site.name === DEFAULT_SITE) dflt = { site, marker };
+        siteIndex[siteKey(site.name)] = { site, marker };
       });
-      // Pre-select the default site (renders the windgram) but leave the sheet
-      // closed on mobile — the map opens full-screen; tapping a site reveals it.
-      if (dflt && !currentSite) selectSite(dflt.site, dflt.marker);
+      const lons = sites.map(s => s.lon), lats = sites.map(s => s.lat);
+      siteBounds = sites.length
+        ? [[Math.min(...lons), Math.min(...lats)], [Math.max(...lons), Math.max(...lats)]]
+        : null;
+      // A deep link (#site=…) opens on that site; otherwise nothing is
+      // pre-selected, the panel shows its "pick a launch" prompt and the map
+      // opens framed on every site.
+      if (!applyLinkedSite(pendingLink.site)) {
+        if (pendingLink.site) syncUrl();       // unknown site in the link: back to /
+        fitAllSites();
+      }
     }
+
+    // ── Deep links ─────────────────────────────────────────────────
+    // /<name>[?model=nam|rrfs|hrrr][&day=YYYY-MM-DD], e.g. /Carnation or
+    // /poo-poo-point?model=rrfs. Names match loosely (case, spaces, underscores
+    // and hyphens ignored). GitHub Pages serves 404.html (a copy of this page,
+    // see deploy-site.yml) for any path it has no file for, which is how
+    // /Carnation reaches this script; that is also why every asset path above
+    // is root-absolute. The old #site=… and bare #<name> links keep working and
+    // are rewritten to the path form. The address bar is kept in sync as the
+    // user clicks around, so it is always the link to share.
+    const siteKey = (name) => String(name).toLowerCase().replace(/[^a-z0-9]/g, '');
+    let siteIndex = {};
+    function readParams(params, out) {
+      for (const [k, v] of params) {
+        if (k === 'site' && v) out.site = v;
+        else if (k === 'model' && MODELS.includes(v)) out.model = v;
+        else if (k === 'day' && /^\d{4}-\d{2}-\d{2}$/.test(v)) out.day = v;
+      }
+    }
+    function parseLink() {
+      const out = { site: null, model: null, day: null };
+      // Path: a single segment that is not the page itself.
+      const seg = location.pathname.replace(/^\/+|\/+$/g, '');
+      if (seg && !seg.includes('/') && !/\.html?$/i.test(seg)) {
+        try { out.site = decodeURIComponent(seg); } catch (_) { out.site = seg; }
+      }
+      readParams(new URLSearchParams(location.search), out);
+      // Legacy hash links: #site=…&model=…&day=… or a bare #<name>.
+      const raw = location.hash.replace(/^#/, '');
+      if (raw) {
+        if (raw.includes('=')) readParams(new URLSearchParams(raw), out);
+        else if (!out.site) { try { out.site = decodeURIComponent(raw); } catch (_) { out.site = raw; } }
+      }
+      return out;
+    }
+    // Site always (as the path); model and day only when they differ from the
+    // page defaults, so everyday links stay short and don't pin a date that
+    // gets pruned.
+    function syncUrl() {
+      if (!currentSite) { history.replaceState(null, '', '/'); return; }
+      const p = new URLSearchParams();
+      if (currentModel !== DEFAULT_MODEL) p.set('model', currentModel);
+      if (currentDate && currentDays.length && currentDate !== currentDays[0].date) p.set('day', currentDate);
+      const q = p.toString();
+      history.replaceState(null, '', '/' + encodeURIComponent(currentSite.name) + (q ? '?' + q : ''));
+    }
+    function applyLinkedSite(name) {
+      const hit = name && siteIndex[siteKey(name)];
+      if (!hit) return false;
+      selectSite(hit.site, hit.marker);
+      userMoved = true;                          // keep the resize re-fit off this view
+      // On a phone the open sheet covers roughly the lower three quarters of
+      // the screen, so the marker is placed up in the strip that stays visible.
+      const lift = isPhone() ? Math.round(map.getContainer().clientHeight * 0.3) : 0;
+      map.easeTo({ center: hit.marker.getLngLat(), zoom: 10, offset: [0, -lift], duration: 0 });
+      if (isPhone()) openSheet();
+      return true;
+    }
+    // Back/forward and hand-edited hashes re-apply whatever the bar says.
+    for (const ev of ['popstate', 'hashchange']) {
+      window.addEventListener(ev, () => { const l = parseLink(); if (l.site) applyLinkedSite(l.site); });
+    }
+    document.getElementById('copy-link').addEventListener('click', async (e) => {
+      const btn = e.currentTarget;
+      const url = location.href;
+      try {
+        if (navigator.share && isPhone()) { await navigator.share({ title: document.title, url }); return; }
+        await navigator.clipboard.writeText(url);
+        btn.textContent = 'Copied';
+        setTimeout(() => { btn.textContent = 'Copy link'; }, 1500);
+      } catch (_) {
+        window.prompt('Link to this site:', url);
+      }
+    });
+
+    // Frame every site on load, on whatever screen this is. On a phone the map is
+    // full-screen with the brand pill floating top-left and the selector sheet
+    // docked at the bottom, so those strips are padded out of the fit; on a
+    // desktop the map is its own flex box and only needs a margin. Re-fit on
+    // resize / rotation until the user pans or zooms by hand.
+    let siteBounds = null;
+    let userMoved = false;
+    const isPhone = () => window.matchMedia('(max-width: 720px)').matches;
+    function fitAllSites() {
+      if (!siteBounds || userMoved) return;
+      const h = map.getContainer().clientHeight;
+      const opts = { maxZoom: 10, animate: false };
+      if (isPhone()) {
+        const pill = document.querySelector('.map-header');
+        const top = pill ? pill.getBoundingClientRect().bottom + 12 : 24;
+        // Never let the padding swallow the map (MapLibre refuses such a fit).
+        const bottom = Math.min(sheet.offsetHeight + 16, Math.round(h * 0.6));
+        opts.padding = { top, bottom, left: 18, right: 18 };
+      } else {
+        opts.padding = 48;
+      }
+      map.fitBounds(siteBounds, opts);
+    }
+    // MapLibre marks user-driven moves with originalEvent; programmatic ones have none.
+    map.on('movestart', (e) => { if (e.originalEvent) userMoved = true; });
+    let fitTimer = null;
+    window.addEventListener('resize', () => {
+      clearTimeout(fitTimer);
+      fitTimer = setTimeout(fitAllSites, 150);
+    });
 
     document.querySelectorAll('input[name="model"]').forEach(r => {
       r.addEventListener('change', async e => {
@@ -594,6 +773,7 @@
         layoutToggle();            // slide the indicator to the new column
         await loadDays();          // each model may offer a different set of days
         updateWindgram();
+        syncUrl();
       });
     });
 
@@ -603,14 +783,25 @@
     document.getElementById('sheetGrip').addEventListener('click', () => sheet.classList.toggle('open'));
     map.on('click', closeSheet);   // empty-map taps (marker clicks don't propagate)
 
-    // Metadata first (which models have anything to show), then the model
-    // set and the day set (sets currentDate), then the sites.
+    // A deep link's model/day are applied before the model and day sets
+    // resolve; its site is applied once sites.json has produced markers
+    // (updateMarkers).
+    const pendingLink = parseLink();
+    if (pendingLink.model) {
+      const r = document.querySelector(`input[name="model"][value="${pendingLink.model}"]`);
+      if (r) { r.checked = true; currentModel = pendingLink.model; }
+    }
+    if (pendingLink.day) currentDate = pendingLink.day;   // kept only if loadDays finds it
+
+    // Metadata first (which models have anything to show), then the model set
+    // (pruneModels() also drops a linked model that has nothing), the day set
+    // (sets currentDate), then the sites.
     (async () => {
       await loadMetadata();
       await pruneModels();
       await loadDays();
       loadSites();
-      setTimeout(() => map.invalidateSize(), 0);
+      setTimeout(() => map.resize(), 0);
     })();
   </script>
 </body>
