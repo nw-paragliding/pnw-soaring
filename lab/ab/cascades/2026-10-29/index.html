@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>cascades — NAM vs RRFS vs HRRR, soaring day 2026-10-29</title>
+<style>
+:root { color-scheme: light dark; --fg:#1b1b1f; --bg:#fafaf7; --mute:#6b6b70; --line:#dedcd6; --acc:#b4530a; }
+@media (prefers-color-scheme: dark) { :root { --fg:#ecebe6; --bg:#15161a; --mute:#9a9aa2; --line:#2e2f36; --acc:#f0a35a; } }
+body { margin:0; padding:24px 16px 64px; font:15px/1.5 -apple-system,Segoe UI,Helvetica,Arial,sans-serif; color:var(--fg); background:var(--bg); max-width:1400px; margin:0 auto; }
+h1 { font-size:1.5rem; margin:0 0 4px; } h2 { font-size:1.15rem; margin-top:2em; border-bottom:1px solid var(--line); padding-bottom:4px; }
+h3 { font-size:1rem; margin-top:1.5em; }
+.meta { color:var(--mute); font-size:.9rem; margin-bottom:1.5em; } .meta a { color:var(--acc); }
+.note { border-left:3px solid var(--acc); padding:6px 12px; color:var(--mute); margin:12px 0 24px; }
+table { border-collapse:collapse; font-size:.85rem; margin:8px 0 16px; display:block; overflow-x:auto; max-width:100%; }
+th, td { border:1px solid var(--line); padding:3px 8px; white-space:nowrap; text-align:right; } th:first-child, td:first-child { text-align:left; }
+figure { margin:16px 0; } figure img { width:100%; height:auto; border:1px solid var(--line); border-radius:4px; }
+figcaption { color:var(--mute); font-size:.85rem; margin-top:4px; }
+code { font-size:.9em; }
+</style></head>
+<body>
+<h1>cascades — NAM vs RRFS vs HRRR, soaring day 2026-10-29</h1>
+<div class="meta">cycle 2026-10-28 18z · generated 2026-10-29T02:29Z · <a href="https://github.com/nw-paragliding/pnw-soaring/actions/runs/40803176912">run</a> · <a href="../../">all days</a></div>
+<div class="note">Unlisted test page for the RRFS migration: the same WRF chain (4 km → 1.33 km, DrJack physics) run three times, from NAM, RRFS and HRRR as parent models. Each comparison below has its own page. The numbers are an aid to a human review, not a verdict.</div>
+<h2><a href="nam-vs-rrfs/">NAM vs RRFS</a></h2><p class="meta">Pooled over 27 sites, afternoon hours. <a href="nam-vs-rrfs/">Windgrams, maps and per-site numbers</a> · <a href="nam-vs-rrfs/summary.json">summary.json</a></p><table><thead><tr><th>Metric</th><th>median |Δ|</th><th>p90 |Δ|</th><th>bias (RRFS − NAM)</th><th>n</th></tr></thead><tbody><tr><td>BL top (ft)</td><td>978</td><td>2188</td><td>+436</td><td>162</td></tr><tr><td>w* (fpm)</td><td>34</td><td>134</td><td>+22</td><td>162</td></tr><tr><td>Soaring ceiling (ft)</td><td>326</td><td>1289</td><td>+400</td><td>162</td></tr><tr><td>BL wind speed (kt)</td><td>3.6</td><td>7.0</td><td>+3.6</td><td>162</td></tr><tr><td>BL wind direction (°)</td><td>21</td><td>77</td><td>+3</td><td>162</td></tr><tr><td>2 m temperature (°F)</td><td>1.7</td><td>2.9</td><td>+1.7</td><td>162</td></tr><tr><td>Cloud base (LCL) (ft)</td><td>1005</td><td>1947</td><td>+1046</td><td>162</td></tr><tr><td>Surface heat flux (W/m²)</td><td>13</td><td>70</td><td>+2</td><td>162</td></tr></tbody></table><h2><a href="nam-vs-hrrr/">NAM vs HRRR</a></h2><p class="meta">Pooled over 27 sites, afternoon hours. <a href="nam-vs-hrrr/">Windgrams, maps and per-site numbers</a> · <a href="nam-vs-hrrr/summary.json">summary.json</a></p><table><thead><tr><th>Metric</th><th>median |Δ|</th><th>p90 |Δ|</th><th>bias (HRRR − NAM)</th><th>n</th></tr></thead><tbody><tr><td>BL top (ft)</td><td>678</td><td>2599</td><td>-659</td><td>162</td></tr><tr><td>w* (fpm)</td><td>41</td><td>151</td><td>-45</td><td>162</td></tr><tr><td>Soaring ceiling (ft)</td><td>75</td><td>1304</td><td>-309</td><td>162</td></tr><tr><td>BL wind speed (kt)</td><td>7.7</td><td>15.2</td><td>+7.3</td><td>162</td></tr><tr><td>BL wind direction (°)</td><td>41</td><td>107</td><td>+28</td><td>162</td></tr><tr><td>2 m temperature (°F)</td><td>2.9</td><td>4.6</td><td>-2.9</td><td>162</td></tr><tr><td>Cloud base (LCL) (ft)</td><td>987</td><td>1556</td><td>-942</td><td>162</td></tr><tr><td>Surface heat flux (W/m²)</td><td>25</td><td>90</td><td>-24</td><td>162</td></tr></tbody></table>
+</body></html>
