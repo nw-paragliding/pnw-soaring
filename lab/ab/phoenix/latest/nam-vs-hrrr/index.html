@@ -2,7 +2,7 @@
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
-<title>phoenix — NAM vs HRRR, soaring day 2026-10-29</title>
+<title>phoenix — NAM vs HRRR, soaring day 2026-10-30</title>
 <style>
 :root { color-scheme: light dark; --fg:#1b1b1f; --bg:#fafaf7; --mute:#6b6b70; --line:#dedcd6; --acc:#b4530a; }
 @media (prefers-color-scheme: dark) { :root { --fg:#ecebe6; --bg:#15161a; --mute:#9a9aa2; --line:#2e2f36; --acc:#f0a35a; } }
@@ -18,16 +18,16 @@ figcaption { color:var(--mute); font-size:.85rem; margin-top:4px; }
 code { font-size:.9em; }
 </style></head>
 <body>
-<h1>phoenix — NAM vs HRRR, soaring day 2026-10-29</h1>
-<div class="meta">cycle 2026-10-28 18z · generated 2026-10-29T02:29Z · <a href="https://github.com/nw-paragliding/pnw-soaring/actions/runs/40803176912">run</a></div>
+<h1>phoenix — NAM vs HRRR, soaring day 2026-10-30</h1>
+<div class="meta">cycle 2026-10-29 18z · generated 2026-10-30T02:39Z · <a href="https://github.com/nw-paragliding/pnw-soaring/actions/runs/40989634774">run</a></div>
 <div class="note">Unlisted test page for the RRFS migration: the same WRF chain (4 km → 1.33 km, DrJack physics) run from NAM, RRFS and HRRR as parent models; this page compares two of those arms. <a href="../">Back to the day</a>. The numbers are an aid to a human review, not a verdict. Raw: <a href="compare.md">compare.md</a> · <a href="summary.json">summary.json</a></div>
 <h2>Windgrams</h2>
 <figure><img src="diffmap_tol.png" alt="soaring ceiling A, B and difference"><figcaption>Soaring ceiling at the afternoon peak: A, B, and B − A over the inner grid.</figcaption></figure><figure><img src="montage_CasaGrande.png" alt="CasaGrande windgrams"><figcaption>CasaGrande — A (left) vs B (right)</figcaption></figure><figure><img src="montage_Estrella.png" alt="Estrella windgrams"><figcaption>Estrella — A (left) vs B (right)</figcaption></figure><figure><img src="montage_McDowellMtn.png" alt="McDowellMtn windgrams"><figcaption>McDowellMtn — A (left) vs B (right)</figcaption></figure><figure><img src="montage_PhoenixFloor.png" alt="PhoenixFloor windgrams"><figcaption>PhoenixFloor — A (left) vs B (right)</figcaption></figure><figure><img src="montage_SouthMountain.png" alt="SouthMountain windgrams"><figcaption>SouthMountain — A (left) vs B (right)</figcaption></figure><figure><img src="montage_SuperstitionFoot.png" alt="SuperstitionFoot windgrams"><figcaption>SuperstitionFoot — A (left) vs B (right)</figcaption></figure><figure><img src="montage_Wickenburg.png" alt="Wickenburg windgrams"><figcaption>Wickenburg — A (left) vs B (right)</figcaption></figure>
 <h2>Numbers</h2>
 <h1>A/B comparison: NAM vs HRRR</h1>
 <ul>
-<li><strong>NAM</strong>: <code>../runs/ab-phoenix-nam</code> — model <code>nam</code>, cycle <code>2026-10-28 18z</code>, dx 1.3333333740234374 km, 13 hours, grid 114×114</li>
-<li><strong>HRRR</strong>: <code>../runs/ab-phoenix-hrrr</code> — model <code>hrrr</code>, cycle <code>2026-10-28 18z</code>, dx 1.3333333740234374 km, 13 hours, grid 114×114</li>
+<li><strong>NAM</strong>: <code>../runs/ab-phoenix-nam</code> — model <code>nam</code>, cycle <code>2026-10-29 18z</code>, dx 1.3333333740234374 km, 13 hours, grid 114×114</li>
+<li><strong>HRRR</strong>: <code>../runs/ab-phoenix-hrrr</code> — model <code>hrrr</code>, cycle <code>2026-10-29 18z</code>, dx 1.3333333740234374 km, 13 hours, grid 114×114</li>
 </ul>
 <p>Grids identical; afternoon = 12:00–17:59 local (UTC-7). Δ = HRRR − NAM.</p>
 <h2>Afternoon summary per site</h2>
@@ -50,86 +50,86 @@ code { font-size:.9em; }
 <tr>
 <td>PhoenixFloor</td>
 <td>1176</td>
-<td>764 / -1159</td>
-<td>65 / -76</td>
-<td>758 / -1003</td>
-<td>2 / -4</td>
-<td>20 / +8</td>
-<td>1 / -1</td>
-<td>877 / +1250</td>
-<td>51 / -45</td>
+<td>489 / -433</td>
+<td>43 / -33</td>
+<td>0 / -0</td>
+<td>2 / -2</td>
+<td>122 / +22</td>
+<td>5 / -4</td>
+<td>2142 / -1868</td>
+<td>27 / -8</td>
 </tr>
 <tr>
 <td>SouthMountain</td>
 <td>2160</td>
-<td>730 / -645</td>
-<td>75 / -63</td>
-<td>422 / -493</td>
+<td>237 / -188</td>
+<td>44 / -42</td>
+<td>0 / -0</td>
+<td>7 / -5</td>
+<td>95 / -88</td>
 <td>4 / -2</td>
-<td>22 / -44</td>
-<td>1 / -1</td>
-<td>828 / +901</td>
-<td>52 / -49</td>
+<td>1162 / -1108</td>
+<td>33 / -33</td>
 </tr>
 <tr>
 <td>SuperstitionFoot</td>
 <td>2119</td>
-<td>1311 / -909</td>
-<td>93 / -71</td>
-<td>1706 / -1213</td>
-<td>3 / -2</td>
-<td>46 / +39</td>
-<td>1 / -1</td>
-<td>662 / +509</td>
-<td>61 / -56</td>
+<td>1728 / -965</td>
+<td>95 / -70</td>
+<td>176 / -462</td>
+<td>4 / +5</td>
+<td>51 / -14</td>
+<td>4 / -3</td>
+<td>1396 / -779</td>
+<td>52 / -16</td>
 </tr>
 <tr>
 <td>Estrella</td>
 <td>1636</td>
-<td>1518 / -1760</td>
-<td>111 / -109</td>
-<td>1566 / -1545</td>
-<td>1 / -2</td>
-<td>35 / -48</td>
-<td>2 / -2</td>
-<td>723 / +991</td>
-<td>58 / -51</td>
+<td>789 / -359</td>
+<td>30 / -21</td>
+<td>1 / +1</td>
+<td>7 / -3</td>
+<td>86 / -9</td>
+<td>5 / -3</td>
+<td>1524 / -797</td>
+<td>3 / -6</td>
 </tr>
 <tr>
 <td>Wickenburg</td>
 <td>2237</td>
-<td>749 / -1387</td>
-<td>96 / -110</td>
-<td>932 / -1149</td>
-<td>4 / -0</td>
-<td>8 / -10</td>
-<td>2 / -2</td>
-<td>1121 / +1404</td>
-<td>56 / -54</td>
+<td>598 / -93</td>
+<td>45 / -8</td>
+<td>0 / +49</td>
+<td>7 / +0</td>
+<td>34 / -8</td>
+<td>1 / -2</td>
+<td>1515 / -1436</td>
+<td>17 / +4</td>
 </tr>
 <tr>
 <td>CasaGrande</td>
-<td>1462</td>
-<td>339 / -731</td>
-<td>3 / -2</td>
-<td>188 / -379</td>
-<td>2 / -0</td>
-<td>23 / -1</td>
-<td>1 / +0</td>
-<td>568 / +784</td>
-<td>11 / +12</td>
+<td>1464</td>
+<td>1146 / +616</td>
+<td>105 / +91</td>
+<td>1652 / +1223</td>
+<td>6 / +5</td>
+<td>4 / +7</td>
+<td>2 / +0</td>
+<td>661 / -61</td>
+<td>83 / +83</td>
 </tr>
 <tr>
 <td>McDowellMtn</td>
-<td>3017</td>
-<td>657 / +3</td>
-<td>15 / -16</td>
-<td>247 / -106</td>
-<td>1 / -0</td>
-<td>26 / -1</td>
-<td>0 / -1</td>
-<td>1012 / +1410</td>
-<td>7 / -7</td>
+<td>3018</td>
+<td>424 / -212</td>
+<td>46 / -10</td>
+<td>1 / -1</td>
+<td>2 / -1</td>
+<td>99 / +45</td>
+<td>4 / -4</td>
+<td>1297 / -1141</td>
+<td>11 / -3</td>
 </tr>
 </tbody>
 </table>
@@ -148,65 +148,65 @@ code { font-size:.9em; }
 <tr>
 <td>BL top (AGL) (ft)</td>
 <td>42</td>
-<td>751</td>
-<td>2501</td>
-<td>-941</td>
+<td>598</td>
+<td>1769</td>
+<td>-233</td>
 </tr>
 <tr>
 <td>w* (fpm)</td>
 <td>42</td>
-<td>59</td>
-<td>131</td>
-<td>-64</td>
+<td>48</td>
+<td>155</td>
+<td>-13</td>
 </tr>
 <tr>
 <td>Soaring ceiling (ft)</td>
 <td>42</td>
-<td>688</td>
-<td>2055</td>
-<td>-841</td>
+<td>1</td>
+<td>1308</td>
+<td>+116</td>
 </tr>
 <tr>
 <td>BL wind speed (kt)</td>
 <td>42</td>
-<td>2</td>
-<td>7</td>
-<td>-1</td>
+<td>4</td>
+<td>10</td>
+<td>-0</td>
 </tr>
 <tr>
 <td>BL wind dir (deg)</td>
 <td>42</td>
-<td>23</td>
-<td>98</td>
-<td>-8</td>
+<td>52</td>
+<td>147</td>
+<td>-6</td>
 </tr>
 <tr>
 <td>2 m temperature (F)</td>
 <td>42</td>
-<td>1</td>
-<td>3</td>
-<td>-1</td>
+<td>2</td>
+<td>9</td>
+<td>-3</td>
 </tr>
 <tr>
 <td>Sfc LCL (AGL) (ft)</td>
 <td>42</td>
-<td>754</td>
-<td>2738</td>
-<td>+1036</td>
+<td>897</td>
+<td>3345</td>
+<td>-1027</td>
 </tr>
 <tr>
 <td>Sensible heat flux (W/m2)</td>
 <td>42</td>
-<td>39</td>
-<td>90</td>
-<td>-36</td>
+<td>26</td>
+<td>82</td>
+<td>+3</td>
 </tr>
 </tbody>
 </table>
 <h2>Whole inner grid at 14:00 local</h2>
 <ul>
-<li>soaring ceiling: median |Δ| 1403 ft, bias -1345 ft</li>
-<li>w*: median |Δ| 96 fpm, bias -90 fpm</li>
+<li>soaring ceiling: median |Δ| 0 ft, bias +285 ft</li>
+<li>w*: median |Δ| 77 fpm, bias -11 fpm</li>
 <li>map: <code>diffmap_tol.png</code></li>
 </ul>
 <h2>Hourly detail</h2>
@@ -228,118 +228,118 @@ code { font-size:.9em; }
 <td>08:00</td>
 <td>0 / 0</td>
 <td>0 / 0</td>
-<td>1176 / 1175</td>
-<td>3kt@057 / 6kt@105</td>
-<td>63 / 62</td>
+<td>1176 / 1176</td>
+<td>3kt@080 / 5kt@104</td>
+<td>67 / 65</td>
 <td>0 / 0</td>
 </tr>
 <tr>
 <td>09:00</td>
-<td>724 / 395</td>
-<td>139 / 112</td>
-<td>1176 / 1175</td>
-<td>10kt@124 / 9kt@109</td>
-<td>68 / 67</td>
-<td>58 / 55</td>
+<td>905 / 477</td>
+<td>157 / 122</td>
+<td>1176 / 1176</td>
+<td>9kt@126 / 10kt@125</td>
+<td>71 / 70</td>
+<td>66 / 59</td>
 </tr>
 <tr>
 <td>10:00</td>
-<td>1219 / 560</td>
-<td>207 / 133</td>
-<td>1176 / 1175</td>
-<td>10kt@135 / 10kt@128</td>
-<td>72 / 70</td>
-<td>113 / 65</td>
+<td>1179 / 541</td>
+<td>161 / 114</td>
+<td>1176 / 1176</td>
+<td>10kt@127 / 7kt@139</td>
+<td>72 / 71</td>
+<td>55 / 42</td>
 </tr>
 <tr>
 <td>11:00</td>
-<td>1443 / 843</td>
-<td>239 / 175</td>
-<td>1621 / 1175</td>
-<td>7kt@112 / 9kt@121</td>
-<td>75 / 74</td>
-<td>148 / 99</td>
+<td>1263 / 1494</td>
+<td>182 / 190</td>
+<td>1176 / 1176</td>
+<td>9kt@139 / 9kt@147</td>
+<td>74 / 74</td>
+<td>75 / 72</td>
 </tr>
 <tr>
 <td>12:00</td>
-<td>1787 / 1204</td>
-<td>269 / 208</td>
-<td>1954 / 1175</td>
-<td>5kt@119 / 7kt@113</td>
-<td>78 / 77</td>
-<td>170 / 118</td>
+<td>1292 / 1485</td>
+<td>186 / 139</td>
+<td>1176 / 1176</td>
+<td>8kt@139 / 11kt@122</td>
+<td>75 / 75</td>
+<td>78 / 28</td>
 </tr>
 <tr>
 <td>13:00</td>
-<td>2238 / 1573</td>
-<td>293 / 230</td>
-<td>2289 / 1551</td>
-<td>7kt@156 / 4kt@138</td>
-<td>81 / 79</td>
-<td>177 / 122</td>
+<td>1517 / 386</td>
+<td>193 / 120</td>
+<td>1176 / 1176</td>
+<td>8kt@124 / 5kt@271</td>
+<td>77 / 70</td>
+<td>74 / 69</td>
 </tr>
 <tr>
 <td>14:00</td>
-<td>3381 / 2620</td>
-<td>330 / 274</td>
-<td>3078 / 2358</td>
-<td>7kt@165 / 7kt@165</td>
-<td>83 / 82</td>
-<td>168 / 124</td>
+<td>1641 / 928</td>
+<td>156 / 156</td>
+<td>1176 / 1176</td>
+<td>11kt@127 / 9kt@344</td>
+<td>78 / 68</td>
+<td>36 / 63</td>
 </tr>
 <tr>
 <td>15:00</td>
-<td>4777 / 4009</td>
-<td>348 / 280</td>
-<td>3982 / 3053</td>
-<td>13kt@189 / 6kt@167</td>
-<td>84 / 83</td>
-<td>140 / 87</td>
+<td>944 / 679</td>
+<td>118 / 134</td>
+<td>1176 / 1176</td>
+<td>9kt@112 / 7kt@013</td>
+<td>77 / 68</td>
+<td>27 / 55</td>
 </tr>
 <tr>
 <td>16:00</td>
-<td>5459 / 3822</td>
-<td>305 / 201</td>
-<td>4026 / 1175</td>
-<td>17kt@192 / 5kt@110</td>
-<td>84 / 83</td>
-<td>83 / 34</td>
+<td>1502 / 776</td>
+<td>161 / 123</td>
+<td>1176 / 1176</td>
+<td>5kt@289 / 2kt@082</td>
+<td>70 / 71</td>
+<td>43 / 37</td>
 </tr>
 <tr>
 <td>17:00</td>
-<td>3478 / 937</td>
-<td>174 / 67</td>
-<td>1176 / 1175</td>
-<td>8kt@152 / 5kt@328</td>
-<td>84 / 82</td>
-<td>24 / 5</td>
+<td>898 / 940</td>
+<td>144 / 88</td>
+<td>1176 / 1176</td>
+<td>7kt@345 / 4kt@076</td>
+<td>70 / 72</td>
+<td>51 / 11</td>
 </tr>
 <tr>
 <td>18:00</td>
-<td>3459 / 649</td>
-<td>0 / 0</td>
-<td>1176 / 1175</td>
-<td>7kt@132 / 8kt@322</td>
-<td>83 / 80</td>
-<td>-0 / -0</td>
+<td>746 / 348</td>
+<td>109 / 18</td>
+<td>1176 / 1176</td>
+<td>5kt@296 / 2kt@082</td>
+<td>69 / 72</td>
+<td>27 / 0</td>
 </tr>
 <tr>
 <td>19:00</td>
-<td>278 / 698</td>
-<td>0 / 0</td>
-<td>1176 / 1175</td>
-<td>4kt@224 / 9kt@317</td>
-<td>81 / 79</td>
-<td>-1 / -0</td>
+<td>897 / 273</td>
+<td>90 / 37</td>
+<td>1176 / 1176</td>
+<td>5kt@070 / 4kt@119</td>
+<td>70 / 71</td>
+<td>12 / 3</td>
 </tr>
 <tr>
 <td>20:00</td>
-<td>85 / 593</td>
-<td>0 / 0</td>
-<td>1176 / 1175</td>
-<td>3kt@246 / 10kt@342</td>
-<td>79 / 77</td>
-<td>-0 / -0</td>
+<td>1449 / 301</td>
+<td>103 / 46</td>
+<td>1176 / 1176</td>
+<td>7kt@111 / 7kt@094</td>
+<td>70 / 70</td>
+<td>12 / 5</td>
 </tr>
 </tbody>
 </table>
@@ -362,117 +362,117 @@ code { font-size:.9em; }
 <td>0 / 0</td>
 <td>0 / 0</td>
 <td>2160 / 2160</td>
-<td>7kt@133 / 9kt@142</td>
-<td>63 / 67</td>
+<td>5kt@112 / 5kt@133</td>
+<td>67 / 67</td>
 <td>0 / 0</td>
 </tr>
 <tr>
 <td>09:00</td>
-<td>112 / 197</td>
-<td>68 / 84</td>
+<td>285 / 486</td>
+<td>116 / 127</td>
 <td>2160 / 2160</td>
-<td>12kt@140 / 11kt@142</td>
-<td>68 / 69</td>
-<td>44 / 46</td>
+<td>11kt@137 / 11kt@148</td>
+<td>68 / 68</td>
+<td>85 / 65</td>
 </tr>
 <tr>
 <td>10:00</td>
-<td>498 / 258</td>
-<td>159 / 106</td>
+<td>306 / 549</td>
+<td>114 / 128</td>
 <td>2160 / 2160</td>
-<td>9kt@129 / 10kt@136</td>
-<td>69 / 70</td>
-<td>125 / 71</td>
+<td>12kt@136 / 11kt@150</td>
+<td>68 / 68</td>
+<td>74 / 59</td>
 </tr>
 <tr>
 <td>11:00</td>
-<td>1066 / 501</td>
-<td>215 / 152</td>
+<td>407 / 1115</td>
+<td>135 / 191</td>
 <td>2160 / 2160</td>
-<td>6kt@130 / 8kt@142</td>
-<td>71 / 71</td>
-<td>145 / 109</td>
+<td>11kt@139 / 13kt@149</td>
+<td>69 / 70</td>
+<td>93 / 96</td>
 </tr>
 <tr>
 <td>12:00</td>
-<td>1652 / 946</td>
-<td>262 / 192</td>
-<td>2842 / 2160</td>
-<td>7kt@149 / 6kt@165</td>
-<td>74 / 74</td>
-<td>169 / 117</td>
+<td>510 / 734</td>
+<td>149 / 119</td>
+<td>2160 / 2160</td>
+<td>10kt@142 / 15kt@128</td>
+<td>70 / 70</td>
+<td>100 / 36</td>
 </tr>
 <tr>
 <td>13:00</td>
-<td>2382 / 2428</td>
-<td>305 / 272</td>
-<td>3401 / 3239</td>
-<td>7kt@166 / 8kt@171</td>
-<td>76 / 76</td>
-<td>186 / 129</td>
+<td>935 / 409</td>
+<td>192 / 107</td>
+<td>2160 / 2160</td>
+<td>13kt@138 / 4kt@023</td>
+<td>72 / 67</td>
+<td>118 / 47</td>
 </tr>
 <tr>
 <td>14:00</td>
-<td>3286 / 3496</td>
-<td>341 / 316</td>
-<td>4060 / 4053</td>
-<td>9kt@180 / 15kt@197</td>
-<td>78 / 78</td>
-<td>189 / 142</td>
+<td>715 / 676</td>
+<td>136 / 148</td>
+<td>2160 / 2160</td>
+<td>12kt@141 / 10kt@336</td>
+<td>73 / 63</td>
+<td>54 / 74</td>
 </tr>
 <tr>
 <td>15:00</td>
-<td>4106 / 3352</td>
-<td>349 / 267</td>
-<td>4575 / 3607</td>
-<td>16kt@200 / 6kt@171</td>
-<td>79 / 78</td>
-<td>162 / 90</td>
+<td>694 / 268</td>
+<td>136 / 91</td>
+<td>2160 / 2160</td>
+<td>10kt@139 / 5kt@024</td>
+<td>70 / 65</td>
+<td>56 / 43</td>
 </tr>
 <tr>
 <td>16:00</td>
-<td>2754 / 1860</td>
-<td>262 / 183</td>
-<td>3302 / 2160</td>
-<td>12kt@174 / 4kt@077</td>
-<td>79 / 77</td>
-<td>103 / 51</td>
+<td>505 / 255</td>
+<td>110 / 66</td>
+<td>2160 / 2160</td>
+<td>11kt@280 / 2kt@233</td>
+<td>64 / 67</td>
+<td>40 / 17</td>
 </tr>
 <tr>
 <td>17:00</td>
-<td>2071 / 297</td>
-<td>165 / 73</td>
+<td>336 / 224</td>
+<td>101 / 37</td>
 <td>2160 / 2160</td>
-<td>8kt@139 / 8kt@322</td>
-<td>78 / 75</td>
-<td>34 / 20</td>
+<td>9kt@324 / 1kt@249</td>
+<td>65 / 68</td>
+<td>47 / 3</td>
 </tr>
 <tr>
 <td>18:00</td>
-<td>263 / 118</td>
-<td>35 / 32</td>
+<td>250 / 111</td>
+<td>66 / 16</td>
 <td>2160 / 2160</td>
-<td>3kt@094 / 8kt@308</td>
-<td>78 / 74</td>
-<td>3 / 4</td>
+<td>7kt@292 / 5kt@060</td>
+<td>66 / 67</td>
+<td>17 / 0</td>
 </tr>
 <tr>
 <td>19:00</td>
-<td>859 / 430</td>
-<td>0 / 0</td>
+<td>237 / 262</td>
+<td>47 / 0</td>
 <td>2160 / 2160</td>
-<td>9kt@115 / 8kt@318</td>
-<td>76 / 74</td>
-<td>-1 / -3</td>
+<td>3kt@327 / 4kt@071</td>
+<td>66 / 67</td>
+<td>7 / -3</td>
 </tr>
 <tr>
 <td>20:00</td>
-<td>774 / 491</td>
-<td>0 / 0</td>
+<td>1325 / 278</td>
+<td>67 / 0</td>
 <td>2160 / 2160</td>
-<td>9kt@164 / 9kt@326</td>
-<td>76 / 73</td>
-<td>-6 / -3</td>
+<td>9kt@249 / 3kt@109</td>
+<td>67 / 67</td>
+<td>3 / -3</td>
 </tr>
 </tbody>
 </table>
@@ -495,117 +495,117 @@ code { font-size:.9em; }
 <td>0 / 0</td>
 <td>0 / 0</td>
 <td>2119 / 2120</td>
-<td>7kt@070 / 7kt@090</td>
-<td>61 / 68</td>
+<td>6kt@076 / 7kt@099</td>
+<td>63 / 70</td>
 <td>0 / 0</td>
 </tr>
 <tr>
 <td>09:00</td>
-<td>923 / 560</td>
-<td>136 / 0</td>
+<td>1076 / 413</td>
+<td>170 / 39</td>
 <td>2119 / 2120</td>
-<td>7kt@131 / 10kt@129</td>
-<td>76 / 74</td>
-<td>42 / -5</td>
+<td>7kt@136 / 9kt@112</td>
+<td>73 / 71</td>
+<td>70 / 2</td>
 </tr>
 <tr>
 <td>10:00</td>
-<td>557 / 1198</td>
-<td>161 / 138</td>
+<td>1271 / 1157</td>
+<td>151 / 140</td>
 <td>2119 / 2120</td>
-<td>2kt@148 / 10kt@143</td>
-<td>73 / 76</td>
-<td>117 / 33</td>
+<td>7kt@134 / 10kt@127</td>
+<td>73 / 73</td>
+<td>42 / 36</td>
 </tr>
 <tr>
 <td>11:00</td>
-<td>2886 / 1936</td>
-<td>299 / 199</td>
-<td>3592 / 2120</td>
-<td>8kt@148 / 10kt@153</td>
-<td>78 / 77</td>
-<td>145 / 62</td>
+<td>1844 / 1813</td>
+<td>203 / 197</td>
+<td>2119 / 2120</td>
+<td>8kt@142 / 9kt@126</td>
+<td>75 / 74</td>
+<td>70 / 65</td>
 </tr>
 <tr>
 <td>12:00</td>
-<td>4173 / 2538</td>
-<td>367 / 235</td>
-<td>4660 / 2833</td>
-<td>11kt@153 / 8kt@157</td>
-<td>79 / 78</td>
-<td>185 / 79</td>
+<td>2545 / 2479</td>
+<td>237 / 271</td>
+<td>2870 / 3221</td>
+<td>8kt@138 / 11kt@152</td>
+<td>76 / 76</td>
+<td>81 / 125</td>
 </tr>
 <tr>
 <td>13:00</td>
-<td>4629 / 3188</td>
-<td>383 / 254</td>
-<td>5011 / 3351</td>
-<td>13kt@158 / 7kt@183</td>
-<td>80 / 79</td>
-<td>190 / 80</td>
+<td>3598 / 1819</td>
+<td>302 / 102</td>
+<td>3976 / 2120</td>
+<td>14kt@175 / 11kt@141</td>
+<td>77 / 76</td>
+<td>119 / 8</td>
 </tr>
 <tr>
 <td>14:00</td>
-<td>5060 / 3528</td>
-<td>375 / 255</td>
-<td>5241 / 3490</td>
-<td>11kt@152 / 8kt@203</td>
-<td>81 / 80</td>
-<td>163 / 72</td>
+<td>3425 / 1325</td>
+<td>251 / 102</td>
+<td>3392 / 2120</td>
+<td>12kt@174 / 13kt@150</td>
+<td>77 / 76</td>
+<td>72 / 12</td>
 </tr>
 <tr>
 <td>15:00</td>
-<td>4480 / 3298</td>
-<td>276 / 209</td>
-<td>4161 / 2120</td>
-<td>8kt@149 / 6kt@214</td>
-<td>81 / 80</td>
-<td>73 / 42</td>
+<td>2917 / 376</td>
+<td>188 / 95</td>
+<td>2119 / 2120</td>
+<td>12kt@172 / 18kt@304</td>
+<td>77 / 65</td>
+<td>35 / 34</td>
 </tr>
 <tr>
 <td>16:00</td>
-<td>1902 / 2277</td>
-<td>110 / 133</td>
+<td>1115 / 135</td>
+<td>0 / 86</td>
 <td>2119 / 2120</td>
-<td>3kt@174 / 6kt@220</td>
-<td>80 / 79</td>
-<td>11 / 16</td>
+<td>5kt@120 / 18kt@016</td>
+<td>75 / 68</td>
+<td>-1 / 69</td>
 </tr>
 <tr>
 <td>17:00</td>
-<td>384 / 346</td>
-<td>0 / 0</td>
+<td>486 / 2163</td>
+<td>98 / 0</td>
 <td>2119 / 2120</td>
-<td>3kt@357 / 3kt@042</td>
-<td>76 / 76</td>
-<td>-1 / -2</td>
+<td>17kt@310 / 25kt@242</td>
+<td>65 / 71</td>
+<td>29 / -8</td>
 </tr>
 <tr>
 <td>18:00</td>
-<td>517 / 295</td>
-<td>0 / 0</td>
+<td>287 / 502</td>
+<td>57 / 0</td>
 <td>2119 / 2120</td>
-<td>3kt@107 / 4kt@074</td>
-<td>76 / 74</td>
-<td>-2 / -4</td>
+<td>3kt@314 / 10kt@296</td>
+<td>66 / 68</td>
+<td>10 / -22</td>
 </tr>
 <tr>
 <td>19:00</td>
-<td>631 / 85</td>
-<td>0 / 0</td>
+<td>547 / 217</td>
+<td>71 / 0</td>
 <td>2119 / 2120</td>
-<td>6kt@125 / 5kt@066</td>
-<td>75 / 73</td>
-<td>-5 / -3</td>
+<td>4kt@165 / 5kt@318</td>
+<td>67 / 69</td>
+<td>10 / -7</td>
 </tr>
 <tr>
 <td>20:00</td>
-<td>409 / 85</td>
+<td>524 / 84</td>
 <td>0 / 0</td>
 <td>2119 / 2120</td>
-<td>6kt@141 / 3kt@037</td>
-<td>73 / 72</td>
-<td>-5 / -1</td>
+<td>1kt@136 / 4kt@007</td>
+<td>67 / 69</td>
+<td>-0 / -2</td>
 </tr>
 </tbody>
 </table>
@@ -627,118 +627,118 @@ code { font-size:.9em; }
 <td>08:00</td>
 <td>0 / 0</td>
 <td>0 / 0</td>
-<td>1636 / 1635</td>
-<td>7kt@132 / 4kt@139</td>
-<td>61 / 67</td>
+<td>1636 / 1637</td>
+<td>5kt@114 / 6kt@139</td>
+<td>66 / 70</td>
 <td>0 / 0</td>
 </tr>
 <tr>
 <td>09:00</td>
-<td>396 / 262</td>
-<td>96 / 80</td>
-<td>1636 / 1635</td>
-<td>3kt@161 / 2kt@187</td>
-<td>69 / 69</td>
-<td>34 / 30</td>
+<td>123 / 1467</td>
+<td>22 / 190</td>
+<td>1636 / 1637</td>
+<td>3kt@186 / 10kt@164</td>
+<td>71 / 73</td>
+<td>1 / 72</td>
 </tr>
 <tr>
 <td>10:00</td>
-<td>853 / 407</td>
-<td>171 / 112</td>
-<td>1636 / 1635</td>
-<td>6kt@139 / 3kt@145</td>
-<td>72 / 70</td>
-<td>89 / 53</td>
+<td>790 / 1704</td>
+<td>124 / 208</td>
+<td>1636 / 1637</td>
+<td>5kt@140 / 11kt@163</td>
+<td>71 / 73</td>
+<td>37 / 82</td>
 </tr>
 <tr>
 <td>11:00</td>
-<td>1412 / 683</td>
-<td>225 / 161</td>
-<td>1636 / 1635</td>
-<td>7kt@136 / 3kt@129</td>
-<td>75 / 73</td>
-<td>125 / 94</td>
+<td>1120 / 2035</td>
+<td>160 / 266</td>
+<td>1636 / 2504</td>
+<td>7kt@137 / 16kt@173</td>
+<td>73 / 75</td>
+<td>56 / 143</td>
 </tr>
 <tr>
 <td>12:00</td>
-<td>2255 / 1577</td>
-<td>279 / 229</td>
-<td>2681 / 1987</td>
-<td>8kt@166 / 7kt@161</td>
-<td>78 / 77</td>
-<td>149 / 118</td>
+<td>1567 / 91</td>
+<td>187 / 35</td>
+<td>1636 / 1637</td>
+<td>12kt@146 / 3kt@190</td>
+<td>75 / 66</td>
+<td>65 / 7</td>
 </tr>
 <tr>
 <td>13:00</td>
-<td>3463 / 2567</td>
-<td>328 / 226</td>
-<td>3577 / 2119</td>
-<td>8kt@174 / 8kt@166</td>
-<td>80 / 78</td>
-<td>159 / 70</td>
+<td>2144 / 922</td>
+<td>135 / 103</td>
+<td>1636 / 1637</td>
+<td>15kt@166 / 4kt@184</td>
+<td>76 / 67</td>
+<td>17 / 17</td>
 </tr>
 <tr>
 <td>14:00</td>
-<td>4397 / 2257</td>
-<td>345 / 225</td>
-<td>4203 / 1635</td>
-<td>11kt@184 / 7kt@159</td>
-<td>80 / 79</td>
-<td>146 / 79</td>
+<td>482 / 117</td>
+<td>74 / 46</td>
+<td>1636 / 1637</td>
+<td>13kt@167 / 6kt@150</td>
+<td>74 / 68</td>
+<td>12 / 11</td>
 </tr>
 <tr>
 <td>15:00</td>
-<td>5149 / 2359</td>
-<td>326 / 187</td>
-<td>4509 / 1635</td>
-<td>11kt@184 / 3kt@139</td>
-<td>81 / 79</td>
-<td>105 / 43</td>
+<td>310 / 104</td>
+<td>68 / 44</td>
+<td>1636 / 1637</td>
+<td>5kt@317 / 7kt@190</td>
+<td>67 / 70</td>
+<td>15 / 11</td>
 </tr>
 <tr>
 <td>16:00</td>
-<td>4437 / 114</td>
-<td>252 / 31</td>
-<td>3310 / 1635</td>
-<td>8kt@196 / 8kt@070</td>
-<td>81 / 78</td>
-<td>56 / 4</td>
+<td>91 / 1304</td>
+<td>30 / 139</td>
+<td>1636 / 1637</td>
+<td>2kt@077 / 10kt@241</td>
+<td>69 / 72</td>
+<td>4 / 30</td>
 </tr>
 <tr>
 <td>17:00</td>
-<td>94 / 363</td>
-<td>18 / 0</td>
-<td>1636 / 1635</td>
-<td>5kt@106 / 5kt@027</td>
-<td>79 / 76</td>
-<td>0 / -5</td>
+<td>216 / 118</td>
+<td>0 / 0</td>
+<td>1636 / 1637</td>
+<td>3kt@163 / 2kt@028</td>
+<td>69 / 71</td>
+<td>-1 / -1</td>
 </tr>
 <tr>
 <td>18:00</td>
-<td>266 / 292</td>
+<td>84 / 84</td>
 <td>0 / 0</td>
-<td>1636 / 1635</td>
-<td>3kt@142 / 4kt@005</td>
-<td>76 / 74</td>
-<td>-3 / -3</td>
+<td>1636 / 1637</td>
+<td>1kt@234 / 4kt@066</td>
+<td>67 / 69</td>
+<td>-0 / -1</td>
 </tr>
 <tr>
 <td>19:00</td>
-<td>306 / 358</td>
+<td>2186 / 84</td>
 <td>0 / 0</td>
-<td>1636 / 1635</td>
-<td>3kt@129 / 6kt@343</td>
-<td>75 / 73</td>
-<td>-2 / -3</td>
+<td>1636 / 1637</td>
+<td>18kt@236 / 4kt@106</td>
+<td>66 / 68</td>
+<td>-2 / -1</td>
 </tr>
 <tr>
 <td>20:00</td>
-<td>514 / 307</td>
+<td>1675 / 84</td>
 <td>0 / 0</td>
-<td>1636 / 1635</td>
-<td>6kt@162 / 4kt@347</td>
-<td>74 / 73</td>
-<td>-3 / -2</td>
+<td>1636 / 1637</td>
+<td>16kt@229 / 3kt@145</td>
+<td>64 / 69</td>
+<td>-2 / -1</td>
 </tr>
 </tbody>
 </table>
@@ -760,384 +760,384 @@ code { font-size:.9em; }
 <td>08:00</td>
 <td>0 / 0</td>
 <td>0 / 0</td>
-<td>2237 / 2235</td>
-<td>7kt@063 / 2kt@297</td>
-<td>61 / 57</td>
+<td>2237 / 2237</td>
+<td>5kt@087 / 2kt@160</td>
+<td>64 / 64</td>
 <td>0 / 0</td>
 </tr>
 <tr>
 <td>09:00</td>
-<td>527 / 220</td>
-<td>99 / 82</td>
-<td>2237 / 2235</td>
-<td>7kt@113 / 2kt@172</td>
-<td>67 / 65</td>
-<td>27 / 38</td>
+<td>89 / 1566</td>
+<td>31 / 196</td>
+<td>2237 / 2237</td>
+<td>1kt@176 / 14kt@155</td>
+<td>66 / 69</td>
+<td>4 / 74</td>
 </tr>
 <tr>
 <td>10:00</td>
-<td>891 / 496</td>
-<td>170 / 117</td>
-<td>2237 / 2235</td>
-<td>11kt@125 / 11kt@136</td>
-<td>71 / 70</td>
-<td>82 / 49</td>
-</tr>
-<tr>
-<td>11:00</td>
-<td>2036 / 2291</td>
-<td>260 / 261</td>
-<td>3063 / 3178</td>
-<td>13kt@144 / 14kt@147</td>
-<td>74 / 75</td>
-<td>129 / 120</td>
-</tr>
-<tr>
-<td>12:00</td>
-<td>2869 / 2489</td>
-<td>311 / 275</td>
-<td>3764 / 3366</td>
-<td>12kt@153 / 12kt@148</td>
-<td>76 / 76</td>
-<td>157 / 129</td>
-</tr>
-<tr>
-<td>13:00</td>
-<td>4516 / 4419</td>
-<td>364 / 296</td>
-<td>4972 / 4467</td>
-<td>13kt@161 / 17kt@169</td>
-<td>77 / 76</td>
-<td>161 / 91</td>
-</tr>
-<tr>
-<td>14:00</td>
-<td>4706 / 4448</td>
-<td>352 / 229</td>
-<td>5025 / 3211</td>
-<td>15kt@172 / 16kt@179</td>
-<td>77 / 76</td>
-<td>140 / 41</td>
-</tr>
-<tr>
-<td>15:00</td>
-<td>5122 / 4004</td>
-<td>321 / 124</td>
-<td>5053 / 2235</td>
-<td>12kt@179 / 19kt@185</td>
-<td>78 / 75</td>
-<td>96 / 7</td>
-</tr>
-<tr>
-<td>16:00</td>
-<td>4722 / 1369</td>
-<td>236 / 0</td>
-<td>3594 / 2235</td>
-<td>16kt@185 / 7kt@124</td>
-<td>77 / 74</td>
-<td>40 / -2</td>
-</tr>
-<tr>
-<td>17:00</td>
-<td>3512 / 397</td>
-<td>0 / 0</td>
-<td>2237 / 2235</td>
-<td>9kt@159 / 5kt@145</td>
-<td>75 / 71</td>
-<td>-5 / -2</td>
-</tr>
-<tr>
-<td>18:00</td>
-<td>1047 / 84</td>
-<td>0 / 0</td>
-<td>2237 / 2235</td>
-<td>10kt@122 / 2kt@175</td>
-<td>71 / 70</td>
-<td>-5 / -0</td>
-</tr>
-<tr>
-<td>19:00</td>
-<td>600 / 84</td>
-<td>0 / 0</td>
-<td>2237 / 2235</td>
-<td>11kt@121 / 3kt@337</td>
-<td>70 / 68</td>
-<td>-12 / -1</td>
-</tr>
-<tr>
-<td>20:00</td>
-<td>1131 / 84</td>
-<td>0 / 0</td>
-<td>2237 / 2235</td>
-<td>15kt@139 / 1kt@003</td>
-<td>70 / 69</td>
-<td>-26 / -0</td>
-</tr>
-</tbody>
-</table>
-<h3>CasaGrande (32.880, -111.760; grid point 32.882, -111.764; terrain 1462 ft)</h3>
-<table>
-<thead>
-<tr>
-<th>local</th>
-<th>BL top NAM/HRRR ft</th>
-<th>w* NAM/HRRR fpm</th>
-<th>ceiling NAM/HRRR ft</th>
-<th>BL wind NAM/HRRR</th>
-<th>T2 NAM/HRRR F</th>
-<th>HFX NAM/HRRR</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>08:00</td>
-<td>0 / 0</td>
-<td>0 / 0</td>
-<td>1462 / 1462</td>
-<td>4kt@120 / 4kt@130</td>
-<td>58 / 59</td>
-<td>0 / 0</td>
-</tr>
-<tr>
-<td>09:00</td>
-<td>520 / 483</td>
-<td>136 / 135</td>
-<td>1462 / 1462</td>
-<td>8kt@136 / 8kt@157</td>
-<td>65 / 69</td>
-<td>73 / 78</td>
-</tr>
-<tr>
-<td>10:00</td>
-<td>814 / 791</td>
-<td>192 / 185</td>
-<td>1462 / 1462</td>
-<td>7kt@127 / 6kt@158</td>
-<td>70 / 73</td>
-<td>135 / 125</td>
-</tr>
-<tr>
-<td>11:00</td>
-<td>1135 / 1190</td>
-<td>230 / 240</td>
-<td>1736 / 1836</td>
-<td>5kt@164 / 4kt@161</td>
-<td>75 / 77</td>
-<td>168 / 181</td>
-</tr>
-<tr>
-<td>12:00</td>
-<td>2134 / 2376</td>
-<td>291 / 320</td>
-<td>2517 / 2766</td>
-<td>6kt@188 / 8kt@184</td>
-<td>80 / 80</td>
-<td>182 / 218</td>
-</tr>
-<tr>
-<td>13:00</td>
-<td>4446 / 4144</td>
-<td>380 / 384</td>
-<td>4228 / 4057</td>
-<td>10kt@181 / 14kt@200</td>
-<td>82 / 82</td>
-<td>194 / 217</td>
-</tr>
-<tr>
-<td>14:00</td>
-<td>5198 / 5039</td>
-<td>385 / 387</td>
-<td>4721 / 4630</td>
-<td>12kt@189 / 13kt@212</td>
-<td>83 / 84</td>
-<td>173 / 182</td>
-</tr>
-<tr>
-<td>15:00</td>
-<td>5952 / 5577</td>
-<td>349 / 351</td>
-<td>4967 / 4760</td>
-<td>18kt@200 / 16kt@223</td>
-<td>84 / 85</td>
-<td>113 / 124</td>
-</tr>
-<tr>
-<td>16:00</td>
-<td>6219 / 4173</td>
-<td>279 / 227</td>
-<td>4357 / 2300</td>
-<td>14kt@200 / 12kt@236</td>
-<td>84 / 85</td>
-<td>55 / 45</td>
-</tr>
-<tr>
-<td>17:00</td>
-<td>2996 / 1251</td>
-<td>0 / 0</td>
-<td>1462 / 1462</td>
-<td>8kt@208 / 5kt@108</td>
-<td>82 / 80</td>
-<td>-8 / -3</td>
-</tr>
-<tr>
-<td>18:00</td>
-<td>948 / 568</td>
-<td>0 / 0</td>
-<td>1462 / 1462</td>
-<td>10kt@224 / 9kt@028</td>
-<td>77 / 77</td>
-<td>-9 / -1</td>
-</tr>
-<tr>
-<td>19:00</td>
-<td>474 / 493</td>
-<td>0 / 0</td>
-<td>1462 / 1462</td>
-<td>8kt@238 / 6kt@328</td>
-<td>76 / 76</td>
-<td>-4 / -9</td>
-</tr>
-<tr>
-<td>20:00</td>
-<td>282 / 389</td>
-<td>0 / 0</td>
-<td>1462 / 1462</td>
-<td>7kt@252 / 10kt@326</td>
-<td>74 / 74</td>
-<td>-3 / -6</td>
-</tr>
-</tbody>
-</table>
-<h3>McDowellMtn (33.650, -111.800; grid point 33.650, -111.806; terrain 3017 ft)</h3>
-<table>
-<thead>
-<tr>
-<th>local</th>
-<th>BL top NAM/HRRR ft</th>
-<th>w* NAM/HRRR fpm</th>
-<th>ceiling NAM/HRRR ft</th>
-<th>BL wind NAM/HRRR</th>
-<th>T2 NAM/HRRR F</th>
-<th>HFX NAM/HRRR</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>08:00</td>
-<td>0 / 0</td>
-<td>0 / 0</td>
-<td>3017 / 3017</td>
-<td>6kt@110 / 5kt@105</td>
-<td>62 / 62</td>
-<td>0 / 0</td>
-</tr>
-<tr>
-<td>09:00</td>
-<td>107 / 248</td>
-<td>56 / 70</td>
-<td>3017 / 3017</td>
-<td>5kt@071 / 7kt@099</td>
-<td>65 / 68</td>
-<td>22 / 20</td>
-</tr>
-<tr>
-<td>10:00</td>
-<td>407 / 280</td>
-<td>122 / 78</td>
-<td>3017 / 3017</td>
-<td>6kt@081 / 8kt@105</td>
-<td>67 / 67</td>
-<td>63 / 25</td>
-</tr>
-<tr>
-<td>11:00</td>
-<td>832 / 540</td>
-<td>170 / 127</td>
-<td>3017 / 3017</td>
-<td>7kt@143 / 10kt@124</td>
-<td>70 / 69</td>
-<td>86 / 56</td>
-</tr>
-<tr>
-<td>12:00</td>
-<td>1855 / 964</td>
-<td>231 / 174</td>
-<td>3484 / 3017</td>
-<td>9kt@159 / 10kt@143</td>
-<td>72 / 71</td>
-<td>97 / 82</td>
-</tr>
-<tr>
-<td>13:00</td>
-<td>3129 / 2381</td>
-<td>283 / 238</td>
-<td>4505 / 3732</td>
-<td>11kt@169 / 11kt@184</td>
-<td>74 / 73</td>
-<td>106 / 86</td>
-</tr>
-<tr>
-<td>14:00</td>
-<td>3022 / 3153</td>
-<td>272 / 264</td>
-<td>4368 / 4341</td>
-<td>11kt@173 / 13kt@197</td>
-<td>74 / 74</td>
-<td>97 / 89</td>
-</tr>
-<tr>
-<td>15:00</td>
-<td>2615 / 3318</td>
-<td>228 / 249</td>
-<td>3588 / 4219</td>
-<td>10kt@172 / 10kt@201</td>
-<td>74 / 74</td>
-<td>65 / 71</td>
-</tr>
-<tr>
-<td>16:00</td>
-<td>2233 / 2446</td>
-<td>162 / 155</td>
-<td>3017 / 3017</td>
-<td>10kt@165 / 5kt@202</td>
-<td>74 / 74</td>
-<td>25 / 23</td>
-</tr>
-<tr>
-<td>17:00</td>
-<td>574 / 1186</td>
-<td>0 / 0</td>
-<td>3017 / 3017</td>
-<td>6kt@156 / 6kt@058</td>
-<td>73 / 72</td>
-<td>-2 / -4</td>
-</tr>
-<tr>
-<td>18:00</td>
-<td>831 / 629</td>
-<td>0 / 0</td>
-<td>3017 / 3017</td>
-<td>8kt@154 / 6kt@053</td>
-<td>70 / 69</td>
-<td>-1 / -3</td>
-</tr>
-<tr>
-<td>19:00</td>
-<td>660 / 389</td>
-<td>0 / 0</td>
-<td>3017 / 3017</td>
-<td>8kt@133 / 5kt@061</td>
+<td>1091 / 2236</td>
+<td>192 / 150</td>
+<td>2237 / 2237</td>
+<td>11kt@122 / 19kt@171</td>
 <td>70 / 70</td>
-<td>-1 / -2</td>
+<td>96 / 23</td>
+</tr>
+<tr>
+<td>11:00</td>
+<td>1485 / 99</td>
+<td>182 / 39</td>
+<td>2237 / 2237</td>
+<td>14kt@127 / 11kt@189</td>
+<td>72 / 65</td>
+<td>60 / 9</td>
+</tr>
+<tr>
+<td>12:00</td>
+<td>1845 / 2469</td>
+<td>131 / 74</td>
+<td>2237 / 2237</td>
+<td>15kt@138 / 18kt@174</td>
+<td>71 / 69</td>
+<td>17 / 1</td>
+</tr>
+<tr>
+<td>13:00</td>
+<td>2830 / 2713</td>
+<td>258 / 308</td>
+<td>3373 / 3667</td>
+<td>18kt@166 / 25kt@198</td>
+<td>73 / 72</td>
+<td>91 / 162</td>
+</tr>
+<tr>
+<td>14:00</td>
+<td>492 / 241</td>
+<td>74 / 72</td>
+<td>2237 / 2237</td>
+<td>15kt@131 / 4kt@148</td>
+<td>69 / 61</td>
+<td>10 / 22</td>
+</tr>
+<tr>
+<td>15:00</td>
+<td>402 / 974</td>
+<td>96 / 102</td>
+<td>2237 / 2237</td>
+<td>6kt@117 / 17kt@113</td>
+<td>63 / 65</td>
+<td>32 / 14</td>
+</tr>
+<tr>
+<td>16:00</td>
+<td>960 / 205</td>
+<td>132 / 43</td>
+<td>2237 / 2237</td>
+<td>4kt@152 / 5kt@095</td>
+<td>65 / 65</td>
+<td>34 / 5</td>
+</tr>
+<tr>
+<td>17:00</td>
+<td>887 / 258</td>
+<td>0 / 41</td>
+<td>2237 / 2237</td>
+<td>11kt@137 / 3kt@067</td>
+<td>65 / 64</td>
+<td>-3 / 3</td>
+</tr>
+<tr>
+<td>18:00</td>
+<td>874 / 336</td>
+<td>0 / 0</td>
+<td>2237 / 2237</td>
+<td>9kt@161 / 3kt@128</td>
+<td>66 / 65</td>
+<td>-10 / -1</td>
+</tr>
+<tr>
+<td>19:00</td>
+<td>749 / 262</td>
+<td>0 / 0</td>
+<td>2237 / 2237</td>
+<td>11kt@173 / 5kt@154</td>
+<td>63 / 65</td>
+<td>-6 / -2</td>
 </tr>
 <tr>
 <td>20:00</td>
-<td>378 / 331</td>
+<td>1061 / 873</td>
 <td>0 / 0</td>
-<td>3017 / 3017</td>
-<td>6kt@096 / 4kt@049</td>
-<td>68 / 70</td>
-<td>-2 / -3</td>
+<td>2237 / 2237</td>
+<td>14kt@173 / 7kt@135</td>
+<td>64 / 64</td>
+<td>-5 / -4</td>
+</tr>
+</tbody>
+</table>
+<h3>CasaGrande (32.880, -111.760; grid point 32.882, -111.764; terrain 1464 ft)</h3>
+<table>
+<thead>
+<tr>
+<th>local</th>
+<th>BL top NAM/HRRR ft</th>
+<th>w* NAM/HRRR fpm</th>
+<th>ceiling NAM/HRRR ft</th>
+<th>BL wind NAM/HRRR</th>
+<th>T2 NAM/HRRR F</th>
+<th>HFX NAM/HRRR</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>08:00</td>
+<td>0 / 0</td>
+<td>0 / 0</td>
+<td>1464 / 1464</td>
+<td>4kt@134 / 4kt@106</td>
+<td>64 / 63</td>
+<td>0 / 0</td>
+</tr>
+<tr>
+<td>09:00</td>
+<td>768 / 639</td>
+<td>161 / 152</td>
+<td>1464 / 1464</td>
+<td>6kt@156 / 7kt@129</td>
+<td>70 / 71</td>
+<td>84 / 85</td>
+</tr>
+<tr>
+<td>10:00</td>
+<td>979 / 1829</td>
+<td>152 / 234</td>
+<td>1464 / 1970</td>
+<td>6kt@156 / 6kt@143</td>
+<td>72 / 75</td>
+<td>55 / 110</td>
+</tr>
+<tr>
+<td>11:00</td>
+<td>1176 / 3136</td>
+<td>195 / 322</td>
+<td>1464 / 3193</td>
+<td>6kt@155 / 12kt@179</td>
+<td>75 / 78</td>
+<td>98 / 168</td>
+</tr>
+<tr>
+<td>12:00</td>
+<td>2155 / 5177</td>
+<td>255 / 433</td>
+<td>2302 / 4908</td>
+<td>9kt@175 / 21kt@170</td>
+<td>77 / 80</td>
+<td>120 / 247</td>
+</tr>
+<tr>
+<td>13:00</td>
+<td>3859 / 5831</td>
+<td>299 / 454</td>
+<td>3432 / 5425</td>
+<td>15kt@182 / 23kt@184</td>
+<td>79 / 82</td>
+<td>108 / 254</td>
+</tr>
+<tr>
+<td>14:00</td>
+<td>5693 / 5867</td>
+<td>278 / 441</td>
+<td>4090 / 5402</td>
+<td>16kt@189 / 21kt@192</td>
+<td>81 / 82</td>
+<td>59 / 232</td>
+</tr>
+<tr>
+<td>15:00</td>
+<td>5600 / 4724</td>
+<td>220 / 275</td>
+<td>1464 / 3616</td>
+<td>19kt@181 / 19kt@200</td>
+<td>82 / 80</td>
+<td>30 / 70</td>
+</tr>
+<tr>
+<td>16:00</td>
+<td>5357 / 3940</td>
+<td>273 / 265</td>
+<td>3865 / 3138</td>
+<td>22kt@198 / 18kt@217</td>
+<td>81 / 79</td>
+<td>60 / 74</td>
+</tr>
+<tr>
+<td>17:00</td>
+<td>3219 / 4037</td>
+<td>0 / 0</td>
+<td>1464 / 1464</td>
+<td>15kt@213 / 22kt@215</td>
+<td>78 / 76</td>
+<td>-2 / -5</td>
+</tr>
+<tr>
+<td>18:00</td>
+<td>278 / 87</td>
+<td>0 / 16</td>
+<td>1464 / 1464</td>
+<td>4kt@340 / 6kt@012</td>
+<td>70 / 73</td>
+<td>-2 / 1</td>
+</tr>
+<tr>
+<td>19:00</td>
+<td>84 / 469</td>
+<td>0 / 0</td>
+<td>1464 / 1464</td>
+<td>3kt@024 / 5kt@071</td>
+<td>68 / 71</td>
+<td>-0 / -1</td>
+</tr>
+<tr>
+<td>20:00</td>
+<td>271 / 127</td>
+<td>0 / 25</td>
+<td>1464 / 1464</td>
+<td>5kt@018 / 3kt@120</td>
+<td>68 / 71</td>
+<td>-1 / 2</td>
+</tr>
+</tbody>
+</table>
+<h3>McDowellMtn (33.650, -111.800; grid point 33.650, -111.806; terrain 3018 ft)</h3>
+<table>
+<thead>
+<tr>
+<th>local</th>
+<th>BL top NAM/HRRR ft</th>
+<th>w* NAM/HRRR fpm</th>
+<th>ceiling NAM/HRRR ft</th>
+<th>BL wind NAM/HRRR</th>
+<th>T2 NAM/HRRR F</th>
+<th>HFX NAM/HRRR</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>08:00</td>
+<td>0 / 0</td>
+<td>0 / 0</td>
+<td>3018 / 3017</td>
+<td>6kt@110 / 2kt@121</td>
+<td>64 / 62</td>
+<td>0 / 0</td>
+</tr>
+<tr>
+<td>09:00</td>
+<td>214 / 266</td>
+<td>80 / 45</td>
+<td>3018 / 3017</td>
+<td>5kt@081 / 5kt@117</td>
+<td>65 / 66</td>
+<td>33 / 5</td>
+</tr>
+<tr>
+<td>10:00</td>
+<td>270 / 494</td>
+<td>73 / 90</td>
+<td>3018 / 3017</td>
+<td>5kt@091 / 8kt@145</td>
+<td>65 / 66</td>
+<td>20 / 22</td>
+</tr>
+<tr>
+<td>11:00</td>
+<td>319 / 1403</td>
+<td>78 / 162</td>
+<td>3018 / 3017</td>
+<td>8kt@129 / 11kt@153</td>
+<td>66 / 67</td>
+<td>20 / 46</td>
+</tr>
+<tr>
+<td>12:00</td>
+<td>695 / 1224</td>
+<td>132 / 170</td>
+<td>3018 / 3017</td>
+<td>10kt@129 / 12kt@150</td>
+<td>68 / 68</td>
+<td>48 / 61</td>
+</tr>
+<tr>
+<td>13:00</td>
+<td>1274 / 234</td>
+<td>196 / 38</td>
+<td>3018 / 3017</td>
+<td>12kt@139 / 7kt@101</td>
+<td>70 / 67</td>
+<td>86 / 3</td>
+</tr>
+<tr>
+<td>14:00</td>
+<td>1057 / 268</td>
+<td>147 / 94</td>
+<td>3018 / 3017</td>
+<td>13kt@150 / 17kt@293</td>
+<td>70 / 60</td>
+<td>43 / 45</td>
+</tr>
+<tr>
+<td>15:00</td>
+<td>377 / 92</td>
+<td>50 / 43</td>
+<td>3018 / 3017</td>
+<td>8kt@135 / 6kt@296</td>
+<td>70 / 63</td>
+<td>3 / 12</td>
+</tr>
+<tr>
+<td>16:00</td>
+<td>422 / 742</td>
+<td>0 / 124</td>
+<td>3018 / 3017</td>
+<td>5kt@038 / 4kt@291</td>
+<td>69 / 64</td>
+<td>-3 / 38</td>
+</tr>
+<tr>
+<td>17:00</td>
+<td>103 / 96</td>
+<td>44 / 40</td>
+<td>3018 / 3017</td>
+<td>12kt@290 / 11kt@021</td>
+<td>63 / 60</td>
+<td>10 / 9</td>
+</tr>
+<tr>
+<td>18:00</td>
+<td>108 / 114</td>
+<td>37 / 0</td>
+<td>3018 / 3017</td>
+<td>5kt@131 / 4kt@014</td>
+<td>63 / 60</td>
+<td>5 / -4</td>
+</tr>
+<tr>
+<td>19:00</td>
+<td>235 / 447</td>
+<td>69 / 0</td>
+<td>3018 / 3017</td>
+<td>11kt@020 / 10kt@047</td>
+<td>59 / 60</td>
+<td>19 / -3</td>
+</tr>
+<tr>
+<td>20:00</td>
+<td>105 / 354</td>
+<td>0 / 0</td>
+<td>3018 / 3017</td>
+<td>2kt@264 / 6kt@077</td>
+<td>62 / 62</td>
+<td>-0 / -4</td>
 </tr>
 </tbody>
 </table>
