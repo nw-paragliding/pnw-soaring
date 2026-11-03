@@ -145,16 +145,25 @@ function renderSidebar() {
   for (const ar of (node.areas || [])) box.appendChild(item(`<span>${esc(ar.name)}</span><span class="chev">›</span>`, '', () => { node = ar; renderSidebar(); }));
 }
 
-// ---- windgrams: the latest published day for the model, and the day after it
-async function latestDate(m) {
+// ---- windgrams: every published day from today (Pacific) through the latest
+// run's second day. A run publishes two days; the evening run's first day is
+// tomorrow, so after it today's windgram is still in the bucket under its own
+// date and stays on the page until the day ends. Days the bucket lacks drop out.
+const todayPacific = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
+async function latestRun(m) {
   try {
     const r = await fetch(`${DATA_BASE}/forecasts/latest/${m}/metadata.json`, { cache: 'no-cache' });
-    if (r.ok) { const j = await r.json(); if (j.date) return j.date; }
+    if (r.ok) { const j = await r.json(); if (j.date) return { date: j.date, generated: j.generated || null }; }
   } catch (e) {}
-  return new Date(Date.now() - 8 * 3600 * 1000).toISOString().slice(0, 10);   // Pacific today, roughly
+  return { date: todayPacific(), generated: null };   // offline or blocked: assume today
 }
 const addDays = (ds, n) => { const d = new Date(ds + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 const dayLabel = ds => new Date(ds + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', timeZone: 'UTC' });
+function dayList(latest) {
+  const today = todayPacific(), first = today < latest ? today : latest, last = addDays(latest, 1);
+  const out = []; for (let d = first; d <= last && out.length < 4; d = addDays(d, 1)) out.push(d);
+  return out;
+}
 
 let seq = 0;
 async function loadSite(s) {
@@ -163,16 +172,20 @@ async function loadSite(s) {
   $('#welcome').hidden = true; $('#windgrams').hidden = false;
   $('#title').textContent = nice(s.name);
   $('#coords').textContent = `${s.lat.toFixed(4)}, ${s.lon.toFixed(4)} · ${s.region} tile`;
-  const link = $('#link-site'); link.href = '/' + encodeURIComponent(s.name); link.hidden = false;
+  // The map page serves /<Site> through its 404 twin, which only the live host has.
+  const link = $('#link-site'); link.href = 'https://forecast.nwparagliding.com/' + encodeURIComponent(s.name); link.hidden = false;
   renderModels();
   document.querySelectorAll('.item.site').forEach(el => el.classList.toggle('current', el.textContent.trim().startsWith(nice(s.name))));
   const days = $('#days'); days.innerHTML = '<p class="meta">Loading…</p>';
-  const d0 = await latestDate(model);
+  const run = await latestRun(model);
   if (my !== seq) return;
   days.innerHTML = '';
-  [d0, addDays(d0, 1)].forEach((ds, i) => days.appendChild(dayBlock(s, ds, i)));
+  const when = run.generated ? ` · latest ${model.toUpperCase()} run ${run.generated.slice(11, 16)} UTC` : '';
+  $('#coords').textContent = `${s.lat.toFixed(4)}, ${s.lon.toFixed(4)} · ${s.region} tile${when}`;
+  const list = dayList(run.date);
+  list.forEach(ds => days.appendChild(dayBlock(s, ds, ds === list[list.length - 1])));
 }
-function dayBlock(s, ds, i) {
+function dayBlock(s, ds, isLast) {
   const base = `${DATA_BASE}/forecasts/${ds}/${model}/${encodeURIComponent(s.region)}/${encodeURIComponent(s.name)}`;
   const box = document.createElement('div'); box.className = 'day';
   box.innerHTML = `<h3>${dayLabel(ds)} <small>${ds} · ${model.toUpperCase()}</small></h3>`;
@@ -180,7 +193,13 @@ function dayBlock(s, ds, i) {
   const nodata = document.createElement('div'); nodata.className = 'nodata'; nodata.textContent = `No ${model.toUpperCase()} forecast for ${ds} yet.`; nodata.hidden = true;
   const wrap = document.createElement('div'); wrap.className = 'tablewrap'; wrap.hidden = true;
   const hint = document.createElement('p'); hint.className = 'hint'; hint.textContent = 'Click the windgram for its table.';
-  img.onerror = () => { img.hidden = true; nodata.hidden = false; hint.hidden = true; };
+  // A missing day drops off the page, except the last one, which says so (the
+  // next run will fill it); if every day is missing the first one says so too.
+  img.onerror = () => {
+    img.hidden = true; hint.hidden = true;
+    const others = [...document.querySelectorAll('#days .day')].filter(b => b !== box && !b.hidden);
+    if (isLast || !others.length) nodata.hidden = false; else box.hidden = true;
+  };
   img.onclick = async () => {
     img.hidden = true; wrap.hidden = false; hint.textContent = 'Click the table for the windgram.';
     if (!wrap.dataset.loaded) {
