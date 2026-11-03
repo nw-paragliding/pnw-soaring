@@ -1,0 +1,4074 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>cascades — NAM vs HRRR, soaring day 2026-11-02</title>
+<style>
+:root { color-scheme: light dark; --fg:#1b1b1f; --bg:#fafaf7; --mute:#6b6b70; --line:#dedcd6; --acc:#b4530a; }
+@media (prefers-color-scheme: dark) { :root { --fg:#ecebe6; --bg:#15161a; --mute:#9a9aa2; --line:#2e2f36; --acc:#f0a35a; } }
+body { margin:0; padding:24px 16px 64px; font:15px/1.5 -apple-system,Segoe UI,Helvetica,Arial,sans-serif; color:var(--fg); background:var(--bg); max-width:1400px; margin:0 auto; }
+h1 { font-size:1.5rem; margin:0 0 4px; } h2 { font-size:1.15rem; margin-top:2em; border-bottom:1px solid var(--line); padding-bottom:4px; }
+h3 { font-size:1rem; margin-top:1.5em; }
+.meta { color:var(--mute); font-size:.9rem; margin-bottom:1.5em; } .meta a { color:var(--acc); }
+.note { border-left:3px solid var(--acc); padding:6px 12px; color:var(--mute); margin:12px 0 24px; }
+table { border-collapse:collapse; font-size:.85rem; margin:8px 0 16px; display:block; overflow-x:auto; max-width:100%; }
+th, td { border:1px solid var(--line); padding:3px 8px; white-space:nowrap; text-align:right; } th:first-child, td:first-child { text-align:left; }
+figure { margin:16px 0; } figure img { width:100%; height:auto; border:1px solid var(--line); border-radius:4px; }
+figcaption { color:var(--mute); font-size:.85rem; margin-top:4px; }
+code { font-size:.9em; }
+</style></head>
+<body>
+<h1>cascades — NAM vs HRRR, soaring day 2026-11-02</h1>
+<div class="meta">cycle 2026-11-01 18z · generated 2026-11-02T02:12Z · <a href="https://github.com/nw-paragliding/pnw-soaring/actions/runs/41373816978">run</a></div>
+<div class="note">Unlisted test page for the RRFS migration: the same WRF chain (4 km → 1.33 km, DrJack physics) run from NAM, RRFS and HRRR as parent models; this page compares two of those arms. <a href="../">Back to the day</a>. The numbers are an aid to a human review, not a verdict. Raw: <a href="compare.md">compare.md</a> · <a href="summary.json">summary.json</a></div>
+<h2>Windgrams</h2>
+<figure><img src="diffmap_tol.png" alt="soaring ceiling A, B and difference"><figcaption>Soaring ceiling at the afternoon peak: A, B, and B − A over the inner grid.</figcaption></figure><figure><img src="montage_5_Mile.png" alt="5_Mile windgrams"><figcaption>5_Mile — A (left) vs B (right)</figcaption></figure><figure><img src="montage_Bandera_Mountain.png" alt="Bandera_Mountain windgrams"><figcaption>Bandera_Mountain — A (left) vs B (right)</figcaption></figure><figure><img src="montage_Bergseth.png" alt="Bergseth windgrams"><figcaption>Bergseth — A (left) vs B (right)</figcaption></figure><figure><img src="montage_Carnation.png" alt="Carnation windgrams"><figcaption>Carnation — A (left) vs B (right)</figcaption></figure><figure><img src="montage_East_Tiger.png" alt="East_Tiger windgrams"><figcaption>East_Tiger — A (left) vs B (right)</figcaption></figure><figure><img src="montage_Grand_Prospect.png" alt="Grand_Prospect windgrams"><figcaption>Grand_Prospect — A (left) vs B (right)</figcaption></figure><figure><img src="montage_Grand_Ridge_Park.png" alt="Grand_Ridge_Park windgrams"><figcaption>Grand_Ridge_Park — A (left) vs B (right)</figcaption></figure><figure><img src="montage_Green_Mtn_LZ.png" alt="Green_Mtn_LZ windgrams"><figcaption>Green_Mtn_LZ — A (left) vs B (right)</figcaption></figure><figure><img src="montage_Green_Mtn_Launch.png" alt="Green_Mtn_Launch windgrams"><figcaption>Green_Mtn_Launch — A (left) vs B (right)</figcaption></figure><figure><img src="montage_Index_LZ.png" alt="Index_LZ windgrams"><figcaption>Index_LZ — A (left) vs B (right)</figcaption></figure><figure><img src="montage_Index_Launch.png" alt="Index_Launch windgrams"><figcaption>Index_Launch — A (left) vs B (right)</figcaption></figure><figure><img src="montage_Issaquah_Highlands.png" alt="Issaquah_Highlands windgrams"><figcaption>Issaquah_Highlands — A (left) vs B (right)</figcaption></figure><figure><img src="montage_Mailbox_Peak.png" alt="Mailbox_Peak windgrams"><figcaption>Mailbox_Peak — A (left) vs B (right)</figcaption></figure><figure><img src="montage_McDonald.png" alt="McDonald windgrams"><figcaption>McDonald — A (left) vs B (right)</figcaption></figure><figure><img src="montage_Mitchell_Hill.png" alt="Mitchell_Hill windgrams"><figcaption>Mitchell_Hill — A (left) vs B (right)</figcaption></figure><figure><img src="montage_MtSi.png" alt="MtSi windgrams"><figcaption>MtSi — A (left) vs B (right)</figcaption></figure><figure><img src="montage_Mt_Washington.png" alt="Mt_Washington windgrams"><figcaption>Mt_Washington — A (left) vs B (right)</figcaption></figure><figure><img src="montage_Poo_Poo_Point.png" alt="Poo_Poo_Point windgrams"><figcaption>Poo_Poo_Point — A (left) vs B (right)</figcaption></figure><figure><img src="montage_Rattlesnake.png" alt="Rattlesnake windgrams"><figcaption>Rattlesnake — A (left) vs B (right)</figcaption></figure><figure><img src="montage_SquakMountain.png" alt="SquakMountain windgrams"><figcaption>SquakMountain — A (left) vs B (right)</figcaption></figure><figure><img src="montage_Taylor_Mountain.png" alt="Taylor_Mountain windgrams"><figcaption>Taylor_Mountain — A (left) vs B (right)</figcaption></figure><figure><img src="montage_Tiger.png" alt="Tiger windgrams"><figcaption>Tiger — A (left) vs B (right)</figcaption></figure><figure><img src="montage_TigerHikeLookout.png" alt="TigerHikeLookout windgrams"><figcaption>TigerHikeLookout — A (left) vs B (right)</figcaption></figure><figure><img src="montage_TigerLZ.png" alt="TigerLZ windgrams"><figcaption>TigerLZ — A (left) vs B (right)</figcaption></figure><figure><img src="montage_West_Tiger_1.png" alt="West_Tiger_1 windgrams"><figcaption>West_Tiger_1 — A (left) vs B (right)</figcaption></figure><figure><img src="montage_West_Tiger_2.png" alt="West_Tiger_2 windgrams"><figcaption>West_Tiger_2 — A (left) vs B (right)</figcaption></figure><figure><img src="montage_West_Tiger_3.png" alt="West_Tiger_3 windgrams"><figcaption>West_Tiger_3 — A (left) vs B (right)</figcaption></figure>
+<h2>Numbers</h2>
+<h1>A/B comparison: NAM vs HRRR</h1>
+<ul>
+<li><strong>NAM</strong>: <code>../runs/ab-cascades-nam</code> — model <code>nam</code>, cycle <code>2026-11-01 18z</code>, dx 1.3333333740234374 km, 13 hours, grid 114×114</li>
+<li><strong>HRRR</strong>: <code>../runs/ab-cascades-hrrr</code> — model <code>hrrr</code>, cycle <code>2026-11-01 18z</code>, dx 1.3333333740234374 km, 13 hours, grid 114×114</li>
+</ul>
+<p>Grids identical; afternoon = 12:00–17:59 local (UTC-7). Δ = HRRR − NAM.</p>
+<h2>Afternoon summary per site</h2>
+<table>
+<thead>
+<tr>
+<th>Site</th>
+<th>terrain ft</th>
+<th>BL top (AGL) med|Δ| / bias (ft)</th>
+<th>w* med|Δ| / bias (fpm)</th>
+<th>Soaring ceiling med|Δ| / bias (ft)</th>
+<th>BL wind speed med|Δ| / bias (kt)</th>
+<th>BL wind dir med|Δ| / bias (deg)</th>
+<th>2 m temperature med|Δ| / bias (F)</th>
+<th>Sfc LCL (AGL) med|Δ| / bias (ft)</th>
+<th>Sensible heat flux med|Δ| / bias (W/m2)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Tiger</td>
+<td>2282</td>
+<td>464 / -372</td>
+<td>0 / -56</td>
+<td>0 / +0</td>
+<td>2 / +2</td>
+<td>24 / +6</td>
+<td>1 / +0</td>
+<td>2930 / +2819</td>
+<td>9 / -27</td>
+</tr>
+<tr>
+<td>TigerHikeLookout</td>
+<td>2282</td>
+<td>464 / -372</td>
+<td>0 / -56</td>
+<td>0 / +0</td>
+<td>2 / +2</td>
+<td>24 / +6</td>
+<td>1 / +0</td>
+<td>2930 / +2819</td>
+<td>9 / -27</td>
+</tr>
+<tr>
+<td>TigerLZ</td>
+<td>1138</td>
+<td>269 / +143</td>
+<td>9 / -41</td>
+<td>1 / -1</td>
+<td>3 / +4</td>
+<td>23 / +1</td>
+<td>1 / +1</td>
+<td>2462 / +2688</td>
+<td>16 / -29</td>
+</tr>
+<tr>
+<td>Poo_Poo_Point</td>
+<td>1138</td>
+<td>269 / +143</td>
+<td>9 / -41</td>
+<td>1 / -1</td>
+<td>3 / +4</td>
+<td>23 / +1</td>
+<td>1 / +1</td>
+<td>2462 / +2688</td>
+<td>16 / -29</td>
+</tr>
+<tr>
+<td>West_Tiger_3</td>
+<td>1869</td>
+<td>168 / +210</td>
+<td>15 / -52</td>
+<td>0 / +0</td>
+<td>2 / +2</td>
+<td>10 / +12</td>
+<td>1 / +0</td>
+<td>2757 / +2967</td>
+<td>20 / -41</td>
+</tr>
+<tr>
+<td>West_Tiger_2</td>
+<td>2282</td>
+<td>464 / -372</td>
+<td>0 / -56</td>
+<td>0 / +0</td>
+<td>2 / +2</td>
+<td>24 / +6</td>
+<td>1 / +0</td>
+<td>2930 / +2819</td>
+<td>9 / -27</td>
+</tr>
+<tr>
+<td>West_Tiger_1</td>
+<td>2282</td>
+<td>464 / -372</td>
+<td>0 / -56</td>
+<td>0 / +0</td>
+<td>2 / +2</td>
+<td>24 / +6</td>
+<td>1 / +0</td>
+<td>2930 / +2819</td>
+<td>9 / -27</td>
+</tr>
+<tr>
+<td>East_Tiger</td>
+<td>2494</td>
+<td>156 / -258</td>
+<td>38 / -22</td>
+<td>0 / +0</td>
+<td>5 / +4</td>
+<td>9 / -0</td>
+<td>1 / +1</td>
+<td>2401 / +2446</td>
+<td>8 / -16</td>
+</tr>
+<tr>
+<td>Taylor_Mountain</td>
+<td>2447</td>
+<td>357 / -89</td>
+<td>32 / -20</td>
+<td>0 / +0</td>
+<td>3 / +3</td>
+<td>7 / +0</td>
+<td>1 / +0</td>
+<td>2496 / +2492</td>
+<td>11 / -9</td>
+</tr>
+<tr>
+<td>Mitchell_Hill</td>
+<td>992</td>
+<td>170 / +47</td>
+<td>29 / -39</td>
+<td>1 / +1</td>
+<td>2 / +1</td>
+<td>6 / +4</td>
+<td>1 / -0</td>
+<td>2547 / +2525</td>
+<td>13 / -25</td>
+</tr>
+<tr>
+<td>Grand_Ridge_Park</td>
+<td>1032</td>
+<td>340 / +126</td>
+<td>41 / -50</td>
+<td>0 / +0</td>
+<td>3 / +3</td>
+<td>20 / -33</td>
+<td>1 / +1</td>
+<td>2914 / +2951</td>
+<td>19 / -33</td>
+</tr>
+<tr>
+<td>Issaquah_Highlands</td>
+<td>577</td>
+<td>104 / -124</td>
+<td>12 / -32</td>
+<td>0 / +0</td>
+<td>1 / -0</td>
+<td>64 / -14</td>
+<td>1 / -0</td>
+<td>1584 / +1537</td>
+<td>2 / -24</td>
+</tr>
+<tr>
+<td>Rattlesnake</td>
+<td>2877</td>
+<td>284 / +194</td>
+<td>27 / -9</td>
+<td>0 / +0</td>
+<td>7 / +3</td>
+<td>6 / -3</td>
+<td>0 / +0</td>
+<td>2399 / +2320</td>
+<td>31 / +4</td>
+</tr>
+<tr>
+<td>Green_Mtn_Launch</td>
+<td>3339</td>
+<td>289 / -454</td>
+<td>17 / -48</td>
+<td>0 / +0</td>
+<td>3 / -1</td>
+<td>30 / -26</td>
+<td>0 / +1</td>
+<td>2594 / +2630</td>
+<td>12 / -26</td>
+</tr>
+<tr>
+<td>Green_Mtn_LZ</td>
+<td>1392</td>
+<td>548 / -167</td>
+<td>0 / -54</td>
+<td>0 / +0</td>
+<td>3 / +1</td>
+<td>39 / -18</td>
+<td>1 / +1</td>
+<td>2829 / +2775</td>
+<td>20 / -23</td>
+</tr>
+<tr>
+<td>MtSi</td>
+<td>2508</td>
+<td>235 / +341</td>
+<td>0 / -41</td>
+<td>1 / +1</td>
+<td>3 / +3</td>
+<td>5 / +9</td>
+<td>1 / +1</td>
+<td>2802 / +2826</td>
+<td>7 / -18</td>
+</tr>
+<tr>
+<td>Mt_Washington</td>
+<td>3503</td>
+<td>432 / +131</td>
+<td>0 / -30</td>
+<td>0 / +0</td>
+<td>3 / +3</td>
+<td>14 / +8</td>
+<td>2 / +1</td>
+<td>2756 / +2714</td>
+<td>17 / -5</td>
+</tr>
+<tr>
+<td>SquakMountain</td>
+<td>1277</td>
+<td>79 / +143</td>
+<td>22 / -42</td>
+<td>0 / +0</td>
+<td>3 / +3</td>
+<td>6 / -5</td>
+<td>1 / +1</td>
+<td>3315 / +3264</td>
+<td>12 / -26</td>
+</tr>
+<tr>
+<td>McDonald</td>
+<td>1247</td>
+<td>126 / +69</td>
+<td>12 / -1</td>
+<td>1 / -1</td>
+<td>1 / +2</td>
+<td>6 / -0</td>
+<td>1 / +1</td>
+<td>2492 / +2534</td>
+<td>25 / +11</td>
+</tr>
+<tr>
+<td>Carnation</td>
+<td>465</td>
+<td>158 / -202</td>
+<td>24 / -29</td>
+<td>1 / -1</td>
+<td>3 / -2</td>
+<td>47 / +1</td>
+<td>1 / -1</td>
+<td>2520 / +2559</td>
+<td>3 / -18</td>
+</tr>
+<tr>
+<td>5_Mile</td>
+<td>2342</td>
+<td>288 / +363</td>
+<td>45 / -67</td>
+<td>1 / +1</td>
+<td>3 / +6</td>
+<td>18 / +12</td>
+<td>1 / +1</td>
+<td>2408 / +2587</td>
+<td>22 / -28</td>
+</tr>
+<tr>
+<td>Grand_Prospect</td>
+<td>2387</td>
+<td>216 / -13</td>
+<td>32 / -15</td>
+<td>1 / +1</td>
+<td>4 / +4</td>
+<td>4 / +2</td>
+<td>0 / +0</td>
+<td>2467 / +2471</td>
+<td>13 / -7</td>
+</tr>
+<tr>
+<td>Bandera_Mountain</td>
+<td>3651</td>
+<td>905 / +583</td>
+<td>63 / -64</td>
+<td>0 / -0</td>
+<td>3 / +1</td>
+<td>28 / +18</td>
+<td>0 / +0</td>
+<td>2565 / +2457</td>
+<td>29 / -47</td>
+</tr>
+<tr>
+<td>Mailbox_Peak</td>
+<td>3494</td>
+<td>328 / +348</td>
+<td>0 / -49</td>
+<td>0 / +0</td>
+<td>3 / +3</td>
+<td>11 / +11</td>
+<td>1 / +0</td>
+<td>2564 / +2610</td>
+<td>32 / -52</td>
+</tr>
+<tr>
+<td>Bergseth</td>
+<td>1250</td>
+<td>109 / -48</td>
+<td>3 / -18</td>
+<td>2 / -2</td>
+<td>5 / +2</td>
+<td>6 / +1</td>
+<td>2 / +1</td>
+<td>2762 / +2983</td>
+<td>6 / -15</td>
+</tr>
+<tr>
+<td>Index_Launch</td>
+<td>1965</td>
+<td>89 / -30</td>
+<td>25 / -49</td>
+<td>0 / -0</td>
+<td>1 / -0</td>
+<td>8 / +4</td>
+<td>1 / -0</td>
+<td>2340 / +2436</td>
+<td>24 / -25</td>
+</tr>
+<tr>
+<td>Index_LZ</td>
+<td>1135</td>
+<td>332 / +305</td>
+<td>0 / -39</td>
+<td>1 / +1</td>
+<td>2 / +1</td>
+<td>14 / +14</td>
+<td>1 / -0</td>
+<td>2963 / +2953</td>
+<td>9 / -16</td>
+</tr>
+</tbody>
+</table>
+<h2>Pooled over all sites (afternoon)</h2>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>n</th>
+<th>median |Δ|</th>
+<th>p90 |Δ|</th>
+<th>bias</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>BL top (AGL) (ft)</td>
+<td>162</td>
+<td>240</td>
+<td>808</td>
+<td>+10</td>
+</tr>
+<tr>
+<td>w* (fpm)</td>
+<td>162</td>
+<td>0</td>
+<td>135</td>
+<td>-40</td>
+</tr>
+<tr>
+<td>Soaring ceiling (ft)</td>
+<td>162</td>
+<td>0</td>
+<td>1</td>
+<td>+0</td>
+</tr>
+<tr>
+<td>BL wind speed (kt)</td>
+<td>162</td>
+<td>2</td>
+<td>7</td>
+<td>+2</td>
+</tr>
+<tr>
+<td>BL wind dir (deg)</td>
+<td>162</td>
+<td>12</td>
+<td>44</td>
+<td>+1</td>
+</tr>
+<tr>
+<td>2 m temperature (F)</td>
+<td>162</td>
+<td>1</td>
+<td>2</td>
+<td>+0</td>
+</tr>
+<tr>
+<td>Sfc LCL (AGL) (ft)</td>
+<td>162</td>
+<td>2555</td>
+<td>3545</td>
+<td>+2655</td>
+</tr>
+<tr>
+<td>Sensible heat flux (W/m2)</td>
+<td>162</td>
+<td>16</td>
+<td>70</td>
+<td>-22</td>
+</tr>
+</tbody>
+</table>
+<h2>Whole inner grid at 14:00 local</h2>
+<ul>
+<li>soaring ceiling: median |Δ| 0 ft, bias -27 ft</li>
+<li>w*: median |Δ| 62 fpm, bias -62 fpm</li>
+<li>map: <code>diffmap_tol.png</code></li>
+</ul>
+<h2>Hourly detail</h2>
+<h3>Tiger (47.503, -121.975; grid point 47.509, -121.977; terrain 2282 ft)</h3>
+<table>
+<thead>
+<tr>
+<th>local</th>
+<th>BL top NAM/HRRR ft</th>
+<th>w* NAM/HRRR fpm</th>
+<th>ceiling NAM/HRRR ft</th>
+<th>BL wind NAM/HRRR</th>
+<th>T2 NAM/HRRR F</th>
+<th>HFX NAM/HRRR</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>08:00</td>
+<td>0 / 0</td>
+<td>0 / 0</td>
+<td>2282 / 2283</td>
+<td>6kt@152 / 10kt@156</td>
+<td>38 / 46</td>
+<td>0 / 0</td>
+</tr>
+<tr>
+<td>09:00</td>
+<td>289 / 699</td>
+<td>0 / 0</td>
+<td>2282 / 2283</td>
+<td>7kt@173 / 12kt@141</td>
+<td>42 / 44</td>
+<td>-13 / -36</td>
+</tr>
+<tr>
+<td>10:00</td>
+<td>654 / 1134</td>
+<td>0 / 0</td>
+<td>2282 / 2283</td>
+<td>13kt@143 / 15kt@163</td>
+<td>50 / 49</td>
+<td>-24 / -53</td>
+</tr>
+<tr>
+<td>11:00</td>
+<td>432 / 923</td>
+<td>76 / 0</td>
+<td>2282 / 2283</td>
+<td>13kt@145 / 15kt@175</td>
+<td>53 / 51</td>
+<td>9 / -54</td>
+</tr>
+<tr>
+<td>12:00</td>
+<td>1121 / 696</td>
+<td>156 / 0</td>
+<td>2282 / 2283</td>
+<td>10kt@146 / 11kt@190</td>
+<td>55 / 53</td>
+<td>43 / -37</td>
+</tr>
+<tr>
+<td>13:00</td>
+<td>1417 / 758</td>
+<td>180 / 0</td>
+<td>2282 / 2283</td>
+<td>9kt@144 / 8kt@178</td>
+<td>55 / 55</td>
+<td>54 / -16</td>
+</tr>
+<tr>
+<td>14:00</td>
+<td>1090 / 281</td>
+<td>0 / 0</td>
+<td>2282 / 2283</td>
+<td>10kt@144 / 14kt@128</td>
+<td>54 / 55</td>
+<td>-8 / -19</td>
+</tr>
+<tr>
+<td>15:00</td>
+<td>758 / 255</td>
+<td>0 / 0</td>
+<td>2282 / 2283</td>
+<td>10kt@166 / 16kt@134</td>
+<td>53 / 54</td>
+<td>-26 / -28</td>
+</tr>
+<tr>
+<td>16:00</td>
+<td>502 / 625</td>
+<td>0 / 0</td>
+<td>2282 / 2283</td>
+<td>9kt@157 / 12kt@151</td>
+<td>52 / 53</td>
+<td>-68 / -72</td>
+</tr>
+<tr>
+<td>17:00</td>
+<td>584 / 626</td>
+<td>0 / 0</td>
+<td>2282 / 2283</td>
+<td>12kt@145 / 13kt@156</td>
+<td>51 / 53</td>
+<td>-81 / -75</td>
+</tr>
+<tr>
+<td>18:00</td>
+<td>535 / 685</td>
+<td>0 / 0</td>
+<td>2282 / 2283</td>
+<td>12kt@167 / 11kt@169</td>
+<td>52 / 53</td>
+<td>-75 / -64</td>
+</tr>
+<tr>
+<td>19:00</td>
+<td>517 / 476</td>
+<td>0 / 0</td>
+<td>2282 / 2283</td>
+<td>11kt@167 / 10kt@157</td>
+<td>52 / 53</td>
+<td>-72 / -62</td>
+</tr>
+<tr>
+<td>20:00</td>
+<td>593 / 448</td>
+<td>0 / 0</td>
+<td>2282 / 2283</td>
+<td>12kt@181 / 11kt@134</td>
+<td>51 / 53</td>
+<td>-62 / -62</td>
+</tr>
+</tbody>
+</table>
+<h3>TigerHikeLookout (47.508, -121.985; grid point 47.509, -121.977; terrain 2282 ft)</h3>
+<table>
+<thead>
+<tr>
+<th>local</th>
+<th>BL top NAM/HRRR ft</th>
+<th>w* NAM/HRRR fpm</th>
+<th>ceiling NAM/HRRR ft</th>
+<th>BL wind NAM/HRRR</th>
+<th>T2 NAM/HRRR F</th>
+<th>HFX NAM/HRRR</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>08:00</td>
+<td>0 / 0</td>
+<td>0 / 0</td>
+<td>2282 / 2283</td>
+<td>6kt@152 / 10kt@156</td>
+<td>38 / 46</td>
+<td>0 / 0</td>
+</tr>
+<tr>
+<td>09:00</td>
+<td>289 / 699</td>
+<td>0 / 0</td>
+<td>2282 / 2283</td>
+<td>7kt@173 / 12kt@141</td>
+<td>42 / 44</td>
+<td>-13 / -36</td>
+</tr>
+<tr>
+<td>10:00</td>
+<td>654 / 1134</td>
+<td>0 / 0</td>
+<td>2282 / 2283</td>
+<td>13kt@143 / 15kt@163</td>
+<td>50 / 49</td>
+<td>-24 / -53</td>
+</tr>
+<tr>
+<td>11:00</td>
+<td>432 / 923</td>
+<td>76 / 0</td>
+<td>2282 / 2283</td>
+<td>13kt@145 / 15kt@175</td>
+<td>53 / 51</td>
+<td>9 / -54</td>
+</tr>
+<tr>
+<td>12:00</td>
+<td>1121 / 696</td>
+<td>156 / 0</td>
+<td>2282 / 2283</td>
+<td>10kt@146 / 11kt@190</td>
+<td>55 / 53</td>
+<td>43 / -37</td>
+</tr>
+<tr>
+<td>13:00</td>
+<td>1417 / 758</td>
+<td>180 / 0</td>
+<td>2282 / 2283</td>
+<td>9kt@144 / 8kt@178</td>
+<td>55 / 55</td>
+<td>54 / -16</td>
+</tr>
+<tr>
+<td>14:00</td>
+<td>1090 / 281</td>
+<td>0 / 0</td>
+<td>2282 / 2283</td>
+<td>10kt@144 / 14kt@128</td>
+<td>54 / 55</td>
+<td>-8 / -19</td>
+</tr>
+<tr>
+<td>15:00</td>
+<td>758 / 255</td>
+<td>0 / 0</td>
+<td>2282 / 2283</td>
+<td>10kt@166 / 16kt@134</td>
+<td>53 / 54</td>
+<td>-26 / -28</td>
+</tr>
+<tr>
+<td>16:00</td>
+<td>502 / 625</td>
+<td>0 / 0</td>
+<td>2282 / 2283</td>
+<td>9kt@157 / 12kt@151</td>
+<td>52 / 53</td>
+<td>-68 / -72</td>
+</tr>
+<tr>
+<td>17:00</td>
+<td>584 / 626</td>
+<td>0 / 0</td>
+<td>2282 / 2283</td>
+<td>12kt@145 / 13kt@156</td>
+<td>51 / 53</td>
+<td>-81 / -75</td>
+</tr>
+<tr>
+<td>18:00</td>
+<td>535 / 685</td>
+<td>0 / 0</td>
+<td>2282 / 2283</td>
+<td>12kt@167 / 11kt@169</td>
+<td>52 / 53</td>
+<td>-75 / -64</td>
+</tr>
+<tr>
+<td>19:00</td>
+<td>517 / 476</td>
+<td>0 / 0</td>
+<td>2282 / 2283</td>
+<td>11kt@167 / 10kt@157</td>
+<td>52 / 53</td>
+<td>-72 / -62</td>
+</tr>
+<tr>
+<td>20:00</td>
+<td>593 / 448</td>
+<td>0 / 0</td>
+<td>2282 / 2283</td>
+<td>12kt@181 / 11kt@134</td>
+<td>51 / 53</td>
+<td>-62 / -62</td>
+</tr>
+</tbody>
+</table>
+<h3>TigerLZ (47.498, -122.021; grid point 47.496, -122.012; terrain 1138 ft)</h3>
+<table>
+<thead>
+<tr>
+<th>local</th>
+<th>BL top NAM/HRRR ft</th>
+<th>w* NAM/HRRR fpm</th>
+<th>ceiling NAM/HRRR ft</th>
+<th>BL wind NAM/HRRR</th>
+<th>T2 NAM/HRRR F</th>
+<th>HFX NAM/HRRR</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>08:00</td>
+<td>0 / 0</td>
+<td>0 / 0</td>
+<td>1138 / 1138</td>
+<td>5kt@117 / 4kt@132</td>
+<td>38 / 43</td>
+<td>0 / 0</td>
+</tr>
+<tr>
+<td>09:00</td>
+<td>80 / 475</td>
+<td>0 / 0</td>
+<td>1138 / 1138</td>
+<td>2kt@182 / 11kt@140</td>
+<td>41 / 44</td>
+<td>-1 / -13</td>
+</tr>
+<tr>
+<td>10:00</td>
+<td>847 / 1166</td>
+<td>0 / 0</td>
+<td>1138 / 1138</td>
+<td>16kt@145 / 19kt@147</td>
+<td>51 / 49</td>
+<td>-10 / -4</td>
+</tr>
+<tr>
+<td>11:00</td>
+<td>242 / 845</td>
+<td>82 / 0</td>
+<td>1138 / 1138</td>
+<td>6kt@138 / 18kt@148</td>
+<td>53 / 52</td>
+<td>30 / -22</td>
+</tr>
+<tr>
+<td>12:00</td>
+<td>381 / 715</td>
+<td>116 / 0</td>
+<td>1138 / 1138</td>
+<td>4kt@125 / 15kt@152</td>
+<td>54 / 54</td>
+<td>55 / -15</td>
+</tr>
+<tr>
+<td>13:00</td>
+<td>305 / 693</td>
+<td>113 / 0</td>
+<td>1138 / 1138</td>
+<td>2kt@093 / 14kt@145</td>
+<td>56 / 56</td>
+<td>65 / -10</td>
+</tr>
+<tr>
+<td>14:00</td>
+<td>94 / 84</td>
+<td>31 / 14</td>
+<td>1138 / 1138</td>
+<td>4kt@105 / 3kt@050</td>
+<td>56 / 57</td>
+<td>2 / -3</td>
+</tr>
+<tr>
+<td>15:00</td>
+<td>315 / 112</td>
+<td>0 / 0</td>
+<td>1138 / 1138</td>
+<td>7kt@134 / 5kt@114</td>
+<td>56 / 57</td>
+<td>-1 / -1</td>
+</tr>
+<tr>
+<td>16:00</td>
+<td>857 / 1273</td>
+<td>0 / 0</td>
+<td>1138 / 1138</td>
+<td>12kt@139 / 15kt@144</td>
+<td>53 / 55</td>
+<td>-12 / -37</td>
+</tr>
+<tr>
+<td>17:00</td>
+<td>1238 / 1174</td>
+<td>0 / 0</td>
+<td>1138 / 1138</td>
+<td>16kt@150 / 17kt@149</td>
+<td>55 / 53</td>
+<td>-38 / -36</td>
+</tr>
+<tr>
+<td>18:00</td>
+<td>930 / 851</td>
+<td>0 / 0</td>
+<td>1138 / 1138</td>
+<td>15kt@147 / 16kt@146</td>
+<td>52 / 50</td>
+<td>-16 / -18</td>
+</tr>
+<tr>
+<td>19:00</td>
+<td>837 / 888</td>
+<td>0 / 0</td>
+<td>1138 / 1138</td>
+<td>14kt@144 / 15kt@147</td>
+<td>51 / 51</td>
+<td>-12 / -20</td>
+</tr>
+<tr>
+<td>20:00</td>
+<td>529 / 952</td>
+<td>0 / 0</td>
+<td>1138 / 1138</td>
+<td>10kt@146 / 12kt@151</td>
+<td>50 / 54</td>
+<td>-8 / -32</td>
+</tr>
+</tbody>
+</table>
+<h3>Poo_Poo_Point (47.499, -122.008; grid point 47.496, -122.012; terrain 1138 ft)</h3>
+<table>
+<thead>
+<tr>
+<th>local</th>
+<th>BL top NAM/HRRR ft</th>
+<th>w* NAM/HRRR fpm</th>
+<th>ceiling NAM/HRRR ft</th>
+<th>BL wind NAM/HRRR</th>
+<th>T2 NAM/HRRR F</th>
+<th>HFX NAM/HRRR</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>08:00</td>
+<td>0 / 0</td>
+<td>0 / 0</td>
+<td>1138 / 1138</td>
+<td>5kt@117 / 4kt@132</td>
+<td>38 / 43</td>
+<td>0 / 0</td>
+</tr>
+<tr>
+<td>09:00</td>
+<td>80 / 475</td>
+<td>0 / 0</td>
+<td>1138 / 1138</td>
+<td>2kt@182 / 11kt@140</td>
+<td>41 / 44</td>
+<td>-1 / -13</td>
+</tr>
+<tr>
+<td>10:00</td>
+<td>847 / 1166</td>
+<td>0 / 0</td>
+<td>1138 / 1138</td>
+<td>16kt@145 / 19kt@147</td>
+<td>51 / 49</td>
+<td>-10 / -4</td>
+</tr>
+<tr>
+<td>11:00</td>
+<td>242 / 845</td>
+<td>82 / 0</td>
+<td>1138 / 1138</td>
+<td>6kt@138 / 18kt@148</td>
+<td>53 / 52</td>
+<td>30 / -22</td>
+</tr>
+<tr>
+<td>12:00</td>
+<td>381 / 715</td>
+<td>116 / 0</td>
+<td>1138 / 1138</td>
+<td>4kt@125 / 15kt@152</td>
+<td>54 / 54</td>
+<td>55 / -15</td>
+</tr>
+<tr>
+<td>13:00</td>
+<td>305 / 693</td>
+<td>113 / 0</td>
+<td>1138 / 1138</td>
+<td>2kt@093 / 14kt@145</td>
+<td>56 / 56</td>
+<td>65 / -10</td>
+</tr>
+<tr>
+<td>14:00</td>
+<td>94 / 84</td>
+<td>31 / 14</td>
+<td>1138 / 1138</td>
+<td>4kt@105 / 3kt@050</td>
+<td>56 / 57</td>
+<td>2 / -3</td>
+</tr>
+<tr>
+<td>15:00</td>
+<td>315 / 112</td>
+<td>0 / 0</td>
+<td>1138 / 1138</td>
+<td>7kt@134 / 5kt@114</td>
+<td>56 / 57</td>
+<td>-1 / -1</td>
+</tr>
+<tr>
+<td>16:00</td>
+<td>857 / 1273</td>
+<td>0 / 0</td>
+<td>1138 / 1138</td>
+<td>12kt@139 / 15kt@144</td>
+<td>53 / 55</td>
+<td>-12 / -37</td>
+</tr>
+<tr>
+<td>17:00</td>
+<td>1238 / 1174</td>
+<td>0 / 0</td>
+<td>1138 / 1138</td>
+<td>16kt@150 / 17kt@149</td>
+<td>55 / 53</td>
+<td>-38 / -36</td>
+</tr>
+<tr>
+<td>18:00</td>
+<td>930 / 851</td>
+<td>0 / 0</td>
+<td>1138 / 1138</td>
+<td>15kt@147 / 16kt@146</td>
+<td>52 / 50</td>
+<td>-16 / -18</td>
+</tr>
+<tr>
+<td>19:00</td>
+<td>837 / 888</td>
+<td>0 / 0</td>
+<td>1138 / 1138</td>
+<td>14kt@144 / 15kt@147</td>
+<td>51 / 51</td>
+<td>-12 / -20</td>
+</tr>
+<tr>
+<td>20:00</td>
+<td>529 / 952</td>
+<td>0 / 0</td>
+<td>1138 / 1138</td>
+<td>10kt@146 / 12kt@151</td>
+<td>50 / 54</td>
+<td>-8 / -32</td>
+</tr>
+</tbody>
+</table>
+<h3>West_Tiger_3 (47.512, -121.990; grid point 47.509, -121.995; terrain 1869 ft)</h3>
+<table>
+<thead>
+<tr>
+<th>local</th>
+<th>BL top NAM/HRRR ft</th>
+<th>w* NAM/HRRR fpm</th>
+<th>ceiling NAM/HRRR ft</th>
+<th>BL wind NAM/HRRR</th>
+<th>T2 NAM/HRRR F</th>
+<th>HFX NAM/HRRR</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>08:00</td>
+<td>0 / 0</td>
+<td>0 / 0</td>
+<td>1869 / 1869</td>
+<td>6kt@142 / 8kt@157</td>
+<td>38 / 45</td>
+<td>0 / 0</td>
+</tr>
+<tr>
+<td>09:00</td>
+<td>80 / 576</td>
+<td>0 / 0</td>
+<td>1869 / 1869</td>
+<td>7kt@152 / 11kt@145</td>
+<td>42 / 45</td>
+<td>-8 / -32</td>
+</tr>
+<tr>
+<td>10:00</td>
+<td>710 / 1357</td>
+<td>0 / 0</td>
+<td>1869 / 1869</td>
+<td>12kt@144 / 17kt@161</td>
+<td>51 / 49</td>
+<td>-26 / -24</td>
+</tr>
+<tr>
+<td>11:00</td>
+<td>252 / 952</td>
+<td>81 / 0</td>
+<td>1869 / 1869</td>
+<td>10kt@149 / 16kt@169</td>
+<td>54 / 53</td>
+<td>25 / -58</td>
+</tr>
+<tr>
+<td>12:00</td>
+<td>522 / 763</td>
+<td>132 / 0</td>
+<td>1869 / 1869</td>
+<td>7kt@134 / 13kt@173</td>
+<td>55 / 54</td>
+<td>59 / -43</td>
+</tr>
+<tr>
+<td>13:00</td>
+<td>671 / 939</td>
+<td>151 / 0</td>
+<td>1869 / 1869</td>
+<td>7kt@129 / 7kt@173</td>
+<td>56 / 57</td>
+<td>70 / -23</td>
+</tr>
+<tr>
+<td>14:00</td>
+<td>97 / 694</td>
+<td>30 / 0</td>
+<td>1869 / 1869</td>
+<td>8kt@141 / 9kt@145</td>
+<td>56 / 57</td>
+<td>0 / -11</td>
+</tr>
+<tr>
+<td>15:00</td>
+<td>928 / 910</td>
+<td>0 / 0</td>
+<td>1869 / 1869</td>
+<td>11kt@166 / 13kt@150</td>
+<td>56 / 55</td>
+<td>-19 / -15</td>
+</tr>
+<tr>
+<td>16:00</td>
+<td>722 / 818</td>
+<td>0 / 0</td>
+<td>1869 / 1869</td>
+<td>10kt@156 / 13kt@159</td>
+<td>55 / 55</td>
+<td>-52 / -75</td>
+</tr>
+<tr>
+<td>17:00</td>
+<td>751 / 824</td>
+<td>0 / 0</td>
+<td>1869 / 1869</td>
+<td>13kt@160 / 13kt@155</td>
+<td>55 / 55</td>
+<td>-67 / -84</td>
+</tr>
+<tr>
+<td>18:00</td>
+<td>921 / 807</td>
+<td>0 / 0</td>
+<td>1869 / 1869</td>
+<td>14kt@165 / 13kt@155</td>
+<td>55 / 55</td>
+<td>-61 / -73</td>
+</tr>
+<tr>
+<td>19:00</td>
+<td>885 / 703</td>
+<td>0 / 0</td>
+<td>1869 / 1869</td>
+<td>15kt@162 / 11kt@153</td>
+<td>55 / 55</td>
+<td>-59 / -69</td>
+</tr>
+<tr>
+<td>20:00</td>
+<td>906 / 388</td>
+<td>0 / 0</td>
+<td>1869 / 1869</td>
+<td>14kt@170 / 9kt@145</td>
+<td>55 / 55</td>
+<td>-53 / -66</td>
+</tr>
+</tbody>
+</table>
+<h3>West_Tiger_2 (47.509, -121.985; grid point 47.509, -121.977; terrain 2282 ft)</h3>
+<table>
+<thead>
+<tr>
+<th>local</th>
+<th>BL top NAM/HRRR ft</th>
+<th>w* NAM/HRRR fpm</th>
+<th>ceiling NAM/HRRR ft</th>
+<th>BL wind NAM/HRRR</th>
+<th>T2 NAM/HRRR F</th>
+<th>HFX NAM/HRRR</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>08:00</td>
+<td>0 / 0</td>
+<td>0 / 0</td>
+<td>2282 / 2283</td>
+<td>6kt@152 / 10kt@156</td>
+<td>38 / 46</td>
+<td>0 / 0</td>
+</tr>
+<tr>
+<td>09:00</td>
+<td>289 / 699</td>
+<td>0 / 0</td>
+<td>2282 / 2283</td>
+<td>7kt@173 / 12kt@141</td>
+<td>42 / 44</td>
+<td>-13 / -36</td>
+</tr>
+<tr>
+<td>10:00</td>
+<td>654 / 1134</td>
+<td>0 / 0</td>
+<td>2282 / 2283</td>
+<td>13kt@143 / 15kt@163</td>
+<td>50 / 49</td>
+<td>-24 / -53</td>
+</tr>
+<tr>
+<td>11:00</td>
+<td>432 / 923</td>
+<td>76 / 0</td>
+<td>2282 / 2283</td>
+<td>13kt@145 / 15kt@175</td>
+<td>53 / 51</td>
+<td>9 / -54</td>
+</tr>
+<tr>
+<td>12:00</td>
+<td>1121 / 696</td>
+<td>156 / 0</td>
+<td>2282 / 2283</td>
+<td>10kt@146 / 11kt@190</td>
+<td>55 / 53</td>
+<td>43 / -37</td>
+</tr>
+<tr>
+<td>13:00</td>
+<td>1417 / 758</td>
+<td>180 / 0</td>
+<td>2282 / 2283</td>
+<td>9kt@144 / 8kt@178</td>
+<td>55 / 55</td>
+<td>54 / -16</td>
+</tr>
+<tr>
+<td>14:00</td>
+<td>1090 / 281</td>
+<td>0 / 0</td>
+<td>2282 / 2283</td>
+<td>10kt@144 / 14kt@128</td>
+<td>54 / 55</td>
+<td>-8 / -19</td>
+</tr>
+<tr>
+<td>15:00</td>
+<td>758 / 255</td>
+<td>0 / 0</td>
+<td>2282 / 2283</td>
+<td>10kt@166 / 16kt@134</td>
+<td>53 / 54</td>
+<td>-26 / -28</td>
+</tr>
+<tr>
+<td>16:00</td>
+<td>502 / 625</td>
+<td>0 / 0</td>
+<td>2282 / 2283</td>
+<td>9kt@157 / 12kt@151</td>
+<td>52 / 53</td>
+<td>-68 / -72</td>
+</tr>
+<tr>
+<td>17:00</td>
+<td>584 / 626</td>
+<td>0 / 0</td>
+<td>2282 / 2283</td>
+<td>12kt@145 / 13kt@156</td>
+<td>51 / 53</td>
+<td>-81 / -75</td>
+</tr>
+<tr>
+<td>18:00</td>
+<td>535 / 685</td>
+<td>0 / 0</td>
+<td>2282 / 2283</td>
+<td>12kt@167 / 11kt@169</td>
+<td>52 / 53</td>
+<td>-75 / -64</td>
+</tr>
+<tr>
+<td>19:00</td>
+<td>517 / 476</td>
+<td>0 / 0</td>
+<td>2282 / 2283</td>
+<td>11kt@167 / 10kt@157</td>
+<td>52 / 53</td>
+<td>-72 / -62</td>
+</tr>
+<tr>
+<td>20:00</td>
+<td>593 / 448</td>
+<td>0 / 0</td>
+<td>2282 / 2283</td>
+<td>12kt@181 / 11kt@134</td>
+<td>51 / 53</td>
+<td>-62 / -62</td>
+</tr>
+</tbody>
+</table>
+<h3>West_Tiger_1 (47.504, -121.976; grid point 47.509, -121.977; terrain 2282 ft)</h3>
+<table>
+<thead>
+<tr>
+<th>local</th>
+<th>BL top NAM/HRRR ft</th>
+<th>w* NAM/HRRR fpm</th>
+<th>ceiling NAM/HRRR ft</th>
+<th>BL wind NAM/HRRR</th>
+<th>T2 NAM/HRRR F</th>
+<th>HFX NAM/HRRR</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>08:00</td>
+<td>0 / 0</td>
+<td>0 / 0</td>
+<td>2282 / 2283</td>
+<td>6kt@152 / 10kt@156</td>
+<td>38 / 46</td>
+<td>0 / 0</td>
+</tr>
+<tr>
+<td>09:00</td>
+<td>289 / 699</td>
+<td>0 / 0</td>
+<td>2282 / 2283</td>
+<td>7kt@173 / 12kt@141</td>
+<td>42 / 44</td>
+<td>-13 / -36</td>
+</tr>
+<tr>
+<td>10:00</td>
+<td>654 / 1134</td>
+<td>0 / 0</td>
+<td>2282 / 2283</td>
+<td>13kt@143 / 15kt@163</td>
+<td>50 / 49</td>
+<td>-24 / -53</td>
+</tr>
+<tr>
+<td>11:00</td>
+<td>432 / 923</td>
+<td>76 / 0</td>
+<td>2282 / 2283</td>
+<td>13kt@145 / 15kt@175</td>
+<td>53 / 51</td>
+<td>9 / -54</td>
+</tr>
+<tr>
+<td>12:00</td>
+<td>1121 / 696</td>
+<td>156 / 0</td>
+<td>2282 / 2283</td>
+<td>10kt@146 / 11kt@190</td>
+<td>55 / 53</td>
+<td>43 / -37</td>
+</tr>
+<tr>
+<td>13:00</td>
+<td>1417 / 758</td>
+<td>180 / 0</td>
+<td>2282 / 2283</td>
+<td>9kt@144 / 8kt@178</td>
+<td>55 / 55</td>
+<td>54 / -16</td>
+</tr>
+<tr>
+<td>14:00</td>
+<td>1090 / 281</td>
+<td>0 / 0</td>
+<td>2282 / 2283</td>
+<td>10kt@144 / 14kt@128</td>
+<td>54 / 55</td>
+<td>-8 / -19</td>
+</tr>
+<tr>
+<td>15:00</td>
+<td>758 / 255</td>
+<td>0 / 0</td>
+<td>2282 / 2283</td>
+<td>10kt@166 / 16kt@134</td>
+<td>53 / 54</td>
+<td>-26 / -28</td>
+</tr>
+<tr>
+<td>16:00</td>
+<td>502 / 625</td>
+<td>0 / 0</td>
+<td>2282 / 2283</td>
+<td>9kt@157 / 12kt@151</td>
+<td>52 / 53</td>
+<td>-68 / -72</td>
+</tr>
+<tr>
+<td>17:00</td>
+<td>584 / 626</td>
+<td>0 / 0</td>
+<td>2282 / 2283</td>
+<td>12kt@145 / 13kt@156</td>
+<td>51 / 53</td>
+<td>-81 / -75</td>
+</tr>
+<tr>
+<td>18:00</td>
+<td>535 / 685</td>
+<td>0 / 0</td>
+<td>2282 / 2283</td>
+<td>12kt@167 / 11kt@169</td>
+<td>52 / 53</td>
+<td>-75 / -64</td>
+</tr>
+<tr>
+<td>19:00</td>
+<td>517 / 476</td>
+<td>0 / 0</td>
+<td>2282 / 2283</td>
+<td>11kt@167 / 10kt@157</td>
+<td>52 / 53</td>
+<td>-72 / -62</td>
+</tr>
+<tr>
+<td>20:00</td>
+<td>593 / 448</td>
+<td>0 / 0</td>
+<td>2282 / 2283</td>
+<td>12kt@181 / 11kt@134</td>
+<td>51 / 53</td>
+<td>-62 / -62</td>
+</tr>
+</tbody>
+</table>
+<h3>East_Tiger (47.489, -121.947; grid point 47.485, -121.941; terrain 2494 ft)</h3>
+<table>
+<thead>
+<tr>
+<th>local</th>
+<th>BL top NAM/HRRR ft</th>
+<th>w* NAM/HRRR fpm</th>
+<th>ceiling NAM/HRRR ft</th>
+<th>BL wind NAM/HRRR</th>
+<th>T2 NAM/HRRR F</th>
+<th>HFX NAM/HRRR</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>08:00</td>
+<td>0 / 0</td>
+<td>0 / 0</td>
+<td>2494 / 2494</td>
+<td>6kt@150 / 9kt@156</td>
+<td>38 / 44</td>
+<td>0 / 0</td>
+</tr>
+<tr>
+<td>09:00</td>
+<td>332 / 440</td>
+<td>0 / 0</td>
+<td>2494 / 2494</td>
+<td>8kt@141 / 10kt@133</td>
+<td>40 / 42</td>
+<td>-15 / -6</td>
+</tr>
+<tr>
+<td>10:00</td>
+<td>688 / 1035</td>
+<td>0 / 0</td>
+<td>2494 / 2494</td>
+<td>10kt@151 / 16kt@159</td>
+<td>49 / 47</td>
+<td>-8 / -10</td>
+</tr>
+<tr>
+<td>11:00</td>
+<td>575 / 1175</td>
+<td>109 / 0</td>
+<td>2494 / 2494</td>
+<td>11kt@151 / 16kt@164</td>
+<td>52 / 51</td>
+<td>28 / -9</td>
+</tr>
+<tr>
+<td>12:00</td>
+<td>1102 / 262</td>
+<td>161 / 54</td>
+<td>2494 / 2494</td>
+<td>9kt@144 / 15kt@165</td>
+<td>54 / 52</td>
+<td>48 / 4</td>
+</tr>
+<tr>
+<td>13:00</td>
+<td>1457 / 487</td>
+<td>182 / 79</td>
+<td>2494 / 2494</td>
+<td>7kt@150 / 11kt@150</td>
+<td>55 / 54</td>
+<td>53 / 10</td>
+</tr>
+<tr>
+<td>14:00</td>
+<td>669 / 631</td>
+<td>0 / 76</td>
+<td>2494 / 2494</td>
+<td>8kt@142 / 14kt@127</td>
+<td>54 / 54</td>
+<td>-4 / 5</td>
+</tr>
+<tr>
+<td>15:00</td>
+<td>294 / 381</td>
+<td>0 / 0</td>
+<td>2494 / 2494</td>
+<td>12kt@146 / 18kt@132</td>
+<td>52 / 53</td>
+<td>-4 / -11</td>
+</tr>
+<tr>
+<td>16:00</td>
+<td>594 / 820</td>
+<td>0 / 0</td>
+<td>2494 / 2494</td>
+<td>12kt@134 / 14kt@136</td>
+<td>48 / 51</td>
+<td>-25 / -30</td>
+</tr>
+<tr>
+<td>17:00</td>
+<td>779 / 767</td>
+<td>0 / 0</td>
+<td>2494 / 2494</td>
+<td>15kt@143 / 14kt@146</td>
+<td>45 / 48</td>
+<td>-21 / -28</td>
+</tr>
+<tr>
+<td>18:00</td>
+<td>697 / 654</td>
+<td>0 / 0</td>
+<td>2494 / 2494</td>
+<td>13kt@155 / 15kt@147</td>
+<td>45 / 47</td>
+<td>-29 / -24</td>
+</tr>
+<tr>
+<td>19:00</td>
+<td>679 / 640</td>
+<td>0 / 0</td>
+<td>2494 / 2494</td>
+<td>12kt@156 / 14kt@140</td>
+<td>46 / 47</td>
+<td>-37 / -22</td>
+</tr>
+<tr>
+<td>20:00</td>
+<td>611 / 642</td>
+<td>0 / 0</td>
+<td>2494 / 2494</td>
+<td>14kt@157 / 13kt@128</td>
+<td>45 / 47</td>
+<td>-25 / -15</td>
+</tr>
+</tbody>
+</table>
+<h3>Taylor_Mountain (47.453, -121.895; grid point 47.449, -121.888; terrain 2447 ft)</h3>
+<table>
+<thead>
+<tr>
+<th>local</th>
+<th>BL top NAM/HRRR ft</th>
+<th>w* NAM/HRRR fpm</th>
+<th>ceiling NAM/HRRR ft</th>
+<th>BL wind NAM/HRRR</th>
+<th>T2 NAM/HRRR F</th>
+<th>HFX NAM/HRRR</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>08:00</td>
+<td>0 / 0</td>
+<td>0 / 0</td>
+<td>2447 / 2448</td>
+<td>6kt@141 / 10kt@146</td>
+<td>38 / 46</td>
+<td>0 / 0</td>
+</tr>
+<tr>
+<td>09:00</td>
+<td>514 / 777</td>
+<td>0 / 0</td>
+<td>2447 / 2448</td>
+<td>11kt@147 / 16kt@142</td>
+<td>44 / 43</td>
+<td>-48 / -27</td>
+</tr>
+<tr>
+<td>10:00</td>
+<td>836 / 1159</td>
+<td>0 / 0</td>
+<td>2447 / 2448</td>
+<td>15kt@152 / 19kt@162</td>
+<td>49 / 49</td>
+<td>-10 / -37</td>
+</tr>
+<tr>
+<td>11:00</td>
+<td>430 / 1303</td>
+<td>97 / 0</td>
+<td>2447 / 2448</td>
+<td>12kt@145 / 19kt@152</td>
+<td>52 / 51</td>
+<td>24 / -11</td>
+</tr>
+<tr>
+<td>12:00</td>
+<td>917 / 257</td>
+<td>154 / 63</td>
+<td>2447 / 2448</td>
+<td>11kt@146 / 14kt@160</td>
+<td>54 / 53</td>
+<td>51 / 9</td>
+</tr>
+<tr>
+<td>13:00</td>
+<td>1238 / 474</td>
+<td>176 / 83</td>
+<td>2447 / 2448</td>
+<td>10kt@154 / 13kt@138</td>
+<td>55 / 54</td>
+<td>56 / 13</td>
+</tr>
+<tr>
+<td>14:00</td>
+<td>261 / 335</td>
+<td>0 / 64</td>
+<td>2447 / 2448</td>
+<td>12kt@129 / 14kt@127</td>
+<td>53 / 54</td>
+<td>-9 / 6</td>
+</tr>
+<tr>
+<td>15:00</td>
+<td>824 / 1091</td>
+<td>0 / 0</td>
+<td>2447 / 2448</td>
+<td>12kt@150 / 16kt@146</td>
+<td>52 / 53</td>
+<td>-27 / -21</td>
+</tr>
+<tr>
+<td>16:00</td>
+<td>604 / 1052</td>
+<td>0 / 0</td>
+<td>2447 / 2448</td>
+<td>13kt@139 / 17kt@150</td>
+<td>50 / 52</td>
+<td>-51 / -45</td>
+</tr>
+<tr>
+<td>17:00</td>
+<td>921 / 1024</td>
+<td>0 / 0</td>
+<td>2447 / 2448</td>
+<td>16kt@152 / 18kt@151</td>
+<td>49 / 51</td>
+<td>-55 / -54</td>
+</tr>
+<tr>
+<td>18:00</td>
+<td>938 / 895</td>
+<td>0 / 0</td>
+<td>2447 / 2448</td>
+<td>17kt@151 / 17kt@149</td>
+<td>49 / 50</td>
+<td>-53 / -46</td>
+</tr>
+<tr>
+<td>19:00</td>
+<td>956 / 765</td>
+<td>0 / 0</td>
+<td>2447 / 2448</td>
+<td>18kt@153 / 15kt@146</td>
+<td>49 / 50</td>
+<td>-49 / -45</td>
+</tr>
+<tr>
+<td>20:00</td>
+<td>869 / 634</td>
+<td>0 / 0</td>
+<td>2447 / 2448</td>
+<td>17kt@153 / 14kt@137</td>
+<td>49 / 51</td>
+<td>-42 / -45</td>
+</tr>
+</tbody>
+</table>
+<h3>Mitchell_Hill (47.551, -121.937; grid point 47.557, -121.942; terrain 992 ft)</h3>
+<table>
+<thead>
+<tr>
+<th>local</th>
+<th>BL top NAM/HRRR ft</th>
+<th>w* NAM/HRRR fpm</th>
+<th>ceiling NAM/HRRR ft</th>
+<th>BL wind NAM/HRRR</th>
+<th>T2 NAM/HRRR F</th>
+<th>HFX NAM/HRRR</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>08:00</td>
+<td>0 / 0</td>
+<td>0 / 0</td>
+<td>992 / 993</td>
+<td>6kt@107 / 1kt@208</td>
+<td>37 / 41</td>
+<td>0 / 0</td>
+</tr>
+<tr>
+<td>09:00</td>
+<td>263 / 80</td>
+<td>0 / 0</td>
+<td>992 / 993</td>
+<td>10kt@129 / 6kt@129</td>
+<td>42 / 42</td>
+<td>-4 / -7</td>
+</tr>
+<tr>
+<td>10:00</td>
+<td>170 / 81</td>
+<td>44 / 0</td>
+<td>992 / 993</td>
+<td>4kt@117 / 3kt@136</td>
+<td>50 / 49</td>
+<td>5 / -2</td>
+</tr>
+<tr>
+<td>11:00</td>
+<td>245 / 87</td>
+<td>91 / 0</td>
+<td>992 / 993</td>
+<td>3kt@130 / 8kt@136</td>
+<td>52 / 52</td>
+<td>40 / -11</td>
+</tr>
+<tr>
+<td>12:00</td>
+<td>402 / 229</td>
+<td>124 / 40</td>
+<td>992 / 993</td>
+<td>6kt@131 / 6kt@126</td>
+<td>54 / 54</td>
+<td>63 / 1</td>
+</tr>
+<tr>
+<td>13:00</td>
+<td>512 / 222</td>
+<td>137 / 46</td>
+<td>992 / 993</td>
+<td>10kt@125 / 3kt@131</td>
+<td>56 / 56</td>
+<td>68 / 3</td>
+</tr>
+<tr>
+<td>14:00</td>
+<td>249 / 82</td>
+<td>59 / 0</td>
+<td>992 / 993</td>
+<td>4kt@099 / 3kt@126</td>
+<td>56 / 57</td>
+<td>9 / -7</td>
+</tr>
+<tr>
+<td>15:00</td>
+<td>139 / 1132</td>
+<td>0 / 0</td>
+<td>992 / 993</td>
+<td>6kt@127 / 19kt@130</td>
+<td>57 / 57</td>
+<td>-9 / -4</td>
+</tr>
+<tr>
+<td>16:00</td>
+<td>1248 / 1164</td>
+<td>0 / 0</td>
+<td>992 / 993</td>
+<td>18kt@137 / 21kt@130</td>
+<td>54 / 53</td>
+<td>-1 / -2</td>
+</tr>
+<tr>
+<td>17:00</td>
+<td>1173 / 1176</td>
+<td>0 / 0</td>
+<td>992 / 993</td>
+<td>20kt@133 / 21kt@134</td>
+<td>51 / 51</td>
+<td>-8 / -18</td>
+</tr>
+<tr>
+<td>18:00</td>
+<td>1182 / 1076</td>
+<td>0 / 0</td>
+<td>992 / 993</td>
+<td>21kt@144 / 20kt@150</td>
+<td>53 / 54</td>
+<td>-22 / -50</td>
+</tr>
+<tr>
+<td>19:00</td>
+<td>1125 / 925</td>
+<td>0 / 0</td>
+<td>992 / 993</td>
+<td>21kt@153 / 18kt@165</td>
+<td>55 / 56</td>
+<td>-40 / -65</td>
+</tr>
+<tr>
+<td>20:00</td>
+<td>1166 / 943</td>
+<td>0 / 0</td>
+<td>992 / 993</td>
+<td>21kt@149 / 18kt@154</td>
+<td>53 / 56</td>
+<td>-25 / -67</td>
+</tr>
+</tbody>
+</table>
+<h3>Grand_Ridge_Park (47.550, -121.982; grid point 47.545, -121.977; terrain 1032 ft)</h3>
+<table>
+<thead>
+<tr>
+<th>local</th>
+<th>BL top NAM/HRRR ft</th>
+<th>w* NAM/HRRR fpm</th>
+<th>ceiling NAM/HRRR ft</th>
+<th>BL wind NAM/HRRR</th>
+<th>T2 NAM/HRRR F</th>
+<th>HFX NAM/HRRR</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>08:00</td>
+<td>0 / 0</td>
+<td>0 / 0</td>
+<td>1032 / 1032</td>
+<td>5kt@111 / 2kt@197</td>
+<td>37 / 42</td>
+<td>0 / 0</td>
+</tr>
+<tr>
+<td>09:00</td>
+<td>80 / 340</td>
+<td>0 / 0</td>
+<td>1032 / 1032</td>
+<td>3kt@136 / 10kt@127</td>
+<td>41 / 43</td>
+<td>-2 / -15</td>
+</tr>
+<tr>
+<td>10:00</td>
+<td>84 / 784</td>
+<td>35 / 0</td>
+<td>1032 / 1032</td>
+<td>1kt@284 / 18kt@135</td>
+<td>49 / 49</td>
+<td>5 / -2</td>
+</tr>
+<tr>
+<td>11:00</td>
+<td>320 / 81</td>
+<td>96 / 12</td>
+<td>1032 / 1032</td>
+<td>4kt@108 / 1kt@039</td>
+<td>53 / 53</td>
+<td>36 / -0</td>
+</tr>
+<tr>
+<td>12:00</td>
+<td>330 / 84</td>
+<td>120 / 28</td>
+<td>1032 / 1032</td>
+<td>2kt@110 / 1kt@317</td>
+<td>54 / 53</td>
+<td>71 / 0</td>
+</tr>
+<tr>
+<td>13:00</td>
+<td>607 / 87</td>
+<td>151 / 26</td>
+<td>1032 / 1032</td>
+<td>5kt@104 / 2kt@028</td>
+<td>56 / 57</td>
+<td>78 / -1</td>
+</tr>
+<tr>
+<td>14:00</td>
+<td>103 / 139</td>
+<td>51 / 0</td>
+<td>1032 / 1032</td>
+<td>2kt@119 / 5kt@114</td>
+<td>54 / 57</td>
+<td>16 / -11</td>
+</tr>
+<tr>
+<td>15:00</td>
+<td>180 / 1206</td>
+<td>31 / 0</td>
+<td>1032 / 1032</td>
+<td>3kt@103 / 18kt@137</td>
+<td>55 / 57</td>
+<td>1 / -4</td>
+</tr>
+<tr>
+<td>16:00</td>
+<td>932 / 1365</td>
+<td>0 / 0</td>
+<td>1032 / 1032</td>
+<td>16kt@133 / 20kt@131</td>
+<td>54 / 54</td>
+<td>-2 / -7</td>
+</tr>
+<tr>
+<td>17:00</td>
+<td>1065 / 1094</td>
+<td>0 / 0</td>
+<td>1032 / 1032</td>
+<td>18kt@131 / 18kt@136</td>
+<td>56 / 55</td>
+<td>-47 / -59</td>
+</tr>
+<tr>
+<td>18:00</td>
+<td>1057 / 924</td>
+<td>0 / 0</td>
+<td>1032 / 1032</td>
+<td>18kt@143 / 14kt@145</td>
+<td>52 / 54</td>
+<td>-12 / -36</td>
+</tr>
+<tr>
+<td>19:00</td>
+<td>1143 / 1006</td>
+<td>0 / 0</td>
+<td>1032 / 1032</td>
+<td>19kt@141 / 16kt@136</td>
+<td>52 / 57</td>
+<td>-11 / -80</td>
+</tr>
+<tr>
+<td>20:00</td>
+<td>905 / 1085</td>
+<td>0 / 0</td>
+<td>1032 / 1032</td>
+<td>16kt@149 / 19kt@134</td>
+<td>52 / 57</td>
+<td>-2 / -75</td>
+</tr>
+</tbody>
+</table>
+<h3>Issaquah_Highlands (47.546, -122.004; grid point 47.544, -122.013; terrain 577 ft)</h3>
+<table>
+<thead>
+<tr>
+<th>local</th>
+<th>BL top NAM/HRRR ft</th>
+<th>w* NAM/HRRR fpm</th>
+<th>ceiling NAM/HRRR ft</th>
+<th>BL wind NAM/HRRR</th>
+<th>T2 NAM/HRRR F</th>
+<th>HFX NAM/HRRR</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>08:00</td>
+<td>0 / 0</td>
+<td>0 / 0</td>
+<td>577 / 577</td>
+<td>5kt@101 / 2kt@060</td>
+<td>37 / 39</td>
+<td>0 / 0</td>
+</tr>
+<tr>
+<td>09:00</td>
+<td>79 / 80</td>
+<td>0 / 0</td>
+<td>577 / 577</td>
+<td>5kt@211 / 3kt@108</td>
+<td>38 / 44</td>
+<td>-3 / -2</td>
+</tr>
+<tr>
+<td>10:00</td>
+<td>220 / 80</td>
+<td>64 / 0</td>
+<td>577 / 577</td>
+<td>2kt@271 / 1kt@198</td>
+<td>47 / 46</td>
+<td>15 / -0</td>
+</tr>
+<tr>
+<td>11:00</td>
+<td>279 / 83</td>
+<td>103 / 19</td>
+<td>577 / 577</td>
+<td>1kt@197 / 1kt@002</td>
+<td>50 / 50</td>
+<td>53 / -1</td>
+</tr>
+<tr>
+<td>12:00</td>
+<td>411 / 177</td>
+<td>133 / 50</td>
+<td>577 / 577</td>
+<td>0kt@332 / 0kt@253</td>
+<td>53 / 51</td>
+<td>79 / 8</td>
+</tr>
+<tr>
+<td>13:00</td>
+<td>491 / 189</td>
+<td>143 / 60</td>
+<td>577 / 577</td>
+<td>1kt@103 / 1kt@344</td>
+<td>55 / 53</td>
+<td>83 / 14</td>
+</tr>
+<tr>
+<td>14:00</td>
+<td>269 / 203</td>
+<td>69 / 59</td>
+<td>577 / 577</td>
+<td>0kt@278 / 2kt@002</td>
+<td>54 / 54</td>
+<td>15 / 12</td>
+</tr>
+<tr>
+<td>15:00</td>
+<td>227 / 85</td>
+<td>42 / 28</td>
+<td>577 / 577</td>
+<td>0kt@283 / 1kt@274</td>
+<td>53 / 53</td>
+<td>3 / 2</td>
+</tr>
+<tr>
+<td>16:00</td>
+<td>81 / 81</td>
+<td>0 / 0</td>
+<td>577 / 577</td>
+<td>1kt@311 / 1kt@001</td>
+<td>51 / 53</td>
+<td>-0 / -0</td>
+</tr>
+<tr>
+<td>17:00</td>
+<td>81 / 81</td>
+<td>0 / 0</td>
+<td>577 / 577</td>
+<td>3kt@338 / 2kt@329</td>
+<td>50 / 51</td>
+<td>-2 / -1</td>
+</tr>
+<tr>
+<td>18:00</td>
+<td>81 / 81</td>
+<td>0 / 0</td>
+<td>577 / 577</td>
+<td>2kt@306 / 4kt@340</td>
+<td>50 / 50</td>
+<td>-1 / -3</td>
+</tr>
+<tr>
+<td>19:00</td>
+<td>81 / 82</td>
+<td>0 / 0</td>
+<td>577 / 577</td>
+<td>3kt@344 / 5kt@011</td>
+<td>50 / 50</td>
+<td>-2 / -5</td>
+</tr>
+<tr>
+<td>20:00</td>
+<td>81 / 82</td>
+<td>0 / 0</td>
+<td>577 / 577</td>
+<td>3kt@352 / 2kt@088</td>
+<td>51 / 53</td>
+<td>-1 / -1</td>
+</tr>
+</tbody>
+</table>
+<h3>Rattlesnake (47.467, -121.824; grid point 47.461, -121.817; terrain 2877 ft)</h3>
+<table>
+<thead>
+<tr>
+<th>local</th>
+<th>BL top NAM/HRRR ft</th>
+<th>w* NAM/HRRR fpm</th>
+<th>ceiling NAM/HRRR ft</th>
+<th>BL wind NAM/HRRR</th>
+<th>T2 NAM/HRRR F</th>
+<th>HFX NAM/HRRR</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>08:00</td>
+<td>0 / 0</td>
+<td>0 / 0</td>
+<td>2877 / 2877</td>
+<td>6kt@141 / 11kt@139</td>
+<td>38 / 44</td>
+<td>0 / 0</td>
+</tr>
+<tr>
+<td>09:00</td>
+<td>514 / 1148</td>
+<td>0 / 0</td>
+<td>2877 / 2877</td>
+<td>13kt@137 / 20kt@133</td>
+<td>43 / 46</td>
+<td>-56 / -72</td>
+</tr>
+<tr>
+<td>10:00</td>
+<td>743 / 318</td>
+<td>0 / 0</td>
+<td>2877 / 2877</td>
+<td>13kt@144 / 30kt@136</td>
+<td>48 / 48</td>
+<td>-12 / -50</td>
+</tr>
+<tr>
+<td>11:00</td>
+<td>402 / 298</td>
+<td>98 / 0</td>
+<td>2877 / 2877</td>
+<td>17kt@137 / 28kt@135</td>
+<td>50 / 49</td>
+<td>28 / -19</td>
+</tr>
+<tr>
+<td>12:00</td>
+<td>633 / 439</td>
+<td>139 / 84</td>
+<td>2877 / 2877</td>
+<td>17kt@138 / 24kt@146</td>
+<td>51 / 51</td>
+<td>54 / 14</td>
+</tr>
+<tr>
+<td>13:00</td>
+<td>738 / 409</td>
+<td>149 / 79</td>
+<td>2877 / 2877</td>
+<td>13kt@146 / 21kt@142</td>
+<td>52 / 52</td>
+<td>57 / 12</td>
+</tr>
+<tr>
+<td>14:00</td>
+<td>282 / 463</td>
+<td>0 / 72</td>
+<td>2877 / 2877</td>
+<td>20kt@142 / 22kt@130</td>
+<td>51 / 51</td>
+<td>-18 / 7</td>
+</tr>
+<tr>
+<td>15:00</td>
+<td>680 / 1173</td>
+<td>0 / 0</td>
+<td>2877 / 2877</td>
+<td>10kt@150 / 18kt@141</td>
+<td>50 / 51</td>
+<td>-44 / -12</td>
+</tr>
+<tr>
+<td>16:00</td>
+<td>876 / 1115</td>
+<td>0 / 0</td>
+<td>2877 / 2877</td>
+<td>18kt@135 / 19kt@133</td>
+<td>48 / 49</td>
+<td>-67 / -37</td>
+</tr>
+<tr>
+<td>17:00</td>
+<td>300 / 1076</td>
+<td>0 / 0</td>
+<td>2877 / 2877</td>
+<td>26kt@130 / 19kt@134</td>
+<td>47 / 48</td>
+<td>-65 / -45</td>
+</tr>
+<tr>
+<td>18:00</td>
+<td>272 / 299</td>
+<td>0 / 0</td>
+<td>2877 / 2877</td>
+<td>27kt@133 / 26kt@136</td>
+<td>47 / 47</td>
+<td>-64 / -34</td>
+</tr>
+<tr>
+<td>19:00</td>
+<td>258 / 257</td>
+<td>0 / 0</td>
+<td>2877 / 2877</td>
+<td>26kt@135 / 19kt@127</td>
+<td>47 / 48</td>
+<td>-65 / -39</td>
+</tr>
+<tr>
+<td>20:00</td>
+<td>273 / 269</td>
+<td>0 / 0</td>
+<td>2877 / 2877</td>
+<td>25kt@134 / 27kt@132</td>
+<td>46 / 48</td>
+<td>-56 / -41</td>
+</tr>
+</tbody>
+</table>
+<h3>Green_Mtn_Launch (47.512, -121.678; grid point 47.510, -121.675; terrain 3339 ft)</h3>
+<table>
+<thead>
+<tr>
+<th>local</th>
+<th>BL top NAM/HRRR ft</th>
+<th>w* NAM/HRRR fpm</th>
+<th>ceiling NAM/HRRR ft</th>
+<th>BL wind NAM/HRRR</th>
+<th>T2 NAM/HRRR F</th>
+<th>HFX NAM/HRRR</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>08:00</td>
+<td>0 / 0</td>
+<td>0 / 0</td>
+<td>3339 / 3339</td>
+<td>8kt@127 / 6kt@107</td>
+<td>38 / 42</td>
+<td>0 / 0</td>
+</tr>
+<tr>
+<td>09:00</td>
+<td>79 / 568</td>
+<td>0 / 0</td>
+<td>3339 / 3339</td>
+<td>6kt@044 / 10kt@117</td>
+<td>39 / 41</td>
+<td>-5 / -12</td>
+</tr>
+<tr>
+<td>10:00</td>
+<td>89 / 1296</td>
+<td>23 / 0</td>
+<td>3339 / 3339</td>
+<td>4kt@087 / 16kt@135</td>
+<td>47 / 46</td>
+<td>-1 / -5</td>
+</tr>
+<tr>
+<td>11:00</td>
+<td>877 / 1327</td>
+<td>134 / 0</td>
+<td>3339 / 3339</td>
+<td>8kt@136 / 16kt@139</td>
+<td>49 / 50</td>
+<td>34 / -7</td>
+</tr>
+<tr>
+<td>12:00</td>
+<td>889 / 90</td>
+<td>161 / 28</td>
+<td>3339 / 3339</td>
+<td>9kt@134 / 6kt@096</td>
+<td>50 / 50</td>
+<td>61 / -1</td>
+</tr>
+<tr>
+<td>13:00</td>
+<td>1318 / 305</td>
+<td>191 / 67</td>
+<td>3339 / 3339</td>
+<td>11kt@150 / 6kt@110</td>
+<td>50 / 51</td>
+<td>69 / 10</td>
+</tr>
+<tr>
+<td>14:00</td>
+<td>290 / 87</td>
+<td>58 / 25</td>
+<td>3339 / 3339</td>
+<td>5kt@125 / 8kt@077</td>
+<td>50 / 50</td>
+<td>5 / -2</td>
+</tr>
+<tr>
+<td>15:00</td>
+<td>1182 / 870</td>
+<td>0 / 0</td>
+<td>3339 / 3339</td>
+<td>10kt@148 / 11kt@127</td>
+<td>50 / 50</td>
+<td>-5 / -9</td>
+</tr>
+<tr>
+<td>16:00</td>
+<td>925 / 794</td>
+<td>0 / 0</td>
+<td>3339 / 3339</td>
+<td>10kt@125 / 11kt@124</td>
+<td>46 / 47</td>
+<td>-5 / -18</td>
+</tr>
+<tr>
+<td>17:00</td>
+<td>884 / 617</td>
+<td>0 / 0</td>
+<td>3339 / 3339</td>
+<td>11kt@115 / 9kt@104</td>
+<td>44 / 45</td>
+<td>-14 / -24</td>
+</tr>
+<tr>
+<td>18:00</td>
+<td>761 / 720</td>
+<td>0 / 0</td>
+<td>3339 / 3339</td>
+<td>10kt@113 / 10kt@111</td>
+<td>43 / 44</td>
+<td>-15 / -19</td>
+</tr>
+<tr>
+<td>19:00</td>
+<td>726 / 698</td>
+<td>0 / 0</td>
+<td>3339 / 3339</td>
+<td>10kt@112 / 10kt@107</td>
+<td>43 / 44</td>
+<td>-13 / -18</td>
+</tr>
+<tr>
+<td>20:00</td>
+<td>684 / 644</td>
+<td>0 / 0</td>
+<td>3339 / 3339</td>
+<td>9kt@112 / 9kt@103</td>
+<td>43 / 44</td>
+<td>-12 / -17</td>
+</tr>
+</tbody>
+</table>
+<h3>Green_Mtn_LZ (47.487, -121.676; grid point 47.486, -121.675; terrain 1392 ft)</h3>
+<table>
+<thead>
+<tr>
+<th>local</th>
+<th>BL top NAM/HRRR ft</th>
+<th>w* NAM/HRRR fpm</th>
+<th>ceiling NAM/HRRR ft</th>
+<th>BL wind NAM/HRRR</th>
+<th>T2 NAM/HRRR F</th>
+<th>HFX NAM/HRRR</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>08:00</td>
+<td>0 / 0</td>
+<td>0 / 0</td>
+<td>1392 / 1393</td>
+<td>7kt@117 / 4kt@072</td>
+<td>38 / 47</td>
+<td>0 / 0</td>
+</tr>
+<tr>
+<td>09:00</td>
+<td>639 / 506</td>
+<td>0 / 0</td>
+<td>1392 / 1393</td>
+<td>11kt@056 / 9kt@043</td>
+<td>47 / 50</td>
+<td>-37 / -48</td>
+</tr>
+<tr>
+<td>10:00</td>
+<td>531 / 453</td>
+<td>0 / 0</td>
+<td>1392 / 1393</td>
+<td>6kt@055 / 4kt@327</td>
+<td>55 / 52</td>
+<td>-11 / -8</td>
+</tr>
+<tr>
+<td>11:00</td>
+<td>531 / 381</td>
+<td>88 / 0</td>
+<td>1392 / 1393</td>
+<td>4kt@045 / 4kt@347</td>
+<td>57 / 56</td>
+<td>11 / -11</td>
+</tr>
+<tr>
+<td>12:00</td>
+<td>1468 / 665</td>
+<td>153 / 0</td>
+<td>1392 / 1393</td>
+<td>6kt@115 / 6kt@073</td>
+<td>58 / 58</td>
+<td>25 / -14</td>
+</tr>
+<tr>
+<td>13:00</td>
+<td>1756 / 594</td>
+<td>174 / 0</td>
+<td>1392 / 1393</td>
+<td>7kt@132 / 6kt@041</td>
+<td>59 / 59</td>
+<td>34 / -9</td>
+</tr>
+<tr>
+<td>14:00</td>
+<td>483 / 666</td>
+<td>0 / 0</td>
+<td>1392 / 1393</td>
+<td>5kt@041 / 8kt@043</td>
+<td>58 / 58</td>
+<td>-10 / -23</td>
+</tr>
+<tr>
+<td>15:00</td>
+<td>675 / 1342</td>
+<td>0 / 0</td>
+<td>1392 / 1393</td>
+<td>6kt@055 / 11kt@102</td>
+<td>57 / 58</td>
+<td>-15 / -43</td>
+</tr>
+<tr>
+<td>16:00</td>
+<td>1413 / 1843</td>
+<td>0 / 0</td>
+<td>1392 / 1393</td>
+<td>16kt@123 / 19kt@136</td>
+<td>55 / 57</td>
+<td>-51 / -64</td>
+</tr>
+<tr>
+<td>17:00</td>
+<td>1368 / 1052</td>
+<td>0 / 0</td>
+<td>1392 / 1393</td>
+<td>18kt@128 / 12kt@091</td>
+<td>55 / 56</td>
+<td>-74 / -75</td>
+</tr>
+<tr>
+<td>18:00</td>
+<td>1185 / 902</td>
+<td>0 / 0</td>
+<td>1392 / 1393</td>
+<td>17kt@127 / 11kt@094</td>
+<td>54 / 56</td>
+<td>-70 / -65</td>
+</tr>
+<tr>
+<td>19:00</td>
+<td>1188 / 1083</td>
+<td>0 / 0</td>
+<td>1392 / 1393</td>
+<td>17kt@127 / 14kt@118</td>
+<td>54 / 56</td>
+<td>-70 / -64</td>
+</tr>
+<tr>
+<td>20:00</td>
+<td>1088 / 1069</td>
+<td>0 / 0</td>
+<td>1392 / 1393</td>
+<td>15kt@121 / 14kt@116</td>
+<td>54 / 56</td>
+<td>-66 / -61</td>
+</tr>
+</tbody>
+</table>
+<h3>MtSi (47.508, -121.740; grid point 47.510, -121.746; terrain 2508 ft)</h3>
+<table>
+<thead>
+<tr>
+<th>local</th>
+<th>BL top NAM/HRRR ft</th>
+<th>w* NAM/HRRR fpm</th>
+<th>ceiling NAM/HRRR ft</th>
+<th>BL wind NAM/HRRR</th>
+<th>T2 NAM/HRRR F</th>
+<th>HFX NAM/HRRR</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>08:00</td>
+<td>0 / 0</td>
+<td>0 / 0</td>
+<td>2508 / 2509</td>
+<td>7kt@115 / 8kt@140</td>
+<td>38 / 46</td>
+<td>0 / 0</td>
+</tr>
+<tr>
+<td>09:00</td>
+<td>1044 / 1396</td>
+<td>0 / 0</td>
+<td>2508 / 2509</td>
+<td>18kt@142 / 22kt@139</td>
+<td>48 / 48</td>
+<td>-87 / -79</td>
+</tr>
+<tr>
+<td>10:00</td>
+<td>271 / 1726</td>
+<td>0 / 0</td>
+<td>2508 / 2509</td>
+<td>19kt@123 / 26kt@143</td>
+<td>51 / 51</td>
+<td>-39 / -62</td>
+</tr>
+<tr>
+<td>11:00</td>
+<td>434 / 1923</td>
+<td>62 / 0</td>
+<td>2508 / 2509</td>
+<td>19kt@125 / 25kt@152</td>
+<td>53 / 53</td>
+<td>-2 / -41</td>
+</tr>
+<tr>
+<td>12:00</td>
+<td>441 / 592</td>
+<td>107 / 0</td>
+<td>2508 / 2509</td>
+<td>17kt@123 / 26kt@140</td>
+<td>53 / 54</td>
+<td>30 / -36</td>
+</tr>
+<tr>
+<td>13:00</td>
+<td>866 / 546</td>
+<td>140 / 0</td>
+<td>2508 / 2509</td>
+<td>18kt@136 / 19kt@136</td>
+<td>54 / 55</td>
+<td>34 / -20</td>
+</tr>
+<tr>
+<td>14:00</td>
+<td>410 / 1899</td>
+<td>0 / 0</td>
+<td>2508 / 2509</td>
+<td>18kt@129 / 20kt@154</td>
+<td>54 / 55</td>
+<td>-31 / -27</td>
+</tr>
+<tr>
+<td>15:00</td>
+<td>332 / 862</td>
+<td>0 / 0</td>
+<td>2508 / 2509</td>
+<td>18kt@128 / 23kt@134</td>
+<td>54 / 55</td>
+<td>-55 / -56</td>
+</tr>
+<tr>
+<td>16:00</td>
+<td>701 / 784</td>
+<td>0 / 0</td>
+<td>2508 / 2509</td>
+<td>22kt@129 / 25kt@133</td>
+<td>53 / 55</td>
+<td>-84 / -80</td>
+</tr>
+<tr>
+<td>17:00</td>
+<td>674 / 785</td>
+<td>0 / 0</td>
+<td>2508 / 2509</td>
+<td>25kt@131 / 26kt@131</td>
+<td>53 / 55</td>
+<td>-94 / -85</td>
+</tr>
+<tr>
+<td>18:00</td>
+<td>630 / 731</td>
+<td>0 / 0</td>
+<td>2508 / 2509</td>
+<td>25kt@126 / 25kt@130</td>
+<td>52 / 54</td>
+<td>-89 / -78</td>
+</tr>
+<tr>
+<td>19:00</td>
+<td>655 / 518</td>
+<td>0 / 0</td>
+<td>2508 / 2509</td>
+<td>26kt@126 / 22kt@122</td>
+<td>52 / 54</td>
+<td>-88 / -74</td>
+</tr>
+<tr>
+<td>20:00</td>
+<td>654 / 653</td>
+<td>0 / 0</td>
+<td>2508 / 2509</td>
+<td>25kt@126 / 23kt@121</td>
+<td>52 / 54</td>
+<td>-83 / -69</td>
+</tr>
+</tbody>
+</table>
+<h3>Mt_Washington (47.426, -121.699; grid point 47.426, -121.692; terrain 3503 ft)</h3>
+<table>
+<thead>
+<tr>
+<th>local</th>
+<th>BL top NAM/HRRR ft</th>
+<th>w* NAM/HRRR fpm</th>
+<th>ceiling NAM/HRRR ft</th>
+<th>BL wind NAM/HRRR</th>
+<th>T2 NAM/HRRR F</th>
+<th>HFX NAM/HRRR</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>08:00</td>
+<td>0 / 0</td>
+<td>0 / 0</td>
+<td>3503 / 3503</td>
+<td>7kt@129 / 13kt@129</td>
+<td>37 / 44</td>
+<td>0 / 0</td>
+</tr>
+<tr>
+<td>09:00</td>
+<td>680 / 1119</td>
+<td>0 / 0</td>
+<td>3503 / 3503</td>
+<td>14kt@161 / 23kt@147</td>
+<td>43 / 46</td>
+<td>-61 / -90</td>
+</tr>
+<tr>
+<td>10:00</td>
+<td>870 / 1323</td>
+<td>0 / 0</td>
+<td>3503 / 3503</td>
+<td>15kt@164 / 25kt@160</td>
+<td>47 / 48</td>
+<td>-23 / -71</td>
+</tr>
+<tr>
+<td>11:00</td>
+<td>422 / 1590</td>
+<td>87 / 0</td>
+<td>3503 / 3503</td>
+<td>17kt@142 / 28kt@162</td>
+<td>48 / 49</td>
+<td>16 / -45</td>
+</tr>
+<tr>
+<td>12:00</td>
+<td>646 / 233</td>
+<td>134 / 42</td>
+<td>3503 / 3503</td>
+<td>18kt@142 / 22kt@138</td>
+<td>49 / 50</td>
+<td>46 / -1</td>
+</tr>
+<tr>
+<td>13:00</td>
+<td>856 / 247</td>
+<td>150 / 60</td>
+<td>3503 / 3503</td>
+<td>16kt@155 / 19kt@131</td>
+<td>50 / 50</td>
+<td>49 / 7</td>
+</tr>
+<tr>
+<td>14:00</td>
+<td>259 / 1358</td>
+<td>0 / 0</td>
+<td>3503 / 3503</td>
+<td>18kt@130 / 22kt@169</td>
+<td>49 / 50</td>
+<td>-19 / -9</td>
+</tr>
+<tr>
+<td>15:00</td>
+<td>846 / 1298</td>
+<td>0 / 0</td>
+<td>3503 / 3503</td>
+<td>15kt@152 / 20kt@165</td>
+<td>48 / 50</td>
+<td>-41 / -27</td>
+</tr>
+<tr>
+<td>16:00</td>
+<td>1004 / 1204</td>
+<td>0 / 0</td>
+<td>3503 / 3503</td>
+<td>18kt@155 / 19kt@170</td>
+<td>47 / 49</td>
+<td>-71 / -55</td>
+</tr>
+<tr>
+<td>17:00</td>
+<td>884 / 939</td>
+<td>0 / 0</td>
+<td>3503 / 3503</td>
+<td>18kt@158 / 17kt@167</td>
+<td>46 / 48</td>
+<td>-84 / -67</td>
+</tr>
+<tr>
+<td>18:00</td>
+<td>864 / 866</td>
+<td>0 / 0</td>
+<td>3503 / 3503</td>
+<td>18kt@156 / 18kt@157</td>
+<td>45 / 48</td>
+<td>-84 / -60</td>
+</tr>
+<tr>
+<td>19:00</td>
+<td>892 / 715</td>
+<td>0 / 0</td>
+<td>3503 / 3503</td>
+<td>19kt@157 / 14kt@154</td>
+<td>45 / 48</td>
+<td>-83 / -57</td>
+</tr>
+<tr>
+<td>20:00</td>
+<td>759 / 686</td>
+<td>0 / 0</td>
+<td>3503 / 3503</td>
+<td>16kt@163 / 14kt@146</td>
+<td>45 / 48</td>
+<td>-77 / -54</td>
+</tr>
+</tbody>
+</table>
+<h3>SquakMountain (47.504, -122.047; grid point 47.508, -122.048; terrain 1277 ft)</h3>
+<table>
+<thead>
+<tr>
+<th>local</th>
+<th>BL top NAM/HRRR ft</th>
+<th>w* NAM/HRRR fpm</th>
+<th>ceiling NAM/HRRR ft</th>
+<th>BL wind NAM/HRRR</th>
+<th>T2 NAM/HRRR F</th>
+<th>HFX NAM/HRRR</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>08:00</td>
+<td>0 / 0</td>
+<td>0 / 0</td>
+<td>1277 / 1278</td>
+<td>6kt@118 / 3kt@158</td>
+<td>38 / 41</td>
+<td>0 / 0</td>
+</tr>
+<tr>
+<td>09:00</td>
+<td>80 / 327</td>
+<td>0 / 0</td>
+<td>1277 / 1278</td>
+<td>4kt@189 / 9kt@134</td>
+<td>40 / 42</td>
+<td>-3 / -7</td>
+</tr>
+<tr>
+<td>10:00</td>
+<td>644 / 974</td>
+<td>0 / 0</td>
+<td>1277 / 1278</td>
+<td>13kt@145 / 18kt@145</td>
+<td>50 / 47</td>
+<td>-12 / -10</td>
+</tr>
+<tr>
+<td>11:00</td>
+<td>205 / 782</td>
+<td>73 / 0</td>
+<td>1277 / 1278</td>
+<td>7kt@161 / 16kt@150</td>
+<td>53 / 51</td>
+<td>24 / -18</td>
+</tr>
+<tr>
+<td>12:00</td>
+<td>308 / 661</td>
+<td>106 / 0</td>
+<td>1277 / 1278</td>
+<td>7kt@156 / 12kt@156</td>
+<td>54 / 54</td>
+<td>52 / -13</td>
+</tr>
+<tr>
+<td>13:00</td>
+<td>250 / 725</td>
+<td>102 / 0</td>
+<td>1277 / 1278</td>
+<td>2kt@156 / 13kt@143</td>
+<td>55 / 56</td>
+<td>58 / -11</td>
+</tr>
+<tr>
+<td>14:00</td>
+<td>210 / 195</td>
+<td>45 / 0</td>
+<td>1277 / 1278</td>
+<td>4kt@139 / 3kt@119</td>
+<td>55 / 57</td>
+<td>4 / -8</td>
+</tr>
+<tr>
+<td>15:00</td>
+<td>108 / 82</td>
+<td>0 / 0</td>
+<td>1277 / 1278</td>
+<td>4kt@142 / 2kt@135</td>
+<td>55 / 56</td>
+<td>-5 / -0</td>
+</tr>
+<tr>
+<td>16:00</td>
+<td>491 / 447</td>
+<td>0 / 0</td>
+<td>1277 / 1278</td>
+<td>9kt@135 / 9kt@141</td>
+<td>52 / 52</td>
+<td>-2 / -3</td>
+</tr>
+<tr>
+<td>17:00</td>
+<td>893 / 1007</td>
+<td>0 / 0</td>
+<td>1277 / 1278</td>
+<td>13kt@139 / 17kt@144</td>
+<td>51 / 50</td>
+<td>-5 / -17</td>
+</tr>
+<tr>
+<td>18:00</td>
+<td>1006 / 850</td>
+<td>0 / 0</td>
+<td>1277 / 1278</td>
+<td>17kt@143 / 19kt@148</td>
+<td>51 / 52</td>
+<td>-14 / -39</td>
+</tr>
+<tr>
+<td>19:00</td>
+<td>839 / 725</td>
+<td>0 / 0</td>
+<td>1277 / 1278</td>
+<td>16kt@143 / 16kt@148</td>
+<td>51 / 51</td>
+<td>-20 / -31</td>
+</tr>
+<tr>
+<td>20:00</td>
+<td>844 / 649</td>
+<td>0 / 0</td>
+<td>1277 / 1278</td>
+<td>17kt@150 / 13kt@143</td>
+<td>52 / 51</td>
+<td>-33 / -13</td>
+</tr>
+</tbody>
+</table>
+<h3>McDonald (47.335, -121.882; grid point 47.329, -121.887; terrain 1247 ft)</h3>
+<table>
+<thead>
+<tr>
+<th>local</th>
+<th>BL top NAM/HRRR ft</th>
+<th>w* NAM/HRRR fpm</th>
+<th>ceiling NAM/HRRR ft</th>
+<th>BL wind NAM/HRRR</th>
+<th>T2 NAM/HRRR F</th>
+<th>HFX NAM/HRRR</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>08:00</td>
+<td>0 / 0</td>
+<td>0 / 0</td>
+<td>1247 / 1246</td>
+<td>7kt@122 / 8kt@105</td>
+<td>38 / 47</td>
+<td>0 / 0</td>
+</tr>
+<tr>
+<td>09:00</td>
+<td>800 / 951</td>
+<td>0 / 0</td>
+<td>1247 / 1246</td>
+<td>18kt@133 / 19kt@132</td>
+<td>49 / 51</td>
+<td>-82 / -77</td>
+</tr>
+<tr>
+<td>10:00</td>
+<td>916 / 1068</td>
+<td>0 / 0</td>
+<td>1247 / 1246</td>
+<td>13kt@138 / 20kt@141</td>
+<td>53 / 54</td>
+<td>-36 / -49</td>
+</tr>
+<tr>
+<td>11:00</td>
+<td>445 / 1169</td>
+<td>78 / 0</td>
+<td>1247 / 1246</td>
+<td>19kt@119 / 21kt@130</td>
+<td>56 / 56</td>
+<td>6 / -14</td>
+</tr>
+<tr>
+<td>12:00</td>
+<td>643 / 426</td>
+<td>123 / 77</td>
+<td>1247 / 1246</td>
+<td>19kt@117 / 21kt@124</td>
+<td>58 / 58</td>
+<td>32 / 12</td>
+</tr>
+<tr>
+<td>13:00</td>
+<td>669 / 648</td>
+<td>129 / 104</td>
+<td>1247 / 1246</td>
+<td>17kt@123 / 19kt@114</td>
+<td>59 / 59</td>
+<td>36 / 21</td>
+</tr>
+<tr>
+<td>14:00</td>
+<td>240 / 622</td>
+<td>41 / 103</td>
+<td>1247 / 1246</td>
+<td>16kt@124 / 21kt@117</td>
+<td>59 / 60</td>
+<td>-5 / 21</td>
+</tr>
+<tr>
+<td>15:00</td>
+<td>1142 / 1352</td>
+<td>0 / 0</td>
+<td>1247 / 1246</td>
+<td>18kt@118 / 19kt@123</td>
+<td>57 / 59</td>
+<td>-44 / -19</td>
+</tr>
+<tr>
+<td>16:00</td>
+<td>1184 / 1226</td>
+<td>0 / 0</td>
+<td>1247 / 1246</td>
+<td>17kt@126 / 18kt@126</td>
+<td>56 / 57</td>
+<td>-76 / -50</td>
+</tr>
+<tr>
+<td>17:00</td>
+<td>1137 / 1155</td>
+<td>0 / 0</td>
+<td>1247 / 1246</td>
+<td>23kt@123 / 23kt@123</td>
+<td>55 / 56</td>
+<td>-86 / -61</td>
+</tr>
+<tr>
+<td>18:00</td>
+<td>1129 / 1096</td>
+<td>0 / 0</td>
+<td>1247 / 1246</td>
+<td>23kt@123 / 20kt@124</td>
+<td>54 / 56</td>
+<td>-85 / -58</td>
+</tr>
+<tr>
+<td>19:00</td>
+<td>1082 / 1085</td>
+<td>0 / 0</td>
+<td>1247 / 1246</td>
+<td>21kt@124 / 20kt@121</td>
+<td>54 / 56</td>
+<td>-83 / -58</td>
+</tr>
+<tr>
+<td>20:00</td>
+<td>1024 / 1210</td>
+<td>0 / 0</td>
+<td>1247 / 1246</td>
+<td>19kt@126 / 20kt@122</td>
+<td>54 / 56</td>
+<td>-77 / -55</td>
+</tr>
+</tbody>
+</table>
+<h3>Carnation (47.643, -121.936; grid point 47.641, -121.943; terrain 465 ft)</h3>
+<table>
+<thead>
+<tr>
+<th>local</th>
+<th>BL top NAM/HRRR ft</th>
+<th>w* NAM/HRRR fpm</th>
+<th>ceiling NAM/HRRR ft</th>
+<th>BL wind NAM/HRRR</th>
+<th>T2 NAM/HRRR F</th>
+<th>HFX NAM/HRRR</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>08:00</td>
+<td>0 / 0</td>
+<td>0 / 0</td>
+<td>465 / 464</td>
+<td>6kt@106 / 1kt@009</td>
+<td>36 / 37</td>
+<td>0 / 0</td>
+</tr>
+<tr>
+<td>09:00</td>
+<td>80 / 79</td>
+<td>0 / 0</td>
+<td>465 / 464</td>
+<td>1kt@057 / 1kt@119</td>
+<td>42 / 40</td>
+<td>-0 / -0</td>
+</tr>
+<tr>
+<td>10:00</td>
+<td>98 / 80</td>
+<td>54 / 0</td>
+<td>465 / 464</td>
+<td>1kt@217 / 3kt@001</td>
+<td>46 / 44</td>
+<td>21 / -1</td>
+</tr>
+<tr>
+<td>11:00</td>
+<td>322 / 82</td>
+<td>111 / 33</td>
+<td>465 / 464</td>
+<td>2kt@199 / 3kt@346</td>
+<td>50 / 48</td>
+<td>58 / 4</td>
+</tr>
+<tr>
+<td>12:00</td>
+<td>623 / 241</td>
+<td>147 / 66</td>
+<td>465 / 464</td>
+<td>7kt@165 / 1kt@130</td>
+<td>54 / 52</td>
+<td>69 / 15</td>
+</tr>
+<tr>
+<td>13:00</td>
+<td>832 / 300</td>
+<td>165 / 77</td>
+<td>465 / 464</td>
+<td>11kt@156 / 5kt@156</td>
+<td>57 / 54</td>
+<td>73 / 20</td>
+</tr>
+<tr>
+<td>14:00</td>
+<td>527 / 222</td>
+<td>81 / 54</td>
+<td>465 / 464</td>
+<td>6kt@151 / 2kt@109</td>
+<td>57 / 56</td>
+<td>12 / 7</td>
+</tr>
+<tr>
+<td>15:00</td>
+<td>82 / 91</td>
+<td>0 / 20</td>
+<td>465 / 464</td>
+<td>2kt@322 / 2kt@092</td>
+<td>56 / 56</td>
+<td>-2 / -0</td>
+</tr>
+<tr>
+<td>16:00</td>
+<td>82 / 81</td>
+<td>0 / 0</td>
+<td>465 / 464</td>
+<td>0kt@089 / 3kt@352</td>
+<td>55 / 53</td>
+<td>-0 / -1</td>
+</tr>
+<tr>
+<td>17:00</td>
+<td>82 / 82</td>
+<td>0 / 0</td>
+<td>465 / 464</td>
+<td>2kt@041 / 1kt@092</td>
+<td>52 / 53</td>
+<td>-1 / -0</td>
+</tr>
+<tr>
+<td>18:00</td>
+<td>1614 / 1425</td>
+<td>0 / 0</td>
+<td>465 / 464</td>
+<td>26kt@142 / 27kt@146</td>
+<td>53 / 51</td>
+<td>-2 / -2</td>
+</tr>
+<tr>
+<td>19:00</td>
+<td>1588 / 1455</td>
+<td>0 / 0</td>
+<td>465 / 464</td>
+<td>24kt@145 / 28kt@144</td>
+<td>53 / 52</td>
+<td>-2 / -1</td>
+</tr>
+<tr>
+<td>20:00</td>
+<td>1483 / 1469</td>
+<td>0 / 0</td>
+<td>465 / 464</td>
+<td>23kt@149 / 27kt@140</td>
+<td>52 / 53</td>
+<td>-3 / -1</td>
+</tr>
+</tbody>
+</table>
+<h3>5_Mile (47.614, -121.691; grid point 47.618, -121.694; terrain 2342 ft)</h3>
+<table>
+<thead>
+<tr>
+<th>local</th>
+<th>BL top NAM/HRRR ft</th>
+<th>w* NAM/HRRR fpm</th>
+<th>ceiling NAM/HRRR ft</th>
+<th>BL wind NAM/HRRR</th>
+<th>T2 NAM/HRRR F</th>
+<th>HFX NAM/HRRR</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>08:00</td>
+<td>0 / 0</td>
+<td>0 / 0</td>
+<td>2342 / 2343</td>
+<td>7kt@108 / 4kt@108</td>
+<td>38 / 46</td>
+<td>0 / 0</td>
+</tr>
+<tr>
+<td>09:00</td>
+<td>541 / 746</td>
+<td>0 / 0</td>
+<td>2342 / 2343</td>
+<td>10kt@175 / 15kt@150</td>
+<td>48 / 50</td>
+<td>-59 / -91</td>
+</tr>
+<tr>
+<td>10:00</td>
+<td>834 / 1045</td>
+<td>0 / 0</td>
+<td>2342 / 2343</td>
+<td>13kt@169 / 16kt@147</td>
+<td>52 / 50</td>
+<td>-34 / -20</td>
+</tr>
+<tr>
+<td>11:00</td>
+<td>406 / 1477</td>
+<td>71 / 0</td>
+<td>2342 / 2343</td>
+<td>16kt@132 / 20kt@157</td>
+<td>54 / 53</td>
+<td>3 / -23</td>
+</tr>
+<tr>
+<td>12:00</td>
+<td>871 / 1878</td>
+<td>135 / 0</td>
+<td>2342 / 2343</td>
+<td>14kt@140 / 25kt@165</td>
+<td>55 / 55</td>
+<td>31 / -19</td>
+</tr>
+<tr>
+<td>13:00</td>
+<td>1465 / 1304</td>
+<td>178 / 0</td>
+<td>2342 / 2343</td>
+<td>14kt@154 / 16kt@172</td>
+<td>56 / 56</td>
+<td>46 / -22</td>
+</tr>
+<tr>
+<td>14:00</td>
+<td>949 / 1493</td>
+<td>90 / 0</td>
+<td>2342 / 2343</td>
+<td>14kt@146 / 18kt@162</td>
+<td>55 / 55</td>
+<td>7 / -24</td>
+</tr>
+<tr>
+<td>15:00</td>
+<td>696 / 911</td>
+<td>0 / 0</td>
+<td>2342 / 2343</td>
+<td>9kt@163 / 20kt@142</td>
+<td>54 / 55</td>
+<td>-52 / -66</td>
+</tr>
+<tr>
+<td>16:00</td>
+<td>660 / 1022</td>
+<td>0 / 0</td>
+<td>2342 / 2343</td>
+<td>15kt@139 / 18kt@156</td>
+<td>53 / 54</td>
+<td>-73 / -78</td>
+</tr>
+<tr>
+<td>17:00</td>
+<td>721 / 934</td>
+<td>0 / 0</td>
+<td>2342 / 2343</td>
+<td>14kt@144 / 17kt@162</td>
+<td>52 / 53</td>
+<td>-82 / -84</td>
+</tr>
+<tr>
+<td>18:00</td>
+<td>657 / 663</td>
+<td>0 / 0</td>
+<td>2342 / 2343</td>
+<td>18kt@143 / 18kt@142</td>
+<td>52 / 54</td>
+<td>-84 / -79</td>
+</tr>
+<tr>
+<td>19:00</td>
+<td>648 / 659</td>
+<td>0 / 0</td>
+<td>2342 / 2343</td>
+<td>17kt@139 / 18kt@133</td>
+<td>52 / 53</td>
+<td>-82 / -72</td>
+</tr>
+<tr>
+<td>20:00</td>
+<td>648 / 687</td>
+<td>0 / 0</td>
+<td>2342 / 2343</td>
+<td>17kt@142 / 12kt@160</td>
+<td>51 / 54</td>
+<td>-78 / -70</td>
+</tr>
+</tbody>
+</table>
+<h3>Grand_Prospect (47.472, -121.821; grid point 47.473, -121.817; terrain 2387 ft)</h3>
+<table>
+<thead>
+<tr>
+<th>local</th>
+<th>BL top NAM/HRRR ft</th>
+<th>w* NAM/HRRR fpm</th>
+<th>ceiling NAM/HRRR ft</th>
+<th>BL wind NAM/HRRR</th>
+<th>T2 NAM/HRRR F</th>
+<th>HFX NAM/HRRR</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>08:00</td>
+<td>0 / 0</td>
+<td>0 / 0</td>
+<td>2387 / 2387</td>
+<td>7kt@133 / 11kt@144</td>
+<td>38 / 46</td>
+<td>0 / 0</td>
+</tr>
+<tr>
+<td>09:00</td>
+<td>613 / 1181</td>
+<td>0 / 0</td>
+<td>2387 / 2387</td>
+<td>14kt@139 / 18kt@135</td>
+<td>45 / 48</td>
+<td>-61 / -78</td>
+</tr>
+<tr>
+<td>10:00</td>
+<td>266 / 280</td>
+<td>0 / 0</td>
+<td>2387 / 2387</td>
+<td>18kt@143 / 29kt@140</td>
+<td>49 / 50</td>
+<td>-11 / -56</td>
+</tr>
+<tr>
+<td>11:00</td>
+<td>444 / 285</td>
+<td>105 / 0</td>
+<td>2387 / 2387</td>
+<td>15kt@138 / 25kt@141</td>
+<td>51 / 52</td>
+<td>31 / -25</td>
+</tr>
+<tr>
+<td>12:00</td>
+<td>794 / 581</td>
+<td>151 / 81</td>
+<td>2387 / 2387</td>
+<td>17kt@137 / 24kt@150</td>
+<td>53 / 53</td>
+<td>55 / 8</td>
+</tr>
+<tr>
+<td>13:00</td>
+<td>974 / 465</td>
+<td>167 / 83</td>
+<td>2387 / 2387</td>
+<td>13kt@143 / 19kt@144</td>
+<td>54 / 54</td>
+<td>61 / 13</td>
+</tr>
+<tr>
+<td>14:00</td>
+<td>283 / 502</td>
+<td>0 / 64</td>
+<td>2387 / 2387</td>
+<td>20kt@145 / 18kt@133</td>
+<td>53 / 53</td>
+<td>-10 / 3</td>
+</tr>
+<tr>
+<td>15:00</td>
+<td>927 / 1307</td>
+<td>0 / 0</td>
+<td>2387 / 2387</td>
+<td>13kt@139 / 19kt@138</td>
+<td>52 / 53</td>
+<td>-31 / -17</td>
+</tr>
+<tr>
+<td>16:00</td>
+<td>1189 / 1265</td>
+<td>0 / 0</td>
+<td>2387 / 2387</td>
+<td>16kt@126 / 19kt@133</td>
+<td>51 / 51</td>
+<td>-54 / -41</td>
+</tr>
+<tr>
+<td>17:00</td>
+<td>1286 / 1257</td>
+<td>0 / 0</td>
+<td>2387 / 2387</td>
+<td>19kt@133 / 20kt@135</td>
+<td>50 / 51</td>
+<td>-65 / -52</td>
+</tr>
+<tr>
+<td>18:00</td>
+<td>1229 / 1179</td>
+<td>0 / 0</td>
+<td>2387 / 2387</td>
+<td>18kt@133 / 17kt@135</td>
+<td>50 / 51</td>
+<td>-61 / -48</td>
+</tr>
+<tr>
+<td>19:00</td>
+<td>1251 / 1202</td>
+<td>0 / 0</td>
+<td>2387 / 2387</td>
+<td>18kt@132 / 18kt@130</td>
+<td>49 / 50</td>
+<td>-62 / -43</td>
+</tr>
+<tr>
+<td>20:00</td>
+<td>264 / 1278</td>
+<td>0 / 0</td>
+<td>2387 / 2387</td>
+<td>22kt@135 / 20kt@125</td>
+<td>49 / 51</td>
+<td>-55 / -45</td>
+</tr>
+</tbody>
+</table>
+<h3>Bandera_Mountain (47.420, -121.554; grid point 47.414, -121.551; terrain 3651 ft)</h3>
+<table>
+<thead>
+<tr>
+<th>local</th>
+<th>BL top NAM/HRRR ft</th>
+<th>w* NAM/HRRR fpm</th>
+<th>ceiling NAM/HRRR ft</th>
+<th>BL wind NAM/HRRR</th>
+<th>T2 NAM/HRRR F</th>
+<th>HFX NAM/HRRR</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>08:00</td>
+<td>0 / 0</td>
+<td>0 / 0</td>
+<td>3651 / 3651</td>
+<td>9kt@125 / 13kt@114</td>
+<td>36 / 39</td>
+<td>0 / 0</td>
+</tr>
+<tr>
+<td>09:00</td>
+<td>911 / 1204</td>
+<td>0 / 0</td>
+<td>3651 / 3651</td>
+<td>17kt@129 / 24kt@128</td>
+<td>42 / 43</td>
+<td>-64 / -95</td>
+</tr>
+<tr>
+<td>10:00</td>
+<td>226 / 1323</td>
+<td>52 / 0</td>
+<td>3651 / 3651</td>
+<td>25kt@102 / 27kt@126</td>
+<td>43 / 44</td>
+<td>5 / -60</td>
+</tr>
+<tr>
+<td>11:00</td>
+<td>429 / 1387</td>
+<td>121 / 0</td>
+<td>3651 / 3651</td>
+<td>23kt@107 / 27kt@132</td>
+<td>45 / 45</td>
+<td>53 / -35</td>
+</tr>
+<tr>
+<td>12:00</td>
+<td>501 / 1389</td>
+<td>146 / 0</td>
+<td>3651 / 3651</td>
+<td>23kt@111 / 23kt@136</td>
+<td>46 / 46</td>
+<td>82 / -11</td>
+</tr>
+<tr>
+<td>13:00</td>
+<td>609 / 358</td>
+<td>160 / 49</td>
+<td>3651 / 3651</td>
+<td>21kt@111 / 25kt@101</td>
+<td>47 / 47</td>
+<td>91 / -2</td>
+</tr>
+<tr>
+<td>14:00</td>
+<td>412 / 272</td>
+<td>92 / 0</td>
+<td>3651 / 3651</td>
+<td>22kt@103 / 26kt@103</td>
+<td>46 / 46</td>
+<td>22 / -9</td>
+</tr>
+<tr>
+<td>15:00</td>
+<td>301 / 1370</td>
+<td>35 / 0</td>
+<td>3651 / 3651</td>
+<td>23kt@099 / 24kt@131</td>
+<td>46 / 46</td>
+<td>-2 / -30</td>
+</tr>
+<tr>
+<td>16:00</td>
+<td>269 / 1278</td>
+<td>0 / 0</td>
+<td>3651 / 3651</td>
+<td>24kt@101 / 24kt@133</td>
+<td>44 / 45</td>
+<td>-37 / -58</td>
+</tr>
+<tr>
+<td>17:00</td>
+<td>260 / 1181</td>
+<td>0 / 0</td>
+<td>3651 / 3651</td>
+<td>26kt@103 / 22kt@135</td>
+<td>43 / 44</td>
+<td>-49 / -67</td>
+</tr>
+<tr>
+<td>18:00</td>
+<td>261 / 1145</td>
+<td>0 / 0</td>
+<td>3651 / 3651</td>
+<td>26kt@103 / 20kt@134</td>
+<td>43 / 44</td>
+<td>-49 / -58</td>
+</tr>
+<tr>
+<td>19:00</td>
+<td>260 / 1171</td>
+<td>0 / 0</td>
+<td>3651 / 3651</td>
+<td>26kt@104 / 20kt@129</td>
+<td>43 / 44</td>
+<td>-46 / -57</td>
+</tr>
+<tr>
+<td>20:00</td>
+<td>249 / 1264</td>
+<td>0 / 0</td>
+<td>3651 / 3651</td>
+<td>27kt@099 / 22kt@125</td>
+<td>43 / 44</td>
+<td>-48 / -60</td>
+</tr>
+</tbody>
+</table>
+<h3>Mailbox_Peak (47.462, -121.639; grid point 47.462, -121.639; terrain 3494 ft)</h3>
+<table>
+<thead>
+<tr>
+<th>local</th>
+<th>BL top NAM/HRRR ft</th>
+<th>w* NAM/HRRR fpm</th>
+<th>ceiling NAM/HRRR ft</th>
+<th>BL wind NAM/HRRR</th>
+<th>T2 NAM/HRRR F</th>
+<th>HFX NAM/HRRR</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>08:00</td>
+<td>0 / 0</td>
+<td>0 / 0</td>
+<td>3494 / 3494</td>
+<td>8kt@121 / 11kt@122</td>
+<td>37 / 44</td>
+<td>0 / 0</td>
+</tr>
+<tr>
+<td>09:00</td>
+<td>718 / 1116</td>
+<td>0 / 0</td>
+<td>3494 / 3494</td>
+<td>15kt@151 / 25kt@141</td>
+<td>43 / 45</td>
+<td>-63 / -99</td>
+</tr>
+<tr>
+<td>10:00</td>
+<td>863 / 1318</td>
+<td>0 / 0</td>
+<td>3494 / 3494</td>
+<td>17kt@150 / 27kt@145</td>
+<td>46 / 47</td>
+<td>-22 / -84</td>
+</tr>
+<tr>
+<td>11:00</td>
+<td>429 / 1386</td>
+<td>100 / 0</td>
+<td>3494 / 3494</td>
+<td>21kt@132 / 28kt@148</td>
+<td>48 / 48</td>
+<td>26 / -69</td>
+</tr>
+<tr>
+<td>12:00</td>
+<td>792 / 1268</td>
+<td>150 / 0</td>
+<td>3494 / 3494</td>
+<td>21kt@134 / 21kt@171</td>
+<td>49 / 49</td>
+<td>53 / -49</td>
+</tr>
+<tr>
+<td>13:00</td>
+<td>668 / 1272</td>
+<td>143 / 0</td>
+<td>3494 / 3494</td>
+<td>20kt@147 / 20kt@159</td>
+<td>50 / 50</td>
+<td>53 / -34</td>
+</tr>
+<tr>
+<td>14:00</td>
+<td>1102 / 1431</td>
+<td>0 / 0</td>
+<td>3494 / 3494</td>
+<td>16kt@160 / 23kt@153</td>
+<td>49 / 50</td>
+<td>-20 / -47</td>
+</tr>
+<tr>
+<td>15:00</td>
+<td>1058 / 1383</td>
+<td>0 / 0</td>
+<td>3494 / 3494</td>
+<td>15kt@153 / 22kt@156</td>
+<td>49 / 49</td>
+<td>-36 / -67</td>
+</tr>
+<tr>
+<td>16:00</td>
+<td>1137 / 1372</td>
+<td>0 / 0</td>
+<td>3494 / 3494</td>
+<td>18kt@144 / 23kt@154</td>
+<td>48 / 48</td>
+<td>-64 / -93</td>
+</tr>
+<tr>
+<td>17:00</td>
+<td>1044 / 1163</td>
+<td>0 / 0</td>
+<td>3494 / 3494</td>
+<td>17kt@141 / 18kt@153</td>
+<td>47 / 48</td>
+<td>-76 / -110</td>
+</tr>
+<tr>
+<td>18:00</td>
+<td>968 / 874</td>
+<td>0 / 0</td>
+<td>3494 / 3494</td>
+<td>16kt@142 / 17kt@135</td>
+<td>47 / 48</td>
+<td>-70 / -97</td>
+</tr>
+<tr>
+<td>19:00</td>
+<td>989 / 890</td>
+<td>0 / 0</td>
+<td>3494 / 3494</td>
+<td>17kt@141 / 17kt@136</td>
+<td>47 / 47</td>
+<td>-70 / -92</td>
+</tr>
+<tr>
+<td>20:00</td>
+<td>952 / 940</td>
+<td>0 / 0</td>
+<td>3494 / 3494</td>
+<td>15kt@137 / 15kt@138</td>
+<td>47 / 48</td>
+<td>-66 / -95</td>
+</tr>
+</tbody>
+</table>
+<h3>Bergseth (47.243, -121.924; grid point 47.245, -121.921; terrain 1250 ft)</h3>
+<table>
+<thead>
+<tr>
+<th>local</th>
+<th>BL top NAM/HRRR ft</th>
+<th>w* NAM/HRRR fpm</th>
+<th>ceiling NAM/HRRR ft</th>
+<th>BL wind NAM/HRRR</th>
+<th>T2 NAM/HRRR F</th>
+<th>HFX NAM/HRRR</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>08:00</td>
+<td>0 / 0</td>
+<td>0 / 0</td>
+<td>1250 / 1248</td>
+<td>7kt@123 / 3kt@103</td>
+<td>38 / 43</td>
+<td>0 / 0</td>
+</tr>
+<tr>
+<td>09:00</td>
+<td>640 / 268</td>
+<td>0 / 0</td>
+<td>1250 / 1248</td>
+<td>2kt@030 / 4kt@120</td>
+<td>46 / 51</td>
+<td>-1 / -64</td>
+</tr>
+<tr>
+<td>10:00</td>
+<td>223 / 265</td>
+<td>53 / 0</td>
+<td>1250 / 1248</td>
+<td>1kt@042 / 9kt@115</td>
+<td>51 / 52</td>
+<td>7 / -9</td>
+</tr>
+<tr>
+<td>11:00</td>
+<td>218 / 103</td>
+<td>91 / 25</td>
+<td>1250 / 1248</td>
+<td>2kt@091 / 6kt@112</td>
+<td>52 / 53</td>
+<td>46 / -0</td>
+</tr>
+<tr>
+<td>12:00</td>
+<td>376 / 229</td>
+<td>116 / 63</td>
+<td>1250 / 1248</td>
+<td>3kt@089 / 6kt@095</td>
+<td>56 / 55</td>
+<td>54 / 12</td>
+</tr>
+<tr>
+<td>13:00</td>
+<td>353 / 253</td>
+<td>122 / 73</td>
+<td>1250 / 1248</td>
+<td>2kt@099 / 11kt@102</td>
+<td>56 / 59</td>
+<td>69 / 17</td>
+</tr>
+<tr>
+<td>14:00</td>
+<td>250 / 211</td>
+<td>65 / 59</td>
+<td>1250 / 1248</td>
+<td>4kt@099 / 11kt@098</td>
+<td>57 / 58</td>
+<td>12 / 10</td>
+</tr>
+<tr>
+<td>15:00</td>
+<td>597 / 479</td>
+<td>0 / 0</td>
+<td>1250 / 1248</td>
+<td>13kt@099 / 7kt@093</td>
+<td>57 / 58</td>
+<td>-24 / -26</td>
+</tr>
+<tr>
+<td>16:00</td>
+<td>325 / 443</td>
+<td>0 / 0</td>
+<td>1250 / 1248</td>
+<td>8kt@086 / 12kt@097</td>
+<td>56 / 57</td>
+<td>-61 / -52</td>
+</tr>
+<tr>
+<td>17:00</td>
+<td>384 / 383</td>
+<td>0 / 0</td>
+<td>1250 / 1248</td>
+<td>11kt@113 / 10kt@105</td>
+<td>54 / 56</td>
+<td>-54 / -57</td>
+</tr>
+<tr>
+<td>18:00</td>
+<td>415 / 321</td>
+<td>0 / 0</td>
+<td>1250 / 1248</td>
+<td>13kt@112 / 8kt@113</td>
+<td>54 / 53</td>
+<td>-49 / -28</td>
+</tr>
+<tr>
+<td>19:00</td>
+<td>415 / 294</td>
+<td>0 / 0</td>
+<td>1250 / 1248</td>
+<td>12kt@112 / 6kt@099</td>
+<td>54 / 57</td>
+<td>-46 / -59</td>
+</tr>
+<tr>
+<td>20:00</td>
+<td>297 / 346</td>
+<td>0 / 0</td>
+<td>1250 / 1248</td>
+<td>7kt@122 / 8kt@101</td>
+<td>55 / 58</td>
+<td>-54 / -67</td>
+</tr>
+</tbody>
+</table>
+<h3>Index_Launch (47.836, -121.535; grid point 47.834, -121.534; terrain 1965 ft)</h3>
+<table>
+<thead>
+<tr>
+<th>local</th>
+<th>BL top NAM/HRRR ft</th>
+<th>w* NAM/HRRR fpm</th>
+<th>ceiling NAM/HRRR ft</th>
+<th>BL wind NAM/HRRR</th>
+<th>T2 NAM/HRRR F</th>
+<th>HFX NAM/HRRR</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>08:00</td>
+<td>0 / 0</td>
+<td>0 / 0</td>
+<td>1965 / 1965</td>
+<td>8kt@091 / 6kt@047</td>
+<td>36 / 45</td>
+<td>0 / 0</td>
+</tr>
+<tr>
+<td>09:00</td>
+<td>523 / 492</td>
+<td>0 / 0</td>
+<td>1965 / 1965</td>
+<td>6kt@053 / 6kt@061</td>
+<td>44 / 45</td>
+<td>-40 / -39</td>
+</tr>
+<tr>
+<td>10:00</td>
+<td>514 / 548</td>
+<td>0 / 0</td>
+<td>1965 / 1965</td>
+<td>6kt@049 / 8kt@047</td>
+<td>49 / 50</td>
+<td>-26 / -49</td>
+</tr>
+<tr>
+<td>11:00</td>
+<td>249 / 562</td>
+<td>54 / 0</td>
+<td>1965 / 1965</td>
+<td>8kt@036 / 8kt@045</td>
+<td>53 / 52</td>
+<td>3 / -40</td>
+</tr>
+<tr>
+<td>12:00</td>
+<td>638 / 525</td>
+<td>111 / 0</td>
+<td>1965 / 1965</td>
+<td>7kt@041 / 6kt@050</td>
+<td>54 / 54</td>
+<td>25 / -25</td>
+</tr>
+<tr>
+<td>13:00</td>
+<td>869 / 493</td>
+<td>131 / 0</td>
+<td>1965 / 1965</td>
+<td>5kt@046 / 5kt@047</td>
+<td>56 / 55</td>
+<td>31 / -20</td>
+</tr>
+<tr>
+<td>14:00</td>
+<td>251 / 457</td>
+<td>50 / 0</td>
+<td>1965 / 1965</td>
+<td>8kt@038 / 7kt@031</td>
+<td>56 / 55</td>
+<td>2 / -29</td>
+</tr>
+<tr>
+<td>15:00</td>
+<td>490 / 487</td>
+<td>0 / 0</td>
+<td>1965 / 1965</td>
+<td>6kt@045 / 7kt@054</td>
+<td>54 / 53</td>
+<td>-23 / -40</td>
+</tr>
+<tr>
+<td>16:00</td>
+<td>465 / 532</td>
+<td>0 / 0</td>
+<td>1965 / 1965</td>
+<td>7kt@045 / 7kt@048</td>
+<td>52 / 53</td>
+<td>-51 / -54</td>
+</tr>
+<tr>
+<td>17:00</td>
+<td>533 / 576</td>
+<td>0 / 0</td>
+<td>1965 / 1965</td>
+<td>9kt@039 / 8kt@048</td>
+<td>52 / 53</td>
+<td>-62 / -59</td>
+</tr>
+<tr>
+<td>18:00</td>
+<td>548 / 556</td>
+<td>0 / 0</td>
+<td>1965 / 1965</td>
+<td>9kt@039 / 7kt@045</td>
+<td>52 / 52</td>
+<td>-61 / -53</td>
+</tr>
+<tr>
+<td>19:00</td>
+<td>563 / 513</td>
+<td>0 / 0</td>
+<td>1965 / 1965</td>
+<td>8kt@041 / 8kt@046</td>
+<td>52 / 53</td>
+<td>-56 / -58</td>
+</tr>
+<tr>
+<td>20:00</td>
+<td>523 / 556</td>
+<td>0 / 0</td>
+<td>1965 / 1965</td>
+<td>7kt@041 / 9kt@040</td>
+<td>51 / 53</td>
+<td>-51 / -65</td>
+</tr>
+</tbody>
+</table>
+<h3>Index_LZ (47.818, -121.567; grid point 47.822, -121.570; terrain 1135 ft)</h3>
+<table>
+<thead>
+<tr>
+<th>local</th>
+<th>BL top NAM/HRRR ft</th>
+<th>w* NAM/HRRR fpm</th>
+<th>ceiling NAM/HRRR ft</th>
+<th>BL wind NAM/HRRR</th>
+<th>T2 NAM/HRRR F</th>
+<th>HFX NAM/HRRR</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>08:00</td>
+<td>0 / 0</td>
+<td>0 / 0</td>
+<td>1135 / 1136</td>
+<td>8kt@090 / 5kt@073</td>
+<td>36 / 46</td>
+<td>0 / 0</td>
+</tr>
+<tr>
+<td>09:00</td>
+<td>1426 / 1498</td>
+<td>0 / 0</td>
+<td>1135 / 1136</td>
+<td>18kt@108 / 14kt@119</td>
+<td>48 / 49</td>
+<td>-45 / -43</td>
+</tr>
+<tr>
+<td>10:00</td>
+<td>909 / 1280</td>
+<td>0 / 0</td>
+<td>1135 / 1136</td>
+<td>12kt@102 / 11kt@112</td>
+<td>53 / 52</td>
+<td>-31 / -13</td>
+</tr>
+<tr>
+<td>11:00</td>
+<td>109 / 1585</td>
+<td>44 / 0</td>
+<td>1135 / 1136</td>
+<td>10kt@103 / 11kt@116</td>
+<td>55 / 56</td>
+<td>3 / -16</td>
+</tr>
+<tr>
+<td>12:00</td>
+<td>508 / 1160</td>
+<td>105 / 0</td>
+<td>1135 / 1136</td>
+<td>10kt@099 / 9kt@112</td>
+<td>57 / 58</td>
+<td>24 / -17</td>
+</tr>
+<tr>
+<td>13:00</td>
+<td>845 / 1396</td>
+<td>131 / 0</td>
+<td>1135 / 1136</td>
+<td>9kt@087 / 11kt@120</td>
+<td>59 / 59</td>
+<td>29 / -13</td>
+</tr>
+<tr>
+<td>14:00</td>
+<td>959 / 1386</td>
+<td>0 / 0</td>
+<td>1135 / 1136</td>
+<td>9kt@091 / 10kt@121</td>
+<td>59 / 59</td>
+<td>-8 / -8</td>
+</tr>
+<tr>
+<td>15:00</td>
+<td>885 / 1122</td>
+<td>0 / 0</td>
+<td>1135 / 1136</td>
+<td>9kt@102 / 10kt@117</td>
+<td>58 / 57</td>
+<td>-16 / -31</td>
+</tr>
+<tr>
+<td>16:00</td>
+<td>1137 / 1010</td>
+<td>0 / 0</td>
+<td>1135 / 1136</td>
+<td>12kt@120 / 12kt@113</td>
+<td>56 / 55</td>
+<td>-29 / -26</td>
+</tr>
+<tr>
+<td>17:00</td>
+<td>1012 / 1101</td>
+<td>0 / 0</td>
+<td>1135 / 1136</td>
+<td>11kt@112 / 12kt@114</td>
+<td>55 / 54</td>
+<td>-35 / -33</td>
+</tr>
+<tr>
+<td>18:00</td>
+<td>1248 / 1238</td>
+<td>0 / 0</td>
+<td>1135 / 1136</td>
+<td>12kt@121 / 14kt@118</td>
+<td>55 / 53</td>
+<td>-37 / -31</td>
+</tr>
+<tr>
+<td>19:00</td>
+<td>1185 / 1833</td>
+<td>0 / 0</td>
+<td>1135 / 1136</td>
+<td>14kt@120 / 16kt@126</td>
+<td>55 / 54</td>
+<td>-44 / -39</td>
+</tr>
+<tr>
+<td>20:00</td>
+<td>1001 / 1968</td>
+<td>0 / 0</td>
+<td>1135 / 1136</td>
+<td>12kt@116 / 15kt@127</td>
+<td>55 / 54</td>
+<td>-38 / -39</td>
+</tr>
+</tbody>
+</table>
+<h2>Windgram montages</h2>
+<ul>
+<li>Tiger: <code>montage_Tiger.png</code></li>
+<li>TigerHikeLookout: <code>montage_TigerHikeLookout.png</code></li>
+<li>TigerLZ: <code>montage_TigerLZ.png</code></li>
+<li>Poo_Poo_Point: <code>montage_Poo_Poo_Point.png</code></li>
+<li>West_Tiger_3: <code>montage_West_Tiger_3.png</code></li>
+<li>West_Tiger_2: <code>montage_West_Tiger_2.png</code></li>
+<li>West_Tiger_1: <code>montage_West_Tiger_1.png</code></li>
+<li>East_Tiger: <code>montage_East_Tiger.png</code></li>
+<li>Taylor_Mountain: <code>montage_Taylor_Mountain.png</code></li>
+<li>Mitchell_Hill: <code>montage_Mitchell_Hill.png</code></li>
+<li>Grand_Ridge_Park: <code>montage_Grand_Ridge_Park.png</code></li>
+<li>Issaquah_Highlands: <code>montage_Issaquah_Highlands.png</code></li>
+<li>Rattlesnake: <code>montage_Rattlesnake.png</code></li>
+<li>Green_Mtn_Launch: <code>montage_Green_Mtn_Launch.png</code></li>
+<li>Green_Mtn_LZ: <code>montage_Green_Mtn_LZ.png</code></li>
+<li>MtSi: <code>montage_MtSi.png</code></li>
+<li>Mt_Washington: <code>montage_Mt_Washington.png</code></li>
+<li>SquakMountain: <code>montage_SquakMountain.png</code></li>
+<li>McDonald: <code>montage_McDonald.png</code></li>
+<li>Carnation: <code>montage_Carnation.png</code></li>
+<li>5_Mile: <code>montage_5_Mile.png</code></li>
+<li>Grand_Prospect: <code>montage_Grand_Prospect.png</code></li>
+<li>Bandera_Mountain: <code>montage_Bandera_Mountain.png</code></li>
+<li>Mailbox_Peak: <code>montage_Mailbox_Peak.png</code></li>
+<li>Bergseth: <code>montage_Bergseth.png</code></li>
+<li>Index_Launch: <code>montage_Index_Launch.png</code></li>
+<li>Index_LZ: <code>montage_Index_LZ.png</code></li>
+</ul>
+</body></html>
