@@ -23,9 +23,10 @@ on:
         required: false
 
 env:
-  # v2 soaring-cube upload to R2 is OFF (R2 cost): the pipeline still writes
-  # output/soaring.zarr, it just isn't uploaded. 'true' re-enables it for the
-  # issaquah tile; r2-prune.yml keeps ageing out the existing objects.
+  # v2 soaring-cube upload to R2 is OFF, paused to focus on the region expansion
+  # (not an R2 cost issue). The pipeline still writes output/soaring.zarr, it
+  # just isn't uploaded. 'true' re-enables it for the issaquah tile;
+  # r2-prune.yml keeps ageing out the existing objects.
   UPLOAD_CUBES: 'false'
   IMAGE: ghcr.io/nw-paragliding/windgram:latest   # needs >= 0.6.0 (adds the rrfs model)
   # Data root for RRFS GRIB. Default: NOAA's Open Data mirror on AWS
