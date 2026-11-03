@@ -77,9 +77,13 @@
       letter-spacing: .14em; text-transform: uppercase;
       color: var(--ink-soft);
       white-space: nowrap;
-      display: flex; align-items: center; gap: 6px;
+      display: flex; align-items: center; justify-content: flex-end; gap: 2px 6px;
+      flex-wrap: wrap;   /* the classic-view link drops to a second line when the row is tight */
     }
     .brand .kicker .glyph { color: var(--evergreen); font-size: 11px; }
+    /* "classic view": the wxtofly-style list page at /old, carrying the selected site */
+    .kicker a.classic { color: inherit; text-decoration: none; border-bottom: 1px solid currentColor; padding-bottom: 1px; }
+    .kicker a.classic:hover, .kicker a.classic:focus-visible { color: var(--evergreen); }
 
     /* Controls block */
     .controls { padding: 13px 24px 3px; display: flex; flex-direction: column; gap: 9px;
@@ -385,7 +389,7 @@
         <div class="wordmark">
           <h1>PNW <span class="lift">Soaring</span></h1>
         </div>
-        <div class="kicker"><span class="glyph">▲</span> Washington · thermal forecast</div>
+        <div class="kicker"><a class="classic" id="classic-link" href="/old/" title="The wxtofly-style list page">classic view</a></div>
       </header>
 
       <div class="controls">
@@ -445,7 +449,7 @@
     <!-- Floating brand over the full-screen map (mobile only) -->
     <div class="map-header">
       <h1>PNW <span class="lift">Soaring</span></h1>
-      <span class="kicker">Washington</span>
+      <span class="kicker"><a class="classic" id="classic-link-m" href="/old/" title="The wxtofly-style list page">classic view</a></span>
     </div>
   </div>
 
@@ -655,6 +659,9 @@
     function updateWindgram() {
       const empty = document.getElementById('windgram-empty');
       const content = document.getElementById('windgram-content');
+      // The classic (/old) links open on the same site when one is selected.
+      const classicHref = currentSite ? '/old/#' + encodeURIComponent(currentSite.name) : '/old/';
+      document.querySelectorAll('#classic-link, #classic-link-m').forEach(a => { a.href = classicHref; });
       if (!currentSite) { empty.style.display = ''; content.style.display = 'none'; return; }
       empty.style.display = 'none';
       content.style.display = '';
