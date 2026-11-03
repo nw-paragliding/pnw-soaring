@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
     inputs:
       regions:
-        description: 'Region tiles, JSON list (blank = all seven)'
+        description: 'Region tiles, JSON list (blank = every tile)'
         required: false
 
 env:
@@ -23,7 +23,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        region: ${{ fromJson(inputs.regions || '["issaquah","wenatchee","skykomish","chelan","baker","methow","waterville"]') }}
+        region: ${{ fromJson(inputs.regions || '["issaquah","wenatchee","skykomish","chelan","baker","methow","waterville","salish","gorge","tillamook","tricities","bend","lakeview","colville","siskiyou","olympics","palouse","wallowa","newport","goldendale"]') }}
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 30
     permissions:

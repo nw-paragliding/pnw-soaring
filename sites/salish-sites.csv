@@ -1,0 +1,15 @@
+# salish region sites, domains/salish.yaml (Salish Sea: Whidbey, Port Townsend, Smith Island, Bellingham airport)
+# Every raspnw-v2 (wxtofly) site at least 10 km inside this tile's 1.33 km nest
+# edge, assigned to the tile where it sits deepest (airports/METAR points and
+# towns included). '# edge' marks sites only 10-15 km inside the nest edge.
+# name lat lon
+# North-West
+KBLI               48.7994     -122.539   
+# Olympic
+Blynn              48.0033     -122.969   
+# Puget Sound
+Ebey               48.22       -122.76    
+Ft_Flagler         48.1        -122.69    
+KNUW               48.3492     -122.651   
+Padilla            48.4639     -122.468   
+Smith_Is           48.318      -122.843   

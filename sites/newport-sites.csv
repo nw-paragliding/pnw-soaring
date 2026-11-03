@@ -1,0 +1,12 @@
+# newport region sites, domains/newport.yaml (Yaquina Head, Cape Kiwanda, Peterson Butte)
+# Every raspnw-v2 (wxtofly) site at least 10 km inside this tile's 1.33 km nest
+# edge, assigned to the tile where it sits deepest (airports/METAR points and
+# towns included). '# edge' marks sites only 10-15 km inside the nest edge.
+# name lat lon
+# Central (Oregon)
+Peterson_Butte     44.5098     -122.969   
+# Coast (Oregon)
+Cape_Kiwanda       45.2061     -123.962   
+Yaquina_Head_South 44.6748     -124.067   
+# Northen (Oregon)
+Kutch              45.3396     -123.348      # edge

@@ -1,0 +1,8 @@
+# wallowa region sites, domains/wallowa.yaml (Wallowas: Mt Howard)
+# Every raspnw-v2 (wxtofly) site at least 10 km inside this tile's 1.33 km nest
+# edge, assigned to the tile where it sits deepest (airports/METAR points and
+# towns included). '# edge' marks sites only 10-15 km inside the nest edge.
+# name lat lon
+# Northen (Oregon)
+MT_Howard_lakebedlz 45.284      -117.207   
+Mt._Howard         45.2679     -117.177   

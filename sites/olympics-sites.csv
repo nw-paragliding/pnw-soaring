@@ -1,0 +1,10 @@
+# olympics region sites, domains/olympics.yaml (South Olympics: Shelton, Mt Ellinor, Jupiter, Dinosaur)
+# Every raspnw-v2 (wxtofly) site at least 10 km inside this tile's 1.33 km nest
+# edge, assigned to the tile where it sits deepest (airports/METAR points and
+# towns included). '# edge' marks sites only 10-15 km inside the nest edge.
+# name lat lon
+# Central Cascades
+Dinosaur           46.8125     -122.585      # edge
+# Olympic
+Jupiter            47.687      -122.964      # edge
+Mt_Ellinor         47.5215     -123.261      # edge

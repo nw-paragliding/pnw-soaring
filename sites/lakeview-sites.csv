@@ -1,0 +1,11 @@
+# lakeview region sites, domains/lakeview.yaml (Lakeview: Abert Rim, Black Cap, Doherty Slide, Sugar Hill)
+# Every raspnw-v2 (wxtofly) site at least 10 km inside this tile's 1.33 km nest
+# edge, assigned to the tile where it sits deepest (airports/METAR points and
+# towns included). '# edge' marks sites only 10-15 km inside the nest edge.
+# name lat lon
+# California (California)
+Sugar_Hill         41.8069     -120.329   
+# South OR (Oregon)
+Abert_Rim          42.5675     -120.192   
+Black_Cap          42.2043     -120.33    
+Doherty_Slide      42.0181     -119.484   
