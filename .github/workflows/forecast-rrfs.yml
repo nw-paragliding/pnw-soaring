@@ -19,7 +19,7 @@ on:
         description: 'Base date YYYY-MM-DD for the 2-day window (blank = today UTC)'
         required: false
       regions:
-        description: 'Region tiles to run, JSON list (blank = all seven)'
+        description: 'Region tiles to run, JSON list (blank = every tile)'
         required: false
 
 env:
@@ -71,7 +71,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        region: ${{ fromJson(inputs.regions || '["issaquah","wenatchee","skykomish","chelan","baker","methow","waterville"]') }}
+        region: ${{ fromJson(inputs.regions || '["issaquah","wenatchee","skykomish","chelan","baker","methow","waterville","vancouver","salish","gorge","tricities","similkameen","okanagan","harrison","olympics","colville","palouse","tieton","goldendale","tillamook","newport","bend","lakeview","siskiyou","wallowa","kootenay","nanaimo"]') }}
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 360
     permissions:
@@ -161,7 +161,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        region: ${{ fromJson(inputs.regions || '["issaquah","wenatchee","skykomish","chelan","baker","methow","waterville"]') }}
+        region: ${{ fromJson(inputs.regions || '["issaquah","wenatchee","skykomish","chelan","baker","methow","waterville","vancouver","salish","gorge","tricities","similkameen","okanagan","harrison","olympics","colville","palouse","tieton","goldendale","tillamook","newport","bend","lakeview","siskiyou","wallowa","kootenay","nanaimo"]') }}
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 360
     permissions:

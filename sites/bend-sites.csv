@@ -1,0 +1,11 @@
+# bend region sites, domains/bend.yaml (Central Oregon: Black Butte, Pine Ridge, Haystack, Pine Mountain, Hoover Ridge)
+# Every raspnw-v2 (wxtofly) site at least 10 km inside this tile's 1.33 km nest
+# edge, assigned to the tile where it sits deepest (airports/METAR points and
+# towns included). '# edge' marks sites only 10-15 km inside the nest edge.
+# name lat lon
+# Central (Oregon)
+Black_Butte        44.4        -121.637   
+Haystack           44.4701     -121.154   
+Hoover_Ridge       44.7361     -122.149      # edge
+Pine_Mountain      43.8741     -120.913      # edge
+Pine_Ridge         44.4262     -121.062   

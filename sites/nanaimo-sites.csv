@@ -1,0 +1,10 @@
+# nanaimo region sites, domains/nanaimo.yaml (Cowichan: Hill 60, Buds Hill, Mt Bruce, Mt Prevost)
+# Every raspnw-v2 (wxtofly) site at least 10 km inside this tile's 1.33 km nest
+# edge, assigned to the tile where it sits deepest (airports/METAR points and
+# towns included). '# edge' marks sites only 10-15 km inside the nest edge.
+# name lat lon
+# Vancouver Island (British Columbia)
+Buds_Hill          48.7225     -123.69    
+Hill_60            48.8143     -123.976   
+MtBruce            48.7695     -123.475   
+MtPrevost          48.8218     -123.751   

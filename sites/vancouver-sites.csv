@@ -1,0 +1,18 @@
+# vancouver region sites, domains/vancouver.yaml (Vancouver, North Shore, Delta, Golden Ears, Bellingham airport)
+# Every raspnw-v2 (wxtofly) site at least 10 km inside this tile's 1.33 km nest
+# edge, assigned to the tile where it sits deepest (airports/METAR points and
+# towns included). '# edge' marks sites only 10-15 km inside the nest edge.
+# name lat lon
+# Fraser Valley (British Columbia)
+Golden_Ears        49.3532     -122.516   
+# Greater Vancouver (British Columbia)
+BurnabyMtn         49.2853     -122.928   
+Cypress            49.3597     -123.213   
+Diefenbaker        49.0135     -123.052   
+Grouse             49.386      -123.077   
+GrouseLZ           49.3592     -123.103   
+KitsBeach          49.281      -123.159   
+Seymour            49.3438     -122.976   
+Stevston           49.1271     -123.182   
+# North-West
+KBLI               48.7994     -122.539   

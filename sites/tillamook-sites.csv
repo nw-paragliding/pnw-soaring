@@ -1,0 +1,14 @@
+# tillamook region sites, domains/tillamook.yaml (North Oregon coast: Cape Kiwanda, Cape Lookout, Oceanside, Ecola; Chehalem, Kutch)
+# Every raspnw-v2 (wxtofly) site at least 10 km inside this tile's 1.33 km nest
+# edge, assigned to the tile where it sits deepest (airports/METAR points and
+# towns included). '# edge' marks sites only 10-15 km inside the nest edge.
+# name lat lon
+# Coast (Oregon)
+Cape_Kiwanda       45.2061     -123.962   
+Cape_Lookout       45.3539     -123.972   
+Ecola_St_Park      45.9142     -123.973   
+Oceanside          45.4655     -123.971   
+Sollie_Smith       45.4908     -123.767   
+# Northen (Oregon)
+Chehalem           45.3547     -122.996   
+Kutch              45.3396     -123.348   

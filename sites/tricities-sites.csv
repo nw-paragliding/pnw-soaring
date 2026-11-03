@@ -1,0 +1,12 @@
+# tricities region sites, domains/tricities.yaml (Tri-Cities, Saddle Mountain, Kiona, Eagle Butte, Frenchman Hills)
+# Every raspnw-v2 (wxtofly) site at least 10 km inside this tile's 1.33 km nest
+# edge, assigned to the tile where it sits deepest (airports/METAR points and
+# towns included). '# edge' marks sites only 10-15 km inside the nest edge.
+# name lat lon
+# Eastern
+Eagle_Butte        46.189      -119.338   
+FrenchmanHills     46.9922     -119.905      # edge
+Kiona              46.2492     -119.528   
+Saddle             46.8259     -119.875   
+SaddleT            46.8        -119.7     
+Wahitis_Peak       46.806      -119.559   

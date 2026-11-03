@@ -1,0 +1,10 @@
+# kootenay region sites, domains/kootenay.yaml (West Kootenay: Idaho Peak, VMT, Valkyr, Sol Mountain)
+# Every raspnw-v2 (wxtofly) site at least 10 km inside this tile's 1.33 km nest
+# edge, assigned to the tile where it sits deepest (airports/METAR points and
+# towns included). '# edge' marks sites only 10-15 km inside the nest edge.
+# name lat lon
+# Central Kootenay (British Columbia)
+IdahoPk.           49.9738     -117.344   
+SolMt.             50.4421     -118.174   
+VMT                50.09       -117.592   
+Valkyr             49.878      -117.963   
