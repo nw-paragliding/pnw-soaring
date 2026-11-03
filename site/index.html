@@ -509,6 +509,13 @@
     // out of a link, and parseLink() accepts only models in MODELS.
     const MODELS = ['rrfs', 'nam', 'hrrr'];
     const DEFAULT_MODEL = 'rrfs';
+    // Windgrams, their blipspot JSON and the metadata probes live in R2, not on
+    // this Pages host: every forecast leg uploads its own files the moment it
+    // finishes (.github/actions/publish-r2), under
+    // forecasts/<date|latest>/<model>/<region>/ below this base. The bucket's
+    // CORS rule allows GET/HEAD from this origin; objects carry a 2-minute
+    // Cache-Control, so JSON probes ask with no-cache to revalidate.
+    const DATA_BASE = 'https://pub-de96e47b1e91464bb2959747602c1914.r2.dev';
     let currentModel = DEFAULT_MODEL;
     let currentSite = null;
     let currentDate = null;          // selected forecast day (null → forecasts/latest)
@@ -532,7 +539,7 @@
     async function loadMetadata() {
       await Promise.all(MODELS.map(async model => {
         try {
-          const resp = await fetch(`/forecasts/latest/${model}/metadata.json`);
+          const resp = await fetch(`${DATA_BASE}/forecasts/latest/${model}/metadata.json`, { cache: 'no-cache' });
           if (resp.ok) metadata[model] = await resp.json();
         } catch (e) {}
       }));
@@ -618,7 +625,7 @@
         // what makes the night-before case read correctly.
         if (Date.now() > Date.parse(ds + 'T20:00:00-07:00')) continue;
         try {
-          const r = await fetch(`/forecasts/${ds}/${model}/metadata.json`, { cache: 'no-cache' });
+          const r = await fetch(`${DATA_BASE}/forecasts/${ds}/${model}/metadata.json`, { cache: 'no-cache' });
           if (r.ok) out.push({ date: ds, off, label: dayLabel(off, ds), sub: ds.slice(5) });
         } catch (e) {}
       }
@@ -661,8 +668,8 @@
       // Windgrams are per region tile: forecasts/<date|latest>/<model>/<region>/.
       // A region folder that doesn't exist yet (new tile, failed run) 404s and
       // falls through to the "no forecast yet" state via img.onerror below.
-      const base = currentDate ? `/forecasts/${currentDate}/${currentModel}`
-                               : `/forecasts/latest/${currentModel}`;
+      const base = currentDate ? `${DATA_BASE}/forecasts/${currentDate}/${currentModel}`
+                               : `${DATA_BASE}/forecasts/latest/${currentModel}`;
       const src = `${base}/${encodeURIComponent(currentSite.region || 'issaquah')}/${encodeURIComponent(currentSite.name)}_windgram.png`;
 
       document.getElementById('site-name').textContent = prettyName(currentSite.name);
