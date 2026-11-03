@@ -22,8 +22,8 @@
 name: newport
 model: nam
 
-center_lat: 44.86
-center_lon: -123.53
+center_lat: 44.89
+center_lon: -123.50
 
 # Shared map projection + lattice: all tiles use the same block so their
 # grids coincide where they overlap (needs windgram >= 0.7.0; older images

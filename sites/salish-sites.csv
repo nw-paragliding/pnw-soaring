@@ -1,10 +1,10 @@
-# salish region sites, domains/salish.yaml (Salish Sea: Victoria, San Juans, Whidbey, Port Townsend)
+# salish region sites, domains/salish.yaml (Salish Sea: Whidbey, Port Townsend, Smith Island, Bellingham airport)
 # Every raspnw-v2 (wxtofly) site at least 10 km inside this tile's 1.33 km nest
 # edge, assigned to the tile where it sits deepest (airports/METAR points and
 # towns included). '# edge' marks sites only 10-15 km inside the nest edge.
 # name lat lon
-# Vancouver Island (British Columbia)
-Dallas_Rd          48.4162     -123.377   
+# North-West
+KBLI               48.7994     -122.539   
 # Olympic
 Blynn              48.0033     -122.969   
 # Puget Sound

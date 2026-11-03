@@ -23,7 +23,7 @@ name: tricities
 model: nam
 
 center_lat: 46.59
-center_lon: -119.62
+center_lon: -119.30
 
 # Shared map projection + lattice: all tiles use the same block so their
 # grids coincide where they overlap (needs windgram >= 0.7.0; older images

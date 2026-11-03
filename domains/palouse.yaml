@@ -22,8 +22,8 @@
 name: palouse
 model: nam
 
-center_lat: 47.14
-center_lon: -117.21
+center_lat: 47.05
+center_lon: -117.03
 
 # Shared map projection + lattice: all tiles use the same block so their
 # grids coincide where they overlap (needs windgram >= 0.7.0; older images

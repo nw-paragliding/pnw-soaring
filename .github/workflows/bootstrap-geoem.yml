@@ -23,7 +23,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        region: ${{ fromJson(inputs.regions || '["issaquah","wenatchee","skykomish","chelan","baker","methow","waterville","vancouver","salish","gorge","tricities","similkameen","okanagan","harrison","olympics","colville","palouse","tieton","goldendale","tillamook","newport","bend","lakeview","siskiyou","wallowa","kootenay","nanaimo"]') }}
+        region: ${{ fromJson(inputs.regions || '["issaquah","wenatchee","skykomish","chelan","baker","methow","waterville","salish","gorge","tillamook","tricities","bend","lakeview","colville","siskiyou","olympics","palouse","wallowa","newport"]') }}
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 30
     permissions:

@@ -1,4 +1,4 @@
-# gorge region sites, domains/gorge.yaml (Columbia Gorge: Dog Mountain, Mt St Helens, Mt Adams, Silver Star, Twin Bowls)
+# gorge region sites, domains/gorge.yaml (Columbia Gorge: Dog Mountain, Bingen, Mt St Helens, Mt Adams, Silver Star)
 # Every raspnw-v2 (wxtofly) site at least 10 km inside this tile's 1.33 km nest
 # edge, assigned to the tile where it sits deepest (airports/METAR points and
 # towns included). '# edge' marks sites only 10-15 km inside the nest edge.
@@ -9,3 +9,5 @@ Mt_Adams           46.2024     -121.491
 Mt_St_Helens       46.1914     -122.196   
 Silver_Star_Mt     45.755      -122.243      # wxtofly: Silver_Star (methow has the North Cascades one)
 Twin_Bowls         46.3141     -122.415   
+# Southern
+Bingen             45.715      -121.463   

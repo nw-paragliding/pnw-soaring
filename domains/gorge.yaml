@@ -1,4 +1,4 @@
-# Region tile: gorge -- Columbia Gorge: Dog Mountain, Mt St Helens, Mt Adams, Silver Star, Twin Bowls.
+# Region tile: gorge -- Columbia Gorge: Dog Mountain, Bingen, Mt St Helens, Mt Adams, Silver Star.
 #
 # One of the region tiles (README "Regions"). Every tile runs the SAME chain as
 # domains/cascades.yaml -- parent -> WRF 4 km -> WRF 1.33 km, e_vert 52, DrJack
@@ -22,8 +22,8 @@
 name: gorge
 model: nam
 
-center_lat: 46.10
-center_lon: -121.87
+center_lat: 46.09
+center_lon: -121.89
 
 # Shared map projection + lattice: all tiles use the same block so their
 # grids coincide where they overlap (needs windgram >= 0.7.0; older images

@@ -22,8 +22,8 @@
 name: wallowa
 model: nam
 
-center_lat: 45.28
-center_lon: -117.19
+center_lat: 45.14
+center_lon: -117.44
 
 # Shared map projection + lattice: all tiles use the same block so their
 # grids coincide where they overlap (needs windgram >= 0.7.0; older images

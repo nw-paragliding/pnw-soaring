@@ -1,4 +1,4 @@
-# Region tile: salish -- Salish Sea: Victoria, San Juans, Whidbey, Port Townsend.
+# Region tile: salish -- Salish Sea: Whidbey, Port Townsend, Smith Island, Bellingham airport.
 #
 # One of the region tiles (README "Regions"). Every tile runs the SAME chain as
 # domains/cascades.yaml -- parent -> WRF 4 km -> WRF 1.33 km, e_vert 52, DrJack
@@ -22,8 +22,8 @@
 name: salish
 model: nam
 
-center_lat: 48.30
-center_lon: -122.93
+center_lat: 48.40
+center_lon: -122.95
 
 # Shared map projection + lattice: all tiles use the same block so their
 # grids coincide where they overlap (needs windgram >= 0.7.0; older images
