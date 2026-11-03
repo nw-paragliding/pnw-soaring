@@ -15,6 +15,11 @@ behind a map-based site on GitHub Pages.
 
 Click a site marker on the map to see its windgram.
 
+[`/old`](https://forecast.nwparagliding.com/old/) is a plain wxtofly-style page: a
+State → Area → Site list down the side, the site's windgrams for each published day
+stacked on the right, each flipping to its table on click (`site/old/`; the
+State/Area grouping comes from wxtofly's site list via `site/old/areas.json`).
+
 ## Regions
 
 Washington, Oregon and far-northern California are covered by 20 independent WRF tiles (the seven original Washington tiles plus 13 added 2026-11-03, covering wxtofly's US sites; its BC sites are out of scope for now, and those north of about 50° N are beyond the HRRR/RRFS grid's reach in any case). Each runs the same chain

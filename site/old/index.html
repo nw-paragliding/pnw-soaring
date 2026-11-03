@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Windgrams · PNW Soaring (classic)</title>
+<!--
+  /old — a plain approximation of wxtofly.net/v2/windgrams.html: a State > Area > Site
+  list down the left (with favourites), the site's windgrams for each published day
+  stacked on the right, each flipping to its table (the "blipspot") on click. Same data
+  as the map page: /sites.json for the sites and the R2 bucket for images and tables;
+  the State/Area grouping comes from wxtofly's site list (areas.json).
+-->
+<style>
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin: 0; font: 14px/1.42857 "Helvetica Neue", Helvetica, Arial, sans-serif; color: #333; background: #fff; }
+  a { color: #337ab7; text-decoration: none; }
+  .navbar { position: fixed; top: 0; left: 0; right: 0; height: 50px; background: #222; border-bottom: 1px solid #080808; display: flex; align-items: center; padding: 0 15px; z-index: 20; }
+  .navbar .brand { color: #fff; font-size: 18px; margin-right: 24px; }
+  .navbar .links a { color: #9d9d9d; margin-right: 16px; }
+  .navbar .links a:hover { color: #fff; }
+  .navbar .toggle { display: none; margin-right: 12px; background: none; border: 1px solid #333; color: #9d9d9d; border-radius: 4px; padding: 6px 10px; font-size: 16px; cursor: pointer; }
+  .wrap { display: flex; padding-top: 50px; min-height: 100vh; }
+  #sidebar { width: 25%; max-width: 340px; min-width: 240px; padding: 15px; }
+  .list-group { border: 1px solid #ddd; border-radius: 4px; overflow: hidden; }
+  .item { display: flex; align-items: center; justify-content: space-between; padding: 10px 15px; border-bottom: 1px solid #ddd; color: #555; cursor: pointer; background: #fff; user-select: none; }
+  .item:last-child { border-bottom: 0; }
+  .item:hover { background: #f5f5f5; }
+  .item.active, .item.node { background: #337ab7; border-color: #337ab7; color: #fff; }
+  .item.favorites { background: #fcf8e3; color: #8a6d3b; }
+  .item.favorites:hover { background: #faf2cc; }
+  .item.site.current { background: #e8f0f8; color: #23527c; font-weight: bold; }
+  .chev { opacity: .75; font-size: 16px; line-height: 1; }
+  .star { font-size: 16px; line-height: 1; opacity: .45; padding-left: 10px; }
+  .star.on { opacity: 1; color: #f0ad4e; }
+  .item.node .star, .item.active .star { color: #fff; }
+  main { flex: 1; min-width: 0; padding: 15px 15px 40px; }
+  .head { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: baseline; margin-bottom: 12px; }
+  h2 { margin: 0; font-weight: 500; font-size: 24px; }
+  .meta { color: #777; }
+  .controls { display: inline-flex; gap: 6px; align-items: center; }
+  .controls button { font: inherit; padding: 4px 10px; border: 1px solid #ccc; background: #fff; border-radius: 4px; cursor: pointer; color: #333; }
+  .controls button[aria-pressed="true"] { background: #337ab7; border-color: #2e6da4; color: #fff; }
+  .day { margin-bottom: 24px; }
+  .day h3 { font-size: 16px; font-weight: 500; margin: 0 0 6px; color: #555; }
+  .day h3 small { color: #999; font-weight: normal; margin-left: 8px; }
+  .day img { display: block; max-width: 100%; height: auto; border: 1px solid #ddd; cursor: pointer; background: #fff; }
+  .day .nodata { padding: 15px; background: #f2dede; color: #a94442; border: 1px solid #ebccd1; border-radius: 4px; }
+  .day .tablewrap { overflow-x: auto; border: 1px solid #ddd; cursor: pointer; }
+  table.blip { border-collapse: collapse; font-size: 12px; font-family: Menlo, Consolas, monospace; min-width: 100%; }
+  table.blip th, table.blip td { border: 1px solid #ddd; padding: 2px 6px; text-align: right; white-space: nowrap; }
+  table.blip th.row, table.blip td.row { text-align: left; font-family: inherit; position: sticky; left: 0; background: #fff; }
+  table.blip tr.time th { background: #337ab7; color: #fff; }
+  table.blip tr.sec td { background: #f5f5f5; font-weight: bold; text-align: left; font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; }
+  .hint { color: #999; font-size: 12px; margin: 4px 0 0; }
+  #welcome { color: #777; max-width: 60ch; }
+  @media (max-width: 767px) {
+    .navbar .toggle { display: inline-block; }
+    #sidebar { position: fixed; top: 50px; left: -100%; width: 85%; max-width: none; height: calc(100vh - 50px); overflow: auto; background: #fff; transition: left .2s; z-index: 15; box-shadow: 2px 0 8px rgba(0,0,0,.2); }
+    #sidebar.open { left: 0; }
+  }
+</style>
+</head>
+<body>
+<nav class="navbar">
+  <button class="toggle" id="toggle" aria-label="Sites">☰</button>
+  <span class="brand">Windgrams</span>
+  <span class="links"><a href="/">Map</a><a href="#" id="link-site" hidden>This site on the map</a></span>
+</nav>
+<div class="wrap">
+  <div id="sidebar"><div class="list-group" id="sidebar_items"></div></div>
+  <main>
+    <div id="welcome"><p>Pick a state, then an area, then a site. Click a windgram to see its table; click the table to get the windgram back. Star a site to keep it under Favorites.</p></div>
+    <div id="windgrams" hidden>
+      <div class="head">
+        <h2 id="title"></h2>
+        <span class="meta" id="coords"></span>
+        <span class="controls" id="models"></span>
+      </div>
+      <div id="days"></div>
+    </div>
+  </main>
+</div>
+<script>
+(() => {
+'use strict';
+const DATA_BASE = 'https://pub-de96e47b1e91464bb2959747602c1914.r2.dev';
+const MODELS = [['rrfs', 'RRFS'], ['hrrr', 'HRRR']];
+const $ = s => document.querySelector(s);
+const nice = s => String(s).replace(/_/g, ' ');
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+let model = 'rrfs';
+try { const m = localStorage.getItem('old-model'); if (MODELS.some(x => x[0] === m)) model = m; } catch (e) {}
+let favorites = {};
+try { (localStorage.getItem('favorites') || '').split(';').filter(Boolean).forEach(n => favorites[n] = 1); } catch (e) {}
+function saveFavorites() { try { localStorage.setItem('favorites', Object.keys(favorites).filter(n => favorites[n]).join(';')); } catch (e) {} }
+
+// ---- tree: root > states > areas > sites (sites directly under a state when wxtofly had no area)
+const root = { name: 'root', states: [], favorites: { name: 'Favorites', sites: [] } };
+let node = root, current = null, sitesByName = {};
+function build(sites, areas) {
+  const states = {};
+  for (const s of sites) {
+    let [state, area] = areas[s.name] || ['Washington', s.region === 'issaquah' ? 'Tiger Area' : s.region.charAt(0).toUpperCase() + s.region.slice(1)];
+    sitesByName[s.name] = s;
+    const st = states[state] || (states[state] = { name: state, areas: {}, sites: [], parent: root });
+    if (!area || area === state) { st.sites.push(s); continue; }
+    const ar = st.areas[area] || (st.areas[area] = { name: area, sites: [], parent: st });
+    ar.sites.push(s);
+    s.node = ar;
+  }
+  root.states = Object.values(states).sort((a, b) => a.name.localeCompare(b.name));
+  for (const st of root.states) { st.areas = Object.values(st.areas).sort((a, b) => a.name.localeCompare(b.name)); for (const s of st.sites) s.node = st; }
+  root.favorites.parent = root;
+}
+const byName = (a, b) => a.name.localeCompare(b.name);
+
+function item(html, cls, onclick) {
+  const a = document.createElement('a'); a.className = 'item ' + cls; a.href = '#'; a.innerHTML = html;
+  a.addEventListener('click', e => { e.preventDefault(); onclick(e); });
+  return a;
+}
+function renderSidebar() {
+  const box = $('#sidebar_items'); box.innerHTML = '';
+  if (node === root) {
+    box.appendChild(item('<span>★ Favorites</span><span class="chev">›</span>', 'favorites', () => { node = root.favorites; renderSidebar(); }));
+    for (const st of root.states) box.appendChild(item(`<span>${esc(st.name)}</span><span class="chev">›</span>`, 'node', () => { node = st; renderSidebar(); }));
+    return;
+  }
+  const back = node === root.favorites ? 'favorites' : 'node';
+  box.appendChild(item(`<span class="chev">‹</span><span>${esc(node.name)}</span><span></span>`, back, () => { node = node.parent; renderSidebar(); }));
+  const sites = node === root.favorites ? Object.keys(favorites).filter(n => favorites[n] && sitesByName[n]).map(n => sitesByName[n]) : (node.sites || []);
+  for (const s of sites.slice().sort(byName)) {
+    const on = favorites[s.name] ? ' on' : '';
+    const el = item(`<span>${esc(nice(s.name))}</span><span class="star${on}" title="Favourite">★</span>`, 'site' + (current && current.name === s.name ? ' current' : ''), () => { loadSite(s); $('#sidebar').classList.remove('open'); window.scrollTo(0, 0); });
+    el.querySelector('.star').addEventListener('click', e => {
+      e.stopPropagation(); e.preventDefault();
+      favorites[s.name] = favorites[s.name] ? 0 : 1; saveFavorites();
+      if (node === root.favorites) renderSidebar(); else e.target.classList.toggle('on', !!favorites[s.name]);
+    });
+    box.appendChild(el);
+  }
+  for (const ar of (node.areas || [])) box.appendChild(item(`<span>${esc(ar.name)}</span><span class="chev">›</span>`, '', () => { node = ar; renderSidebar(); }));
+}
+
+// ---- windgrams: the latest published day for the model, and the day after it
+async function latestDate(m) {
+  try {
+    const r = await fetch(`${DATA_BASE}/forecasts/latest/${m}/metadata.json`, { cache: 'no-cache' });
+    if (r.ok) { const j = await r.json(); if (j.date) return j.date; }
+  } catch (e) {}
+  return new Date(Date.now() - 8 * 3600 * 1000).toISOString().slice(0, 10);   // Pacific today, roughly
+}
+const addDays = (ds, n) => { const d = new Date(ds + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+const dayLabel = ds => new Date(ds + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', timeZone: 'UTC' });
+
+let seq = 0;
+async function loadSite(s) {
+  current = s; seq += 1; const my = seq;
+  location.hash = s.name;
+  $('#welcome').hidden = true; $('#windgrams').hidden = false;
+  $('#title').textContent = nice(s.name);
+  $('#coords').textContent = `${s.lat.toFixed(4)}, ${s.lon.toFixed(4)} · ${s.region} tile`;
+  const link = $('#link-site'); link.href = '/' + encodeURIComponent(s.name); link.hidden = false;
+  renderModels();
+  document.querySelectorAll('.item.site').forEach(el => el.classList.toggle('current', el.textContent.trim().startsWith(nice(s.name))));
+  const days = $('#days'); days.innerHTML = '<p class="meta">Loading…</p>';
+  const d0 = await latestDate(model);
+  if (my !== seq) return;
+  days.innerHTML = '';
+  [d0, addDays(d0, 1)].forEach((ds, i) => days.appendChild(dayBlock(s, ds, i)));
+}
+function dayBlock(s, ds, i) {
+  const base = `${DATA_BASE}/forecasts/${ds}/${model}/${encodeURIComponent(s.region)}/${encodeURIComponent(s.name)}`;
+  const box = document.createElement('div'); box.className = 'day';
+  box.innerHTML = `<h3>${dayLabel(ds)} <small>${ds} · ${model.toUpperCase()}</small></h3>`;
+  const img = document.createElement('img'); img.alt = `${nice(s.name)} windgram ${ds}`; img.src = `${base}_windgram.png`;
+  const nodata = document.createElement('div'); nodata.className = 'nodata'; nodata.textContent = `No ${model.toUpperCase()} forecast for ${ds} yet.`; nodata.hidden = true;
+  const wrap = document.createElement('div'); wrap.className = 'tablewrap'; wrap.hidden = true;
+  const hint = document.createElement('p'); hint.className = 'hint'; hint.textContent = 'Click the windgram for its table.';
+  img.onerror = () => { img.hidden = true; nodata.hidden = false; hint.hidden = true; };
+  img.onclick = async () => {
+    img.hidden = true; wrap.hidden = false; hint.textContent = 'Click the table for the windgram.';
+    if (!wrap.dataset.loaded) {
+      wrap.innerHTML = '<p class="meta" style="padding:10px">Loading table…</p>';
+      try { const r = await fetch(`${base}_blipspot.json`, { cache: 'no-cache' }); wrap.innerHTML = r.ok ? renderTable(await r.json()) : '<p class="nodata">No table for this forecast.</p>'; }
+      catch (e) { wrap.innerHTML = '<p class="nodata">No table for this forecast.</p>'; }
+      wrap.dataset.loaded = '1';
+    }
+  };
+  wrap.onclick = () => { wrap.hidden = true; img.hidden = false; hint.textContent = 'Click the windgram for its table.'; };
+  box.append(img, nodata, wrap, hint);
+  return box;
+}
+
+// ---- the table behind the windgram (wxtofly's blipspot), in its row order
+const SECTIONS = [
+  ['Wind (knots)', [['sfc_wind_kt', 'Surface wind'], ['sfc_wind_dir', 'Surface wind dir'], ['wind10m_kt', '10 m wind'], ['wind10m_dir', '10 m wind dir'],
+    ['treetop_wind_kt', 'Treetop wind'], ['treetop_wind_dir', 'Treetop wind dir'], ['above_treetop_wind_kt', 'Above treetop wind'], ['above_treetop_wind_dir', 'Above treetop wind dir'],
+    ['bl_wind_kt', 'BL avg wind'], ['bl_wind_dir', 'BL avg wind dir'], ['bltop_wind_kt', 'BL top wind'], ['bltop_wind_dir', 'BL top wind dir'], ['bl_shear_kt', 'BL wind shear'], ['bl_convergence_cms', 'BL convergence']]],
+  ['Thermal', [['bs_ratio', 'Buoyancy/shear ratio'], ['wstar_fpm', 'Thermal updraft W*'], ['hcrit_agl_ft', 'Height of critical updraft (AGL)'], ['hcrit_ft', 'Height of critical updraft'], ['hglider_ft', 'Thermalling height'],
+    ['bl_top_ft', 'BL top'], ['bl_depth_ft', 'BL depth'], ['bl_top_variability_ft', 'BL top variability'], ['sfc_heating_wm2', 'Surface heating'], ['mslp_mb', 'MSL pressure']]],
+  ['Clouds & moisture', [['bl_cloud_pct', 'BL cloud cover'], ['rain_1h_mm', 'Rain (1 h)'], ['td2_f', 'Dew point 2 m'], ['lcl_ft', 'Cu cloudbase (LCL)'], ['od_potential_ft', 'OD cloudbase potential'], ['od_base_ft', 'OD cloudbase'], ['t2_f', 'Temperature 2 m']]],
+];
+function renderTable(b) {
+  const hours = b.hours_local || [], units = b.units || {}, P = b.params || {};
+  const fmt = v => v == null ? '–' : (Math.abs(v) >= 100 ? Math.round(v) : Math.round(v * 10) / 10);
+  let h = '<table class="blip">';
+  const timeRow = `<tr class="time"><th class="row">Local time</th>${hours.map(x => `<th>${String(x).padStart(2, '0')}</th>`).join('')}</tr>`;
+  for (const [title, rows] of SECTIONS) {
+    const present = rows.filter(([k]) => P[k]);
+    if (!present.length) continue;
+    h += `<tr class="sec"><td colspan="${hours.length + 1}">${esc(title)}</td></tr>` + timeRow;
+    for (const [k, label] of present) h += `<tr><td class="row">${esc(label)}${units[k] ? ' (' + esc(units[k]) + ')' : ''}</td>${P[k].map(v => `<td>${fmt(v)}</td>`).join('')}</tr>`;
+  }
+  return h + '</table>';
+}
+
+function renderModels() {
+  const box = $('#models'); box.innerHTML = '';
+  for (const [m, label] of MODELS) {
+    const b = document.createElement('button'); b.textContent = label; b.setAttribute('aria-pressed', String(m === model));
+    b.onclick = () => { model = m; try { localStorage.setItem('old-model', m); } catch (e) {} if (current) loadSite(current); };
+    box.appendChild(b);
+  }
+}
+
+$('#toggle').addEventListener('click', () => $('#sidebar').classList.toggle('open'));
+window.addEventListener('hashchange', () => { const s = sitesByName[decodeURIComponent(location.hash.slice(1))]; if (s && s !== current) { node = s.node; renderSidebar(); loadSite(s); } });
+
+(async () => {
+  try {
+    const [sites, areas] = await Promise.all([fetch('/sites.json').then(r => r.json()), fetch('areas.json').then(r => r.json())]);
+    build(sites, areas);
+    const wanted = sitesByName[decodeURIComponent(location.hash.slice(1))];
+    if (wanted) { node = wanted.node; renderSidebar(); loadSite(wanted); } else renderSidebar();
+  } catch (e) {
+    $('#sidebar_items').innerHTML = '<div class="item">Could not load the site list.</div>';
+    console.error(e);
+  }
+})();
+})();
+</script>
+</body>
+</html>

@@ -1,7 +1,7 @@
 name: Deploy site frontend
 
 # Publishes the static frontend (index.html, its 404.html twin, generated
-# sites.json) to the gh-pages branch whenever it changes on main — so site/
+# sites.json, /v2 and /old) to the gh-pages branch whenever it changes on main — so site/
 # site-list edits go live on merge, instead of waiting for the next forecast run
 # to copy them over. Only touches those files; the forecasts/ data on gh-pages
 # (written by the forecast workflows) is left untouched.
@@ -44,9 +44,11 @@ jobs:
           python3 site/generate-sites-json.py > pages/sites.json   # every sites/<region>-sites.csv
           # v2 (beta) — interactive cube frontend, served at /v2
           mkdir -p pages/v2 && cp -r site/v2/. pages/v2/
+          # /old — the wxtofly-style nested-list page (State > Area > Site)
+          mkdir -p pages/old && cp -r site/old/. pages/old/
 
           cd pages
-          git add index.html 404.html sites.json v2
+          git add index.html 404.html sites.json v2 old
           if git diff --cached --quiet; then
             echo "No frontend changes to publish."
             exit 0
@@ -54,7 +56,7 @@ jobs:
           git commit -m "Deploy site frontend (${GITHUB_SHA::7})"
 
           # Push with rebase-retry: forecast workflows also push to gh-pages,
-          # so the branch can move under us. We only touch index.html/404.html/sites.json/v2,
+          # so the branch can move under us. We only touch index.html/404.html/sites.json/v2/old,
           # which they never write (this is the only frontend deploy), so a rebase never conflicts.
           for attempt in 1 2 3 4 5; do
             if git push origin HEAD:gh-pages; then
