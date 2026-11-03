@@ -71,7 +71,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        region: ${{ fromJson(inputs.regions || '["issaquah","wenatchee","skykomish","chelan","baker","methow","waterville","salish","gorge","tillamook","tricities","bend","lakeview","colville","siskiyou","olympics","palouse","wallowa","newport"]') }}
+        region: ${{ fromJson(inputs.regions || '["issaquah","wenatchee","skykomish","chelan","baker","methow","waterville","salish","gorge","tillamook","tricities","bend","lakeview","colville","siskiyou","olympics","palouse","wallowa","newport","goldendale"]') }}
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 360
     permissions:
@@ -143,6 +143,12 @@ jobs:
     # RRFS readiness gate for the day-1 legs (f051): one small x86 runner polls
     # NOMADS so the arm matrix doesn't hold 7 runners idle for up to 75 min
     # against the 20-job cap. Times out and proceeds (see scripts/wait-rrfs.sh).
+    # Starts only once the day-0 wave is over (whatever its outcome), so it never
+    # takes a runner slot from those legs: a wave of 20 legs plus this gate would
+    # exceed the 20-job cap. Nothing is delayed by it -- the day-1 GRIB lands
+    # after the day-0 legs finish anyway.
+    needs: forecast-day0
+    if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     permissions:
@@ -161,7 +167,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        region: ${{ fromJson(inputs.regions || '["issaquah","wenatchee","skykomish","chelan","baker","methow","waterville","salish","gorge","tillamook","tricities","bend","lakeview","colville","siskiyou","olympics","palouse","wallowa","newport"]') }}
+        region: ${{ fromJson(inputs.regions || '["issaquah","wenatchee","skykomish","chelan","baker","methow","waterville","salish","gorge","tillamook","tricities","bend","lakeview","colville","siskiyou","olympics","palouse","wallowa","newport","goldendale"]') }}
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 360
     permissions:

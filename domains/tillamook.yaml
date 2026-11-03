@@ -1,4 +1,4 @@
-# Region tile: tillamook -- North Oregon coast: Cape Kiwanda, Cape Lookout, Oceanside, Ecola, Sollie Smith; Chehalem, Kutch.
+# Region tile: tillamook -- North Oregon coast and Area B: Cape Lookout, Oceanside, Ecola, Sollie Smith; Chehalem, Kutch.
 #
 # One of the region tiles (README "Regions"). Every tile runs the SAME chain as
 # domains/cascades.yaml -- parent -> WRF 4 km -> WRF 1.33 km, e_vert 52, DrJack
@@ -22,8 +22,8 @@
 name: tillamook
 model: nam
 
-center_lat: 45.57
-center_lon: -123.50
+center_lat: 45.77
+center_lon: -123.58
 
 # Shared map projection + lattice: all tiles use the same block so their
 # grids coincide where they overlap (needs windgram >= 0.7.0; older images

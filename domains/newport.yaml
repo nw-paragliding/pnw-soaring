@@ -1,4 +1,4 @@
-# Region tile: newport -- Yaquina Head, Peterson Butte.
+# Region tile: newport -- Yaquina Head, Cape Kiwanda, Peterson Butte.
 #
 # One of the region tiles (README "Regions"). Every tile runs the SAME chain as
 # domains/cascades.yaml -- parent -> WRF 4 km -> WRF 1.33 km, e_vert 52, DrJack

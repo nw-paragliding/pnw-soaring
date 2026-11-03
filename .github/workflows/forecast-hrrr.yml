@@ -66,7 +66,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        region: ${{ fromJson(inputs.regions || '["issaquah","wenatchee","skykomish","chelan","baker","methow","waterville","salish","gorge","tillamook","tricities","bend","lakeview","colville","siskiyou","olympics","palouse","wallowa","newport"]') }}
+        region: ${{ fromJson(inputs.regions || '["issaquah","wenatchee","skykomish","chelan","baker","methow","waterville","salish","gorge","tillamook","tricities","bend","lakeview","colville","siskiyou","olympics","palouse","wallowa","newport","goldendale"]') }}
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 360
     permissions:
@@ -158,6 +158,12 @@ jobs:
     # HRRR readiness gate for the day-1 legs: one small x86 runner checks the
     # 48 h reach and polls the mirror for the newest cycle's window-end hour
     # (scripts/wait-hrrr.sh), so the arm matrix doesn't hold 7 runners idle.
+    # Starts only once the day-0 wave is over (whatever its outcome), so it never
+    # takes a runner slot from those legs: a wave of 20 legs plus this gate would
+    # exceed the 20-job cap. Nothing is delayed by it -- the day-1 GRIB lands
+    # after the day-0 legs finish anyway.
+    needs: forecast-day0
+    if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     permissions:
@@ -179,7 +185,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        region: ${{ fromJson(inputs.regions || '["issaquah","wenatchee","skykomish","chelan","baker","methow","waterville","salish","gorge","tillamook","tricities","bend","lakeview","colville","siskiyou","olympics","palouse","wallowa","newport"]') }}
+        region: ${{ fromJson(inputs.regions || '["issaquah","wenatchee","skykomish","chelan","baker","methow","waterville","salish","gorge","tillamook","tricities","bend","lakeview","colville","siskiyou","olympics","palouse","wallowa","newport","goldendale"]') }}
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 360
     permissions:

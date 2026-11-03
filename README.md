@@ -5,8 +5,8 @@ Automated paragliding soaring forecasts for the Pacific Northwest, powered by [r
 ## What This Does
 
 GitHub Actions runs the WRF weather model several times a day using RRFS and
-HRRR input data, generates windgram forecasts for 173 flying sites and reference points across
-Washington, Oregon and far-northern California, split over 19 region tiles, and publishes them to Cloudflare R2
+HRRR input data, generates windgram forecasts for 176 flying sites and reference points across
+Washington, Oregon and far-northern California, split over 20 region tiles, and publishes them to Cloudflare R2
 behind a map-based site on GitHub Pages.
 
 ## View Forecasts
@@ -17,7 +17,7 @@ Click a site marker on the map to see its windgram.
 
 ## Regions
 
-Washington, Oregon and far-northern California are covered by 19 independent WRF tiles (the seven original Washington tiles plus 12 added 2026-11-03, covering wxtofly's US sites; its BC sites are out of scope for now, and those north of about 50° N are beyond the HRRR/RRFS grid's reach in any case). Each runs the same chain
+Washington, Oregon and far-northern California are covered by 20 independent WRF tiles (the seven original Washington tiles plus 13 added 2026-11-03, covering wxtofly's US sites; its BC sites are out of scope for now, and those north of about 50° N are beyond the HRRR/RRFS grid's reach in any case). Each runs the same chain
 (parent model → WRF 4 km → WRF 1.33 km, 52 levels, DrJack physics) with a
 120 km × 120 km 1.33 km nest; the 4 km parent auto-sizes to 200 km. Each tile is
 one `domains/<region>.yaml` (the tile's base config, still written as the NAM
@@ -37,17 +37,18 @@ points coincide where they overlap.
 | `methow` | 48.84, -120.59 | Methow valley, Mazama, Washington Pass | 9 |
 | `waterville` | 47.72, -119.45 | Waterville Plateau, Mansfield, Coulee City (Chelan XC) | 2 |
 | `salish` | 48.40, -122.95 | Salish Sea: Whidbey, Port Townsend, Smith Island, Bellingham airport | 7 |
-| `gorge` | 46.09, -121.89 | Columbia Gorge: Dog Mountain, Bingen, Mt St Helens, Mt Adams, Silver Star | 6 |
-| `tillamook` | 45.57, -123.50 | North Oregon coast: Cape Kiwanda, Cape Lookout, Oceanside, Ecola, Sollie Smith; Chehalem, Kutch | 6 |
+| `gorge` | 46.09, -121.89 | Columbia Gorge: Dog Mountain, Bingen, Eagle Caves, Mt St Helens, Mt Adams, Silver Star | 5 |
+| `tillamook` | 45.77, -123.58 | North Oregon coast and Area B: Cape Lookout, Oceanside, Ecola, Sollie Smith; Chehalem, Kutch | 6 |
 | `tricities` | 46.59, -119.30 | Tri-Cities, Saddle Mountain, Kiona, Eagle Butte, Frenchman Hills | 6 |
 | `bend` | 44.32, -121.51 | Central Oregon: Black Butte, Pine Ridge, Haystack, Pine Mountain, Hoover Ridge | 5 |
 | `lakeview` | 42.19, -119.99 | Lakeview: Abert Rim, Black Cap, Doherty Slide, Sugar Hill | 4 |
-| `colville` | 48.13, -117.96 | Chewelah / Colville: Inkler, Parker, Wrights | 3 |
+| `colville` | 48.20, -117.80 | Chewelah / Colville: Inkler, Parker, Wrights | 3 |
 | `siskiyou` | 41.89, -122.49 | Siskiyous: Woodrat, Herd Peak, Whaleback | 3 |
 | `olympics` | 47.26, -122.58 | South Olympics: Shelton, Mt Ellinor, Jupiter, Dinosaur | 3 |
-| `palouse` | 47.05, -117.03 | Palouse: Steptoe Butte, Tekoa | 2 |
-| `wallowa` | 45.14, -117.44 | Wallowas: Mt Howard | 2 |
-| `newport` | 44.89, -123.50 | Yaquina Head, Peterson Butte | 3 |
+| `palouse` | 47.13, -117.13 | Palouse: Steptoe Butte, Tekoa | 2 |
+| `wallowa` | 45.19, -117.33 | Wallowas: Mt Howard | 2 |
+| `newport` | 44.89, -123.50 | Yaquina Head, Cape Kiwanda, Peterson Butte | 4 |
+| `goldendale` | 45.68, -120.98 | Goldendale: Cliffside, Eagle Caves | 3 |
 
 The site lists hold every raspnw-v2 (wxtofly) site, airports and towns included,
 that sits at least 10 km inside a tile's 1.33 km nest edge (outside the ~7 km
@@ -72,18 +73,19 @@ edited YAML, new windgram image) the job downloads the WPS GEOG data and runs ge
 `bootstrap-geoem.yml` can pre-warm the caches.
 
 **Jobs per run:** RRFS and HRRR each run every tile for day 0 and day 1 =
-38 arm jobs, in two waves of 19 (one per day) that never overlap. HRRR's cycles reach only 48 h, so a day HRRR cannot reach (day 1
+40 arm jobs, in two waves of 20 (one per day) that never overlap. HRRR's cycles reach only 48 h, so a day HRRR cannot reach (day 1
 of the 01:15z run) ends its job in seconds with a notice and publishes nothing;
 HRRR's day-1 legs start only after a small `wait-day1` job
-(`scripts/wait-hrrr.sh`) has seen the cycle's window-end GRIB (f45 / f39), while
-its day-0 legs start at once. There is no publish job: every leg writes its
+(`scripts/wait-hrrr.sh`), which itself starts once the day-0 wave is over, has
+seen the cycle's window-end GRIB (f45 / f39), while its day-0 legs start at once. There is no publish job: every leg writes its
 windgrams to R2 itself, so a slow or queued leg never delays the others'.
 RRFS's readiness polling likewise runs in two small
 `wait-day0` / `wait-day1` jobs, so the arm runners start only once the GRIB is
-out. The free tier allows 20 concurrent jobs: a wave is 19 legs plus the other
-day's gate job, which fits exactly, so nothing queues; a 20th tile would have one
-leg wait for the first finisher. The 13:00z HRRR day-1 wave ends before the
-14:00z RRFS legs start.
+out. The free tier allows 20 concurrent jobs: a wave is 20 legs, and the day-1
+gate job starts only once the day-0 wave is over (`needs: forecast-day0`), so the
+cap is met exactly and nothing queues; a 21st tile would have one leg wait for
+the first finisher. The 13:00z HRRR day-1 wave ends before the 14:00z RRFS legs
+start.
 
 ## Schedule
 

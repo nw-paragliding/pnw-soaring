@@ -1,4 +1,4 @@
-# Region tile: gorge -- Columbia Gorge: Dog Mountain, Bingen, Mt St Helens, Mt Adams, Silver Star.
+# Region tile: gorge -- Columbia Gorge: Dog Mountain, Bingen, Eagle Caves, Mt St Helens, Mt Adams, Silver Star.
 #
 # One of the region tiles (README "Regions"). Every tile runs the SAME chain as
 # domains/cascades.yaml -- parent -> WRF 4 km -> WRF 1.33 km, e_vert 52, DrJack
