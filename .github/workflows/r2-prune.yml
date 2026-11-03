@@ -1,4 +1,4 @@
-name: Prune old R2 cubes
+name: Prune old R2 cubes and windgrams
 
 # The v2 GeoZarr cubes live in R2 at <model>/<YYYY-MM-DD>/soaring.zarr (one per
 # model per forecast day) plus a <model>/latest/ pointer. New dated cubes are
@@ -6,6 +6,12 @@ name: Prune old R2 cubes
 # free tier (10 GB). The frontend only ever reads `latest` and the today/next
 # few dated cubes, so older dated cubes are pure dead weight. This job keeps
 # `latest` + the N most-recent dated cubes per model and purges the rest.
+#
+# The windgrams the site serves live in the same bucket under
+# forecasts/<YYYY-MM-DD>/<model>/<region>/ (written per leg by
+# .github/actions/publish-r2) plus forecasts/latest/. Those date directories
+# are pruned by age: anything older than `keep_days` goes, which is the 7-day
+# window the site's day picker offers.
 
 on:
   schedule:
@@ -16,6 +22,10 @@ on:
         description: 'Most-recent dated cubes to keep per model (plus latest)'
         required: false
         default: '4'
+      keep_days:
+        description: 'Days of dated windgram directories (forecasts/<date>/) to keep'
+        required: false
+        default: '7'
       dry_run:
         description: 'List what would be deleted without deleting'
         type: boolean
@@ -34,6 +44,7 @@ jobs:
           R2_BUCKET: nw-paragliding-forecasts
           # Scheduled runs prune for real; manual runs default to a dry run.
           KEEP: ${{ inputs.keep || '4' }}
+          KEEP_DAYS: ${{ inputs.keep_days || '7' }}
           DRY_RUN: ${{ github.event_name == 'schedule' && 'false' || inputs.dry_run }}
         run: |
           set -euo pipefail
@@ -72,3 +83,21 @@ jobs:
             echo "  keeping: ${DATES[*]:$keep_from} + latest"
           done
           echo "Done. $([ "$DRY_RUN" = "false" ] && echo "Deleted" || echo "Would delete") $TOTAL_DEL cube(s)."
+
+          echo "── forecasts/ (windgrams, keep ${KEEP_DAYS} days) ──"
+          CUTOFF=$(date -u -d "${KEEP_DAYS} days ago" +%F)
+          mapfile -t FDATES < <(rclone lsf --dirs-only ":s3:${R2_BUCKET}/forecasts/" 2>/dev/null \
+            | sed 's:/*$::' | grep -E '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' | sort)
+          W_DEL=0
+          for d in "${FDATES[@]}"; do
+            if [[ "$d" < "$CUTOFF" ]]; then
+              if [ "$DRY_RUN" = "false" ]; then
+                echo "  deleting forecasts/$d"
+                rclone purge ":s3:${R2_BUCKET}/forecasts/${d}" --s3-no-check-bucket
+              else
+                echo "  would delete forecasts/$d"
+              fi
+              W_DEL=$((W_DEL+1))
+            fi
+          done
+          echo "  dated windgram dirs: ${#FDATES[@]} found, cutoff $CUTOFF, $([ "$DRY_RUN" = "false" ] && echo "deleted" || echo "would delete") $W_DEL (latest/ untouched)"

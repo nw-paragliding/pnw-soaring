@@ -108,10 +108,26 @@ jobs:
             output/*_blipspot.json
           retention-days: 7
 
+      # Publish this leg's windgrams straight to R2 (the site reads them from
+      # there), the moment they exist: no publish job, nothing waits for the
+      # other legs. Main-only, so a branch run renders and keeps its artifacts
+      # but never touches what pilots see.
+      - name: Publish windgrams to R2
+        if: github.ref == 'refs/heads/main'
+        uses: ./.github/actions/publish-r2
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        with:
+          model: rrfs
+          region: ${{ matrix.region }}
+          day: "0"
+
       # Disabled while UPLOAD_CUBES is 'false'. When on, only the home tile writes the v2 soaring cube: R2 keeps its
       # <model>/<date>/soaring.zarr layout and site/v2 shows the issaquah tile.
       # Publishing is main-only: a run from any other ref renders + uploads
-      # artifacts but never touches gh-pages or R2.
+      # artifacts but never touches R2.
       - name: Upload soaring cube to R2 (v2)
         if: always() && env.UPLOAD_CUBES == 'true' && matrix.region == 'issaquah' && github.ref == 'refs/heads/main'
         uses: ./.github/actions/upload-cube
@@ -182,10 +198,26 @@ jobs:
             output/*_blipspot.json
           retention-days: 7
 
+      # Publish this leg's windgrams straight to R2 (the site reads them from
+      # there), the moment they exist: no publish job, nothing waits for the
+      # other legs. Main-only, so a branch run renders and keeps its artifacts
+      # but never touches what pilots see.
+      - name: Publish windgrams to R2
+        if: github.ref == 'refs/heads/main'
+        uses: ./.github/actions/publish-r2
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        with:
+          model: rrfs
+          region: ${{ matrix.region }}
+          day: "1"
+
       # Disabled while UPLOAD_CUBES is 'false'. When on, only the home tile writes the v2 soaring cube: R2 keeps its
       # <model>/<date>/soaring.zarr layout and site/v2 shows the issaquah tile.
       # Publishing is main-only: a run from any other ref renders + uploads
-      # artifacts but never touches gh-pages or R2.
+      # artifacts but never touches R2.
       - name: Upload soaring cube to R2 (v2)
         if: always() && env.UPLOAD_CUBES == 'true' && matrix.region == 'issaquah' && github.ref == 'refs/heads/main'
         uses: ./.github/actions/upload-cube
@@ -196,24 +228,3 @@ jobs:
         with:
           model: rrfs
           day: 1
-
-  publish:
-    # One gh-pages commit for every region and day (instead of one per job).
-    # Runs even when some legs failed, so one bad region never blocks the rest.
-    needs: [forecast-day0, forecast-day1]
-    if: always() && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
-        with:
-          pattern: rrfs-*
-          path: windgrams
-      - name: Deploy to Pages
-        uses: ./.github/actions/deploy-forecast
-        with:
-          model: rrfs
-          artifacts_dir: windgrams
-          latest_day: "0"

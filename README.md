@@ -6,8 +6,8 @@ Automated paragliding soaring forecasts for the Pacific Northwest, powered by [r
 
 GitHub Actions runs the WRF weather model several times a day using RRFS and
 HRRR input data, generates windgram forecasts for 123 flying sites and reference points across
-Washington, split over seven region tiles, and publishes them to a map-based site
-on GitHub Pages.
+Washington, split over seven region tiles, and publishes them to Cloudflare R2
+behind a map-based site on GitHub Pages.
 
 ## View Forecasts
 
@@ -40,12 +40,17 @@ points coincide where they overlap.
 The site lists hold every raspnw-v2 (wxtofly) site, airports and towns included,
 that sits at least 10 km inside a tile's 1.33 km nest edge (outside the ~7 km
 boundary relaxation zone), each in the tile where it sits deepest; `# edge`
-marks the ones only 10–15 km inside. Windgrams are published per tile at
+marks the ones only 10–15 km inside. Windgrams are published per tile to the
+R2 bucket `nw-paragliding-forecasts` (public URL
+`https://pub-de96e47b1e91464bb2959747602c1914.r2.dev`) at
 `forecasts/<date>/<model>/<region>/<Site>_windgram.png` (and
 `forecasts/latest/<model>/<region>/`), each with its `<Site>_blipspot.json`
 beside it — the hourly table wxtofly showed when you clicked a windgram
 (written by rasp-windgram >= 0.8.0; the site's Table view reads it); the site
-loads each marker's windgram from its tile. The v2 page (`/v2`, interactive cube) is unlinked and its R2 cube upload is off
+loads each marker's windgram from its tile. Each leg uploads its own files the
+moment it finishes (`.github/actions/publish-r2`); `r2-prune.yml` keeps 7 days
+of dated directories. Until 2026-11-03 the windgrams were committed to the
+`gh-pages` branch instead, which now carries only the frontend. The v2 page (`/v2`, interactive cube) is unlinked and its R2 cube upload is off
 for now (`UPLOAD_CUBES: 'false'` in the forecast workflows), so it goes stale;
 when re-enabled only the `issaquah` tile uploads a cube.
 
@@ -59,8 +64,9 @@ edited YAML, new windgram image) the job downloads the WPS GEOG data and runs ge
 of the 01:15z run) ends its job in seconds with a notice and publishes nothing;
 HRRR's day-1 legs start only after a small `wait-day1` job
 (`scripts/wait-hrrr.sh`) has seen the cycle's window-end GRIB (f45 / f39), while
-its day-0 legs start at once. Each run then commits once to gh-pages
-from a single `publish` job. RRFS's readiness polling likewise runs in two small
+its day-0 legs start at once. There is no publish job: every leg writes its
+windgrams to R2 itself, so a slow or queued leg never delays the others'.
+RRFS's readiness polling likewise runs in two small
 `wait-day0` / `wait-day1` jobs, so the arm runners start only once the GRIB is
 out. The free tier allows 20 concurrent jobs, so a run's 14 legs never queue
 unless two models overlap (HRRR's 13:00z day-1 legs and the 14:00z RRFS run).
@@ -111,10 +117,14 @@ whole region × day matrix of a workflow.
 
 ## gh-pages history squash
 
-The site is served by GitHub Pages from the root of the `gh-pages` branch. Every
-forecast cycle commits a few hundred windgram PNGs, and although the publish jobs
-prune dates older than 7 days from the tree, git history kept every image ever
-published: 4+ GB and 10+ minute Pages builds, for history nobody needs.
+The frontend is served by GitHub Pages from the root of the `gh-pages` branch
+(`deploy-site.yml` publishes `site/` there on push to main). Until 2026-11-03
+every forecast cycle also committed a few hundred windgram PNGs to it, and
+although the publish jobs pruned dates older than 7 days from the tree, git
+history kept every image ever published: 4+ GB and 10+ minute Pages builds, for
+history nobody needs. Windgrams now go to R2, so the branch only changes when
+the frontend does; the squash stays as a safety net until the old `forecasts/`
+tree is removed from the branch.
 
 [`squash-gh-pages.yml`](.github/workflows/squash-gh-pages.yml) runs every Tuesday at
 10:30 UTC (clear of all forecast crons) and on `workflow_dispatch`
@@ -126,7 +136,7 @@ retrying if a publish landed in between). The live site does not change; only th
 history goes.
 
 A publisher that fetched `gh-pages` before a squash and pushes after it is
-rejected and retries; every publish retry loop (`deploy-forecast`, `deploy-site.yml`,
+rejected and retries; every publish retry loop (`deploy-site.yml`,
 the lab A/B publish) rebases with `git rebase --onto origin/gh-pages HEAD~1`, so it
 replays only its own commit onto the new root and never brings history back.
 

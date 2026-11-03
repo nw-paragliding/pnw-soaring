@@ -126,6 +126,22 @@ jobs:
             output/*_blipspot.json
           retention-days: 7
 
+      # Publish this leg's windgrams straight to R2 (the site reads them from
+      # there), the moment they exist: no publish job, nothing waits for the
+      # other legs. Main-only, so a branch run renders and keeps its artifacts
+      # but never touches what pilots see.
+      - name: Publish windgrams to R2
+        if: steps.guard.outputs.deploy == 'true' && github.ref == 'refs/heads/main'
+        uses: ./.github/actions/publish-r2
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        with:
+          model: hrrr
+          region: ${{ matrix.region }}
+          day: "0"
+
       # Only the home tile writes the v2 soaring cube; publishing is main-only.
       - name: Upload soaring cube to R2 (v2)
         if: steps.guard.outputs.deploy == 'true' && env.UPLOAD_CUBES == 'true' && matrix.region == 'issaquah' && github.ref == 'refs/heads/main'
@@ -219,6 +235,22 @@ jobs:
             output/*_blipspot.json
           retention-days: 7
 
+      # Publish this leg's windgrams straight to R2 (the site reads them from
+      # there), the moment they exist: no publish job, nothing waits for the
+      # other legs. Main-only, so a branch run renders and keeps its artifacts
+      # but never touches what pilots see.
+      - name: Publish windgrams to R2
+        if: steps.guard.outputs.deploy == 'true' && github.ref == 'refs/heads/main'
+        uses: ./.github/actions/publish-r2
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        with:
+          model: hrrr
+          region: ${{ matrix.region }}
+          day: "1"
+
       # Only the home tile writes the v2 soaring cube; publishing is main-only.
       - name: Upload soaring cube to R2 (v2)
         if: steps.guard.outputs.deploy == 'true' && env.UPLOAD_CUBES == 'true' && matrix.region == 'issaquah' && github.ref == 'refs/heads/main'
@@ -230,27 +262,3 @@ jobs:
         with:
           model: hrrr
           day: 1
-
-  publish:
-    # One gh-pages commit for every region-day (instead of one per job). Runs
-    # even when some legs failed or were skipped (out of reach), so one bad leg
-    # never blocks the rest; legs without an artifact are simply not published.
-    # Each leg lands in forecasts/<rendered date>/hrrr/<region>/ (so day 1 goes
-    # under date+1); only day 0 updates /latest (latest_day 0), as for NAM.
-    needs: [forecast-day0, forecast-day1]
-    if: always() && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
-        with:
-          pattern: hrrr-*
-          path: windgrams
-      - name: Deploy to Pages
-        uses: ./.github/actions/deploy-forecast
-        with:
-          model: hrrr
-          artifacts_dir: windgrams
-          latest_day: "0"

@@ -1,0 +1,97 @@
+name: Publish windgrams to R2
+description: >-
+  Upload one leg's windgrams (output/*.png and *_blipspot.json) to the R2
+  bucket the site reads from, in the layout the gh-pages tree used to carry:
+    forecasts/<date>/<model>/<region>/<Site>_windgram.png
+    forecasts/<date>/<model>/<region>/<Site>_blipspot.json
+    forecasts/<date>/<model>/<region>/metadata.json   (this leg)
+    forecasts/<date>/<model>/metadata.json            (day-picker probe)
+  and, when day == latest_day, the same again under forecasts/latest/.
+  Every leg publishes itself the moment it finishes, so no leg waits for
+  another and a queued tile never delays the rest. The calling step passes the
+  R2 credentials as env (R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY);
+  missing credentials or an empty output/ fail the step, since the leg would
+  otherwise have rendered for nothing.
+
+inputs:
+  model:
+    description: Model slug (rrfs, hrrr)
+    required: true
+  region:
+    description: Region tile name (the forecasts/<date>/<model>/<region>/ directory)
+    required: true
+  day:
+    description: Matrix day offset (0 or 1)
+    required: true
+  latest_day:
+    description: Which day's windgrams also go to forecasts/latest/<model>/
+    required: false
+    default: "0"
+  bucket:
+    description: R2 bucket
+    required: false
+    default: nw-paragliding-forecasts
+  cache_max_age:
+    description: >-
+      Cache-Control max-age (seconds) stored on every object. Dated files are
+      overwritten by a later run of the same day and latest/ by every run, so
+      keep it short; the site adds no cache-busting of its own.
+    required: false
+    default: "120"
+
+runs:
+  using: composite
+  steps:
+    - name: Publish windgrams to R2
+      shell: bash
+      env:
+        R2_BUCKET: ${{ inputs.bucket }}
+        MODEL: ${{ inputs.model }}
+        REGION: ${{ inputs.region }}
+        DAY: ${{ inputs.day }}
+        LATEST_DAY: ${{ inputs.latest_day }}
+        MAX_AGE: ${{ inputs.cache_max_age }}
+      run: |
+        set -euo pipefail
+        PNGS=(output/*.png)
+        if [ ! -e "${PNGS[0]}" ]; then
+          echo "::error::No windgrams in output/ — nothing to publish."; exit 1
+        fi
+        if [ -z "${R2_ACCOUNT_ID:-}" ] || [ -z "${R2_ACCESS_KEY_ID:-}" ] || [ -z "${R2_SECRET_ACCESS_KEY:-}" ]; then
+          echo "::error::R2 secrets unset/incomplete — cannot publish this leg."; exit 1
+        fi
+        command -v rclone >/dev/null 2>&1 \
+          || curl -fsSL https://rclone.org/install.sh | sudo bash >/dev/null 2>&1 \
+          || sudo apt-get install -y -q rclone
+        export RCLONE_S3_PROVIDER=Cloudflare \
+               RCLONE_S3_ENDPOINT="https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com" \
+               RCLONE_S3_ACCESS_KEY_ID="$R2_ACCESS_KEY_ID" \
+               RCLONE_S3_SECRET_ACCESS_KEY="$R2_SECRET_ACCESS_KEY"
+
+        # The renderer stamps each file <date>_<Site>_windgram.png; the site
+        # addresses them by <Site> inside a dated directory, so the prefix goes.
+        DATE=$(basename "${PNGS[0]}" | cut -d_ -f1)
+        GEN=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+        STAGE=$(mktemp -d)
+        mkdir -p "$STAGE/region"
+        for f in "${PNGS[@]}" output/*_blipspot.json; do
+          [ -e "$f" ] || continue
+          cp "$f" "$STAGE/region/$(basename "$f" | sed 's/^[0-9-]*_//')"
+        done
+        printf '{"model":"%s","region":"%s","date":"%s","generated":"%s","windgrams":%d}\n' \
+          "$MODEL" "$REGION" "$DATE" "$GEN" "${#PNGS[@]}" > "$STAGE/region/metadata.json"
+        printf '{"model":"%s","date":"%s","generated":"%s"}\n' \
+          "$MODEL" "$DATE" "$GEN" > "$STAGE/model-metadata.json"
+
+        OPTS=(--s3-no-check-bucket --header-upload "Cache-Control: public, max-age=${MAX_AGE}" --stats-one-line -q)
+        # sync (not copy) so a site dropped from the tile's list disappears too.
+        rclone sync "$STAGE/region" ":s3:${R2_BUCKET}/forecasts/${DATE}/${MODEL}/${REGION}" "${OPTS[@]}"
+        rclone copyto "$STAGE/model-metadata.json" ":s3:${R2_BUCKET}/forecasts/${DATE}/${MODEL}/metadata.json" "${OPTS[@]}"
+        WHERE="forecasts/${DATE}/${MODEL}/${REGION}"
+        if [ "$DAY" = "$LATEST_DAY" ]; then
+          rclone sync "$STAGE/region" ":s3:${R2_BUCKET}/forecasts/latest/${MODEL}/${REGION}" "${OPTS[@]}"
+          rclone copyto "$STAGE/model-metadata.json" ":s3:${R2_BUCKET}/forecasts/latest/${MODEL}/metadata.json" "${OPTS[@]}"
+          WHERE="$WHERE (+ forecasts/latest/${MODEL}/${REGION})"
+        fi
+        rm -rf "$STAGE"
+        echo "Published ${#PNGS[@]} windgrams → r2://${R2_BUCKET}/${WHERE}"
