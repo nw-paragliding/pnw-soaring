@@ -3,7 +3,7 @@ description: >-
   Render one region tile's windgrams for one model and one soaring day:
   derive the model's domain config from domains/<region>.yaml, restore (or
   build with geogrid and cache) the tile's geo_em grids, run the windgram image,
-  and check that it rendered something. Used by forecast-nam/-rrfs/-hrrr.yml;
+  and check that it rendered something. Used by forecast-rrfs/-hrrr.yml;
   uploading and publishing are left to the calling workflow.
 
 inputs:

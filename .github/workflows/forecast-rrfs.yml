@@ -1,17 +1,16 @@
 name: Forecast (RRFS)
 
-# RRFS (Rapid Refresh Forecast System, 3 km) drives the SAME WRF chain as the
-# NAM product (4 km -> 1.33 km, DrJack physics) for every WA region tile: the
+# RRFS (Rapid Refresh Forecast System, 3 km) drives the SAME WRF chain the NAM
+# product ran (4 km -> 1.33 km, DrJack physics) for every WA region tile: the
 # job's domain config is domains/<region>.yaml with `model: rrfs` swapped in at
-# run time (scripts/derive-domain.sh). It is a third model alongside NAM and
-# HRRR until NCEP retires NAM on 2026-11-03 12Z, after which it replaces NAM.
+# run time (scripts/derive-domain.sh). It replaced NAM, which NCEP retired on
+# 2026-11-03 12Z, and is the site's default model.
 
 on:
-  # Fired by the Cloudflare trigger Worker (cloudflare-trigger/): the two NAM
-  # crons dispatch both run-nam and run-rrfs (no spare cron on the free tier),
-  # so this starts at the same instant as the NAM run. repository_dispatch
-  # starts within seconds — unlike GitHub's throttled `schedule` events. One
-  # dispatch starts every region and day.
+  # Fired by the Cloudflare trigger Worker (cloudflare-trigger/) at 02:05z and
+  # 14:00z (the crons that used to dispatch both run-nam and run-rrfs).
+  # repository_dispatch starts within seconds — unlike GitHub's throttled
+  # `schedule` events. One dispatch starts every region and day.
   repository_dispatch:
     types: [run-rrfs]
   workflow_dispatch:
@@ -44,7 +43,7 @@ env:
 # day 1 = tomorrow UTC). Both the evening (00z) and morning (12z) dispatches fire
 # on the same UTC date, so {today, tomorrow} covers "tomorrow+next-day" (evening)
 # and "today+tomorrow" (morning) alike. --target-date auto-selects the freshest
-# covering cycle (same mode as NAM — --target-cycle would force an fhr-0 start
+# covering cycle (the mode NAM ran in — --target-cycle would force an fhr-0 start
 # and a ~50 h WRF run on the day-1 leg). The days are two jobs rather than one
 # matrix axis only so that each waits on its own gate: day 0 starts when f27 is
 # out (~20 min after the dispatch), day 1 when f51 is (~45 min).

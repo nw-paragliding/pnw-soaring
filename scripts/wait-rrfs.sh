@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # wait-rrfs.sh <day>  — RRFS readiness gate for forecast-rrfs.yml.
 #
-# forecast-rrfs.yml rides the NAM crons (02:05z / 14:00z), but RRFS publishes
-# ~40 min AFTER NAM for the same forecast hour. Without a gate the pipeline's
+# forecast-rrfs.yml fires at 02:05z / 14:00z (the former NAM crons), but the
+# RRFS files the day needs land ~15-45 min later. Without a gate the pipeline's
 # --target-date auto-cycle would find the newest cycle still incomplete and fall
 # back to the previous (6 h older) one — the stale cycle problem. So: derive the
 # newest 00z/12z cycle from the current hour and poll the data root (AWS mirror

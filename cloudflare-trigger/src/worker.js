@@ -2,30 +2,30 @@
 //
 // On each Cloudflare cron tick (see wrangler.toml [triggers]) this fires one
 // GitHub `repository_dispatch` per event type mapped to that cron. HRRR and
-// NAM run on SEPARATE schedules and event types (run-hrrr / run-nam) so each
-// catches its own cycle promptly: NAM GRIB publishes ~40 min after HRRR, so a
-// shared HRRR-timed dispatch made NAM (which auto-selects the freshest cycle)
-// grab the stale *previous* cycle — the "15 hours ago" staleness.
-// `repository_dispatch` is not throttled the way GitHub's own `schedule`
-// events are, so it starts the workflow in seconds.
+// RRFS run on SEPARATE schedules and event types (run-hrrr / run-rrfs) so each
+// catches its own cycle promptly: RRFS GRIB publishes ~1 h after HRRR's, so a
+// shared HRRR-timed dispatch would make RRFS (which auto-selects the freshest
+// cycle) grab the stale *previous* cycle — the "15 hours ago" staleness NAM
+// used to show. `repository_dispatch` is not throttled the way GitHub's own
+// `schedule` events are, so it starts the workflow in seconds.
 //
-// RRFS rides the NAM crons: the free tier caps a Worker at 5 cron triggers
-// (3 HRRR + 2 NAM), so instead of a sixth cron the two NAM ticks dispatch
-// BOTH run-nam and run-rrfs. RRFS GRIB lands ~40 min after NAM's, which
-// forecast-rrfs.yml absorbs with its own NOMADS readiness gate.
+// Until NCEP retired NAM (2026-11-03 12Z) the two later ticks dispatched BOTH
+// run-nam and run-rrfs (the free tier caps a Worker at 5 cron triggers, so
+// RRFS had no cron of its own). They are RRFS's now; run-nam is no longer
+// dispatched. A cron may still map to several dispatches.
 
 // Map each configured cron to the list of {event_type, cycle} dispatches it
 // fires. Keys MUST match the crons in wrangler.toml exactly. `cycle` is
-// informational — HRRR derives its --target-cycle from the fire hour, NAM and
-// RRFS auto-select the freshest available.
+// informational — HRRR derives its --target-cycle from the fire hour, RRFS
+// auto-selects the freshest available.
 const CRON_MAP = {
   // HRRR — 3x/day, a little after HRRR GRIB publishes (short 48h reach)
   "15 1 * * *": [{ type: "run-hrrr", cycle: "0" }],   // 00z — night-before / tomorrow
   "15 7 * * *": [{ type: "run-hrrr", cycle: "6" }],   // 06z — pre-dawn refresh of today
   "0 13 * * *": [{ type: "run-hrrr", cycle: "12" }],  // 12z — freshest of today
-  // NAM + RRFS — 2x/day, after NAM GRIB publishes (~40 min later; 84h reach covers more)
-  "5 2 * * *":  [{ type: "run-nam",  cycle: "0" },  { type: "run-rrfs", cycle: "0" }],   // 00z — overnight multi-day outlook
-  "0 14 * * *": [{ type: "run-nam",  cycle: "12" }, { type: "run-rrfs", cycle: "12" }],  // 12z — freshest midday
+  // RRFS — 2x/day, ~2 h after the cycle (forecast-rrfs.yml gates on the GRIB; 84h reach covers more)
+  "5 2 * * *":  [{ type: "run-rrfs", cycle: "0" }],   // 00z — overnight multi-day outlook
+  "0 14 * * *": [{ type: "run-rrfs", cycle: "12" }],  // 12z — freshest midday
 };
 
 async function dispatch(env, type, cycle) {
