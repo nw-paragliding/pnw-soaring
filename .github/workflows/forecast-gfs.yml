@@ -1,0 +1,171 @@
+name: Forecast (GFS outlook)
+
+# Days 3 and 4 from GFS, for the SAME DrJack WRF chain the other models drive
+# (25 km GFS onto the 4 km parent -> 1.33 km; NAM's actual 40 km grid 212 made a
+# bigger jump for years). RRFS reaches 84 h, so day 2 is its last; GFS runs to
+# 384 h. SPIKE: the issaquah tile only, while we learn whether days 3 and 4 are
+# worth showing and whether they deserve the fine nest (README "GFS outlook").
+#
+# Chained to the end of each RRFS run rather than given a cron of its own: the
+# Worker's five free cron slots are used, and chaining makes contention with
+# the RRFS waves impossible by construction. Fires ~03:40z and ~15:42z; the
+# newest GFS cycle's f099 / f123 land ~03:57z / 04:03z (12z: 16:02z / 16:07z),
+# so the gate waits ~20 min. HRRR's next dispatch is hours away either way.
+
+on:
+  workflow_run:
+    workflows: ["Forecast (RRFS)"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      target_date:
+        description: 'Base date YYYY-MM-DD (days 3 and 4 are base+3, base+4; blank = today UTC)'
+        required: false
+      regions:
+        description: 'Region tiles to run, JSON list (blank = the spike tile, issaquah)'
+        required: false
+
+env:
+  # Pinned, not :latest: the GFS registry entry with the AWS mirror root and the
+  # .idx subset (MSLET for sea-level pressure) is windgram 0.9.0; older images
+  # would pull 540 MB global files from NOMADS per hour, or stop in real.exe
+  # without PMSL. Bump deliberately.
+  IMAGE: ghcr.io/nw-paragliding/windgram:0.9.0
+  # Data root for GFS GRIB: NOAA's Open Data mirror (noaa-gfs-bdp-pds, same
+  # gfs.YYYYMMDD/HH/atmos/ layout and .idx files as NOMADS, no throttling). The
+  # repository variable RASP_GFS_ROOT overrides it, e.g.
+  # https://nomads.ncep.noaa.gov/pub/data/nccf/com/gfs/prod.
+  RASP_GFS_ROOT: ${{ vars.RASP_GFS_ROOT || 'https://noaa-gfs-bdp-pds.s3.amazonaws.com' }}
+  REGIONS: ${{ inputs.regions || '["issaquah"]' }}
+
+jobs:
+  wait-day3:
+    # One small x86 runner polls the mirror for the newest cycle's day-3 hour so
+    # the arm legs start only once the GRIB is out.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    outputs:
+      ready: ${{ steps.ready.outputs.ready }}
+      target_date: ${{ steps.ready.outputs.target_date }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Wait for GFS GRIB (day 3)
+        id: ready
+        run: scripts/wait-gfs.sh 3 "${{ inputs.target_date }}"
+
+  forecast-day3:
+    needs: wait-day3
+    # !cancelled(): a job's default condition is success() over the WHOLE chain
+    # of needs, so without this a failed leg upstream skips the wave.
+    if: ${{ !cancelled() && needs.wait-day3.result == 'success' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        region: ${{ fromJson(inputs.regions || '["issaquah"]') }}
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 360
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run forecast
+        id: run
+        uses: ./.github/actions/run-forecast
+        with:
+          model: gfs
+          region: ${{ matrix.region }}
+          target_date: ${{ needs.wait-day3.outputs.target_date }}
+          image: ${{ env.IMAGE }}
+
+      - name: Upload windgrams
+        uses: actions/upload-artifact@v4
+        with:
+          name: gfs-${{ matrix.region }}-day3
+          path: |
+            output/*.png
+            output/*_blipspot.json
+          retention-days: 7
+
+      # Straight to R2 like the other models; main-only (a workflow_run event
+      # runs on the default branch, a branch dispatch renders but publishes
+      # nothing). latest_day 3: GFS's "latest" is its nearest day, so the site
+      # lists the model (it reads forecasts/latest/<model>/metadata.json).
+      - name: Publish windgrams to R2
+        if: github.ref == 'refs/heads/main'
+        uses: ./.github/actions/publish-r2
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        with:
+          model: gfs
+          region: ${{ matrix.region }}
+          day: "3"
+          latest_day: "3"
+
+  wait-day4:
+    # After the day-3 wave (whatever its outcome), never beside it.
+    needs: forecast-day3
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    outputs:
+      ready: ${{ steps.ready.outputs.ready }}
+      target_date: ${{ steps.ready.outputs.target_date }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Wait for GFS GRIB (day 4)
+        id: ready
+        run: scripts/wait-gfs.sh 4 "${{ inputs.target_date }}"
+
+  forecast-day4:
+    needs: wait-day4
+    if: ${{ !cancelled() && needs.wait-day4.result == 'success' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        region: ${{ fromJson(inputs.regions || '["issaquah"]') }}
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 360
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run forecast
+        id: run
+        uses: ./.github/actions/run-forecast
+        with:
+          model: gfs
+          region: ${{ matrix.region }}
+          target_date: ${{ needs.wait-day4.outputs.target_date }}
+          image: ${{ env.IMAGE }}
+
+      - name: Upload windgrams
+        uses: actions/upload-artifact@v4
+        with:
+          name: gfs-${{ matrix.region }}-day4
+          path: |
+            output/*.png
+            output/*_blipspot.json
+          retention-days: 7
+
+      - name: Publish windgrams to R2
+        if: github.ref == 'refs/heads/main'
+        uses: ./.github/actions/publish-r2
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        with:
+          model: gfs
+          region: ${{ matrix.region }}
+          day: "4"
+          latest_day: "3"

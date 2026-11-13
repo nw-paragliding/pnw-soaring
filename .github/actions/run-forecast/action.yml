@@ -134,6 +134,7 @@ runs:
         # the image honours the same vars.
         [ -n "${RASP_RRFS_ROOT:-}" ] && EXTRA+=(-e "RASP_RRFS_ROOT=$RASP_RRFS_ROOT")
         [ -n "${RASP_HRRR_ROOT:-}" ] && EXTRA+=(-e "RASP_HRRR_ROOT=$RASP_HRRR_ROOT")
+        [ -n "${RASP_GFS_ROOT:-}" ] && EXTRA+=(-e "RASP_GFS_ROOT=$RASP_GFS_ROOT")
         [ -n "${RASP_HRDPS_ROOT:-}" ] && EXTRA+=(-e "RASP_HRDPS_ROOT=$RASP_HRDPS_ROOT")
         # geo_em/ is mounted rw: a cached grid is copied into the WPS dir (the
         # pipeline then skips geogrid); on a miss the pipeline runs geogrid and
