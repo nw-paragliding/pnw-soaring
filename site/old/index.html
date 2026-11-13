@@ -251,7 +251,7 @@ window.addEventListener('hashchange', () => { const s = sitesByName[decodeURICom
 
 (async () => {
   try {
-    const [sites, areas] = await Promise.all([fetch('/sites.json').then(r => r.json()), fetch('areas.json').then(r => r.json())]);
+    const [sites, areas] = await Promise.all([fetch('/sites.json').then(r => r.json()), fetch('/areas.json').then(r => r.json())]);
     build(sites, areas);
     const wanted = sitesByName[decodeURIComponent(location.hash.slice(1))];
     if (wanted) { node = wanted.node; renderSidebar(); loadSite(wanted); } else renderSidebar();
