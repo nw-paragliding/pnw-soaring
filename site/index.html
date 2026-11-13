@@ -130,18 +130,20 @@
     .segmented label .res.stale { color: var(--stale); font-weight: 600; }
     .segmented label:has(input:checked) .res.stale { color: #f4b860; }
 
-    /* Day pager: ‹ Today · 11-12 ›. Swiping the chart and ← → do the same. */
-    .days { display: inline-flex; align-items: center; gap: 2px; padding: 2px; margin-left: auto; flex: none;
-      border: 1px solid var(--line-2); border-radius: 9px; background: var(--panel); }
+    /* Days: gallery dots under the chart, one per forecast day. Swiping or
+       scrolling the chart, a dot, or ← → step through them. */
+    .days { display: flex; align-items: center; justify-content: center; gap: 8px; flex: none; min-height: 22px; margin-top: -2px; }
     .days.single { display: none; }
-    .days .step { width: 30px; height: 26px; border: 0; border-radius: 7px; background: none; color: var(--evergreen);
-      font-size: 19px; line-height: 1; display: inline-flex; align-items: center; justify-content: center; padding: 0 0 2px; }
-    .days .step:disabled { color: var(--line-2); cursor: default; }
-    .days .step:not(:disabled):hover { background: rgba(31,82,64,.08); }
-    .days .day-now { min-width: 112px; text-align: center; font: 600 13px/1 'Bricolage Grotesque', system-ui, sans-serif; color: var(--ink); white-space: nowrap; }
+    .dots { display: inline-flex; }
+    .dots button { position: relative; width: 22px; height: 22px; border: 0; background: none; padding: 0; cursor: pointer; }
+    .dots button::before { content: ""; position: absolute; left: 50%; top: 50%; width: 8px; height: 8px; margin: -4px 0 0 -4px;
+      border-radius: 50%; background: var(--line-2); transition: transform .18s, background .18s; }
+    .dots button:hover::before { background: var(--ink-soft); }
+    .dots button[aria-selected="true"]::before { background: var(--evergreen); transform: scale(1.35); }
+    .days .day-now { font: 600 12px/1 'Bricolage Grotesque', system-ui, sans-serif; color: var(--ink); white-space: nowrap; }
     .days .day-now .sub { font: 500 10px/1 'IBM Plex Mono', monospace; color: var(--ink-soft); margin-left: 5px; }
 
-    /* The chart: a tap flips it to the table, a horizontal swipe steps the day.
+    /* The chart: a tap flips it to the table; a swipe, or the wheel, steps the day.
        It flexes to the room left in the pane and the image fits inside it. */
     .wg-frame { flex: 1 1 auto; min-height: 220px; display: flex; align-items: flex-start; justify-content: center;
       cursor: pointer; touch-action: pan-y; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; outline-offset: 4px; }
@@ -287,15 +289,14 @@
             <label><input type="radio" name="model" value="nam"><span class="name">NAM</span><span class="res" data-model="nam" data-res="1.3 km">1.3 km</span></label>
             <label><input type="radio" name="model" value="hrrr"><span class="name">HRRR <span class="beta">(beta)</span></span><span class="res" data-model="hrrr" data-res="1.3 km">1.3 km</span></label>
           </div>
-          <div class="days single" id="days" role="group" aria-label="Forecast day">
-            <button type="button" class="step" id="day-prev" aria-label="Previous day">‹</button>
-            <span class="day-now" id="day-now" aria-live="polite"></span>
-            <button type="button" class="step" id="day-next" aria-label="Next day">›</button>
-          </div>
         </div>
 
         <div class="wg-frame" id="windgram-frame" role="button" tabindex="0" aria-label="Show the forecast as a table"><img id="windgram-img" alt="" draggable="false"></div>
         <div class="wg-table" id="windgram-table" hidden title="Back to the chart"></div>
+        <div class="days single" id="days">
+          <span class="dots" id="dots" role="tablist" aria-label="Forecast day"></span>
+          <span class="day-now" id="day-now" aria-live="polite"></span>
+        </div>
         <div class="wg-note" id="windgram-note"></div>
         <div class="no-data" id="windgram-nodata" hidden></div>
         <div class="actions">
@@ -477,20 +478,24 @@ async function discoverDays(model) {
 function renderDays(days) {
   const i = days.findIndex(d => d.date === currentDate), d = days[i];
   $('#days').classList.toggle('single', days.length < 2);
+  const dots = $('#dots'); dots.innerHTML = '';
+  days.forEach((day, k) => {
+    const b = document.createElement('button'); b.type = 'button'; b.setAttribute('role', 'tab');
+    b.setAttribute('aria-selected', String(k === i)); b.setAttribute('aria-label', `${day.label} ${day.sub}`); b.title = `${day.label} · ${day.sub}`;
+    b.addEventListener('click', () => goToDay(k));
+    dots.appendChild(b);
+  });
   $('#day-now').innerHTML = d ? `${esc(d.label)}<span class="sub">${esc(d.sub)}</span>` : '';
-  $('#day-prev').disabled = i <= 0;
-  $('#day-next').disabled = i < 0 || i >= days.length - 1;
 }
-// Step to the previous (-1) or next (+1) day; false at either end.
+// Show day k of currentDays; false when there is no such day or it is already up.
 let slideDir = 0;
-function stepDay(delta) {
-  const i = currentDays.findIndex(d => d.date === currentDate), j = i + delta;
-  if (i < 0 || j < 0 || j >= currentDays.length) return false;
-  currentDate = currentDays[j].date; slideDir = delta;
+function goToDay(k) {
+  const i = currentDays.findIndex(d => d.date === currentDate);
+  if (k < 0 || k >= currentDays.length || k === i) return false;
+  currentDate = currentDays[k].date; slideDir = k > i ? 1 : -1;
   renderDays(currentDays); updateWindgram(); syncUrl(); return true;
 }
-$('#day-prev').addEventListener('click', () => stepDay(-1));
-$('#day-next').addEventListener('click', () => stepDay(1));
+const stepDay = (delta) => { const i = currentDays.findIndex(d => d.date === currentDate); return i >= 0 && goToDay(i + delta); };
 async function loadDays() {
   const days = await discoverDays(currentModel); currentDays = days;
   if (!days.find(d => d.date === currentDate)) currentDate = days.length ? days[0].date : null;
@@ -608,7 +613,7 @@ function applyView() {
   tableEl.hidden = !table;
   noteEl.textContent = '';
   $('#open-full').hidden = table; $('#open-data').hidden = !table;
-  const dayHint = currentDays.length < 2 ? '' : touch ? ' · swipe for the next day' : ' · ← → for the next day';
+  const dayHint = currentDays.length < 2 ? '' : touch ? ' · swipe for the next day' : ' · scroll or ← → for the next day';
   $('#view-hint').textContent = imgFailed && !table ? '' : table ? `${tapWord} the table to go back to the chart` : `${tapWord} the chart for the table${dayHint}`;
   if (table && currentSite) loadBlipspot();
 }
@@ -664,6 +669,17 @@ function endSwipe(e, cancelled) {
 }
 frame.addEventListener('pointerup', (e) => endSwipe(e, false));
 frame.addEventListener('pointercancel', (e) => endSwipe(e, true));
+// Wheel or trackpad over the chart: one day per gesture, in whichever direction
+// dominates. The gesture ends after 250 ms without events (inertia included).
+let wheelAcc = 0, wheelDone = false, wheelTimer = 0;
+frame.addEventListener('wheel', (e) => {
+  if (currentDays.length < 2) return;
+  e.preventDefault();
+  clearTimeout(wheelTimer); wheelTimer = setTimeout(() => { wheelAcc = 0; wheelDone = false; }, 250);
+  if (wheelDone) return;
+  wheelAcc += Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+  if (Math.abs(wheelAcc) >= 40) { wheelDone = true; stepDay(wheelAcc > 0 ? 1 : -1); wheelAcc = 0; }
+}, { passive: false });
 // ← → step the day when the forecast is showing and nothing else wants the keys.
 document.addEventListener('keydown', (e) => {
   if ((e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') || e.altKey || e.ctrlKey || e.metaKey) return;
