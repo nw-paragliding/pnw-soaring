@@ -1,0 +1,156 @@
+name: Forecast (HRDPS)
+
+# ECCC's HRDPS (2.5 km, continental domain, 48 h) driving the SAME DrJack WRF
+# chain as the other models (2.5 km onto the 4 km parent -> 1.33 km). Its grid
+# reaches from ~41.3N to the Arctic, so it is the driver for the BC sites north
+# of the HRRR and RRFS grids. SPIKE: the issaquah tile first, where Tiger gives
+# a direct comparison against RRFS and HRRR before any BC tile exists.
+#
+# Chained to the end of each RRFS run (no free cron slots; chaining rules out
+# contention with the RRFS waves). Fires ~03:40z / ~15:42z; the newest HRDPS
+# cycle (00z / 12z) is complete on the Datamart ~35 min earlier. 48 h reach:
+# the evening chain gets tomorrow only (its day 1 would end at 52 h), the
+# morning chain today + tomorrow, as with HRRR.
+
+on:
+  # TEMP (verification from the branch; remove before merge): GitHub cannot
+  # dispatch a workflow that exists only on a branch, so a push runs it instead.
+  # Publishing is main-only, so this renders and keeps artifacts, nothing more.
+  push:
+    branches: [feat/hrdps-spike]
+  workflow_run:
+    workflows: ["Forecast (RRFS)"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      target_date:
+        description: 'Base date YYYY-MM-DD (day 0 = base, day 1 = base+1; blank = today UTC)'
+        required: false
+      regions:
+        description: 'Region tiles to run, JSON list (blank = the spike tile, issaquah)'
+        required: false
+
+env:
+  # Pinned to the pre-release image that carries the hrdps registry entry,
+  # Vtable.HRDPS and the per-field downloader; bumped deliberately.
+  IMAGE: ghcr.io/nw-paragliding/windgram:0.9.0-hrdps.1
+  # Data root: the MSC Datamart's rolling /today/ tree (one file per field, no
+  # mirror on AWS). The HPFX mirror has the same layout with more bandwidth:
+  # https://hpfx.collab.science.gc.ca/today/model_hrdps/continental/2.5km
+  RASP_HRDPS_ROOT: ${{ vars.RASP_HRDPS_ROOT || 'https://dd.weather.gc.ca/today/model_hrdps/continental/2.5km' }}
+
+jobs:
+  forecast-day0:
+    # Day 0 starts at once (reach check only); the cycle is complete by the time
+    # the chain fires.
+    strategy:
+      fail-fast: false
+      matrix:
+        region: ${{ fromJson(inputs.regions || '["issaquah"]') }}
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 360
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Soaring date (day 0) and reach
+        id: gate
+        run: |
+          GITHUB_OUTPUT=out.txt HRDPS_WAIT_CHECKS=0 scripts/wait-hrdps.sh 0 "${{ inputs.target_date }}"
+          cat out.txt >> "$GITHUB_OUTPUT"
+
+      - name: Run forecast
+        if: steps.gate.outputs.ready == 'true'
+        id: run
+        uses: ./.github/actions/run-forecast
+        with:
+          model: hrdps
+          region: ${{ matrix.region }}
+          target_date: ${{ steps.gate.outputs.target_date }}
+          image: ${{ env.IMAGE }}
+
+      - name: Upload windgrams
+        if: steps.gate.outputs.ready == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: hrdps-${{ matrix.region }}-day0
+          path: |
+            output/*.png
+            output/*_blipspot.json
+          retention-days: 7
+
+      - name: Publish windgrams to R2
+        if: steps.gate.outputs.ready == 'true' && github.ref == 'refs/heads/main'
+        uses: ./.github/actions/publish-r2
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        with:
+          model: hrdps
+          region: ${{ matrix.region }}
+          day: "0"
+
+  wait-day1:
+    needs: forecast-day0
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    outputs:
+      ready: ${{ steps.ready.outputs.ready }}
+      target_date: ${{ steps.ready.outputs.target_date }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Wait for HRDPS (day 1)
+        id: ready
+        run: scripts/wait-hrdps.sh 1 "${{ inputs.target_date }}"
+
+  forecast-day1:
+    needs: wait-day1
+    # !cancelled(): the default success() spans the whole chain of needs.
+    if: ${{ !cancelled() && needs.wait-day1.result == 'success' && needs.wait-day1.outputs.ready == 'true' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        region: ${{ fromJson(inputs.regions || '["issaquah"]') }}
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 360
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run forecast
+        id: run
+        uses: ./.github/actions/run-forecast
+        with:
+          model: hrdps
+          region: ${{ matrix.region }}
+          target_date: ${{ needs.wait-day1.outputs.target_date }}
+          image: ${{ env.IMAGE }}
+
+      - name: Upload windgrams
+        uses: actions/upload-artifact@v4
+        with:
+          name: hrdps-${{ matrix.region }}-day1
+          path: |
+            output/*.png
+            output/*_blipspot.json
+          retention-days: 7
+
+      - name: Publish windgrams to R2
+        if: github.ref == 'refs/heads/main'
+        uses: ./.github/actions/publish-r2
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        with:
+          model: hrdps
+          region: ${{ matrix.region }}
+          day: "1"
