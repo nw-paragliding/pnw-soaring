@@ -504,7 +504,8 @@ function renderDays(days) {
   const dots = $('#dots'); dots.innerHTML = '';
   days.forEach((day, k) => {
     const b = document.createElement('button'); b.type = 'button'; b.setAttribute('role', 'tab');
-    b.setAttribute('aria-selected', String(k === i)); b.setAttribute('aria-label', `${day.label} ${day.sub}`); b.title = `${day.label} · ${day.sub}`;
+    const tip = `${day.label} · ${day.sub}${day.off >= 2 ? ' · outlook' : ''}`;
+    b.setAttribute('aria-selected', String(k === i)); b.setAttribute('aria-label', tip.replace(/ · /g, ' ')); b.title = tip;
     b.addEventListener('click', () => goToDay(k));
     dots.appendChild(b);
   });
@@ -520,7 +521,10 @@ function goToDay(k) {
 const stepDay = (delta) => { const i = currentDays.findIndex(d => d.date === currentDate); return i >= 0 && goToDay(i + delta); };
 async function loadDays() {
   const days = await discoverDays(currentModel); currentDays = days;
-  if (!days.find(d => d.date === currentDate)) currentDate = days.length ? days[0].date : null;
+  if (!days.find(d => d.date === currentDate)) {
+    const earlier = currentDate ? days.filter(d => d.date <= currentDate) : [];
+    currentDate = earlier.length ? earlier[earlier.length - 1].date : days.length ? days[0].date : null;
+  }
   renderDays(days);
 }
 
