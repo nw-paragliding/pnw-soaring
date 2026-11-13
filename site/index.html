@@ -98,56 +98,64 @@
     .finder-foot a { color: var(--evergreen); text-decoration: none; border-bottom: 1px solid currentColor; }
 
     /* ── Forecast ──────────────────────────────────────────────── */
-    #forecast { background: var(--paper); padding-top: var(--sat); }
-    .fc-inner { max-width: 980px; margin: 0 auto; padding: 14px 24px calc(28px + var(--sab)); display: flex; flex-direction: column; gap: 12px; }
-    .topbar { display: flex; align-items: center; gap: 10px; min-height: 36px; }
+    #forecast { background: var(--paper); padding-top: var(--sat); display: flex; flex-direction: column; }
+    /* A flex column the height of the pane: the chart (or table) flexes to fill
+       what the two control rows leave, so it is as tall as the screen allows. */
+    .fc-inner { width: 100%; max-width: 1100px; margin: 0 auto; padding: 10px 24px calc(10px + var(--sab));
+      display: flex; flex-direction: column; gap: 10px; flex: 1 1 auto; min-height: 0; }
+    #windgram-content { display: flex; flex-direction: column; gap: 10px; flex: 1 1 auto; min-height: 0; }
+    .topbar { display: flex; align-items: center; gap: 10px; min-height: 36px; flex: none; }
     .back { display: none; }
-    .site-head { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 10px 14px; flex-wrap: wrap; }
-    .site-head h2 { font-weight: 800; font-size: 24px; letter-spacing: -.02em; line-height: 1.05; }
-    .site-head .coords { font: 500 11px/1.3 'IBM Plex Mono', monospace; color: var(--ink-soft); }
-    .controls { display: flex; flex-direction: column; gap: 9px; }
+    .site-head { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 6px 12px; flex-wrap: wrap; }
+    .site-head h2 { font-weight: 800; font-size: 22px; letter-spacing: -.02em; line-height: 1.05; max-width: 100%;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .site-head .coords { font: 500 11px/1.3 'IBM Plex Mono', monospace; color: var(--ink-soft); white-space: nowrap; }
+    .site-head .coords .area::before { content: " · "; }
+    .controls { display: flex; align-items: center; justify-content: space-between; gap: 8px 12px; flex-wrap: wrap; flex: none; }
 
     .segmented { --n: 3; --i: 0; position: relative; display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr));
-      background: var(--panel); border: 1px solid var(--line-2); border-radius: 11px; padding: 4px;
-      box-shadow: inset 0 1px 2px rgba(28,38,34,.04); max-width: 560px; }
-    .segmented .indicator { position: absolute; top: 4px; left: 4px; bottom: 4px; width: calc((100% - 8px) / var(--n));
-      background: var(--evergreen); border-radius: 8px; box-shadow: 0 2px 8px -2px rgba(22,58,45,.5);
+      background: var(--panel); border: 1px solid var(--line-2); border-radius: 10px; padding: 3px;
+      box-shadow: inset 0 1px 2px rgba(28,38,34,.04); flex: 1 1 260px; max-width: 420px; min-width: 0; }
+    .segmented .indicator { position: absolute; top: 3px; left: 3px; bottom: 3px; width: calc((100% - 6px) / var(--n));
+      background: var(--evergreen); border-radius: 7px; box-shadow: 0 2px 8px -2px rgba(22,58,45,.5);
       transform: translateX(calc(var(--i) * 100%)); transition: transform .28s cubic-bezier(.5,.1,.1,1); z-index: 0; }
-    .segmented label { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 1px;
-      padding: 8px 4px; cursor: pointer; user-select: none; border-radius: 8px; transition: color .2s; }
-    .segmented label .name { font-weight: 600; font-size: 14px; letter-spacing: -.01em; white-space: nowrap; }
-    .segmented label .name .beta { font-weight: 500; font-size: 11px; opacity: .75; }
-    .segmented label .res { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: .04em; color: var(--ink-soft); }
+    .segmented label { position: relative; z-index: 1; display: flex; align-items: baseline; justify-content: center; gap: 6px; min-width: 0;
+      padding: 6px 6px; cursor: pointer; user-select: none; border-radius: 7px; transition: color .2s; }
+    .segmented label .name { font-weight: 600; font-size: 13px; letter-spacing: -.01em; white-space: nowrap; }
+    .segmented label .name .beta { font-weight: 500; font-size: 10px; opacity: .75; }
+    .segmented label .res { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: .02em; color: var(--ink-soft); white-space: nowrap; }
     .segmented input { position: absolute; opacity: 0; pointer-events: none; }
     .segmented label:has(input:checked) .name { color: #fff; }
     .segmented label:has(input:checked) .res { color: rgba(255,255,255,.72); }
     .segmented label .res.stale { color: var(--stale); font-weight: 600; }
     .segmented label:has(input:checked) .res.stale { color: #f4b860; }
 
-    .row2 { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
-    .days { display: flex; gap: 6px; flex-wrap: wrap; }
-    .days:empty, .days.single { display: none; }
-    .days button { min-width: 76px; font: 600 13px/1 'Bricolage Grotesque', system-ui, sans-serif; padding: 6px 10px;
-      border-radius: 8px; border: 1px solid var(--line-2); background: var(--panel); color: var(--ink-soft);
-      transition: background .15s, color .15s, border-color .15s; }
-    .days button .sub { display: block; font: 500 9px/1.4 'IBM Plex Mono', monospace; opacity: .65; }
-    .days button.active { background: var(--evergreen); color: #fff; border-color: var(--evergreen); }
-    .days button.active .sub { opacity: .8; }
-    .view-toggle { display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--line-2); border-radius: 7px; background: var(--panel); }
-    .view-toggle button { font: 600 10px/1 'IBM Plex Mono', monospace; letter-spacing: .12em; text-transform: uppercase;
-      padding: 6px 10px; border: 0; border-radius: 5px; background: none; color: var(--ink-soft); transition: background .15s, color .15s; }
-    .view-toggle button[aria-selected="true"] { background: var(--evergreen); color: #fff; }
+    /* Day pager: ‹ Today · 11-12 ›. Swiping the chart and ← → do the same. */
+    .days { display: inline-flex; align-items: center; gap: 2px; padding: 2px; margin-left: auto; flex: none;
+      border: 1px solid var(--line-2); border-radius: 9px; background: var(--panel); }
+    .days.single { display: none; }
+    .days .step { width: 30px; height: 26px; border: 0; border-radius: 7px; background: none; color: var(--evergreen);
+      font-size: 19px; line-height: 1; display: inline-flex; align-items: center; justify-content: center; padding: 0 0 2px; }
+    .days .step:disabled { color: var(--line-2); cursor: default; }
+    .days .step:not(:disabled):hover { background: rgba(31,82,64,.08); }
+    .days .day-now { min-width: 112px; text-align: center; font: 600 13px/1 'Bricolage Grotesque', system-ui, sans-serif; color: var(--ink); white-space: nowrap; }
+    .days .day-now .sub { font: 500 10px/1 'IBM Plex Mono', monospace; color: var(--ink-soft); margin-left: 5px; }
 
-    .wg-frame { display: block; }
-    .wg-frame img { display: block; width: 100%; height: auto; cursor: zoom-in;
-      border: 1px solid var(--line-2); border-radius: 14px; background: var(--panel); box-shadow: var(--shadow); }
+    /* The chart: a tap flips it to the table, a horizontal swipe steps the day.
+       It flexes to the room left in the pane and the image fits inside it. */
+    .wg-frame { flex: 1 1 auto; min-height: 220px; display: flex; align-items: flex-start; justify-content: center;
+      cursor: pointer; touch-action: pan-y; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; outline-offset: 4px; }
+    .wg-frame img { display: block; width: auto; height: auto; max-width: 100%; max-height: 100%; pointer-events: none;
+      border: 1px solid var(--line-2); border-radius: 14px; background: var(--panel); box-shadow: var(--shadow);
+      transition: transform .22s cubic-bezier(.2,.7,.2,1), opacity .22s; }
     .no-data { padding: 40px 20px; text-align: center; color: var(--ink-soft); font-size: 14px;
       border: 1px dashed var(--line-2); border-radius: 14px; background: rgba(251,249,244,.5); }
     .reveal { animation: wgIn .4s cubic-bezier(.2,.7,.2,1) both; }
     @keyframes wgIn { from { opacity: 0; transform: translateY(8px) scale(.99); } to { opacity: 1; transform: none; } }
 
-    .wg-table { overflow: auto; -webkit-overflow-scrolling: touch; max-height: 70dvh;
+    .wg-table { flex: 1 1 auto; min-height: 220px; overflow: auto; -webkit-overflow-scrolling: touch; cursor: pointer;
       border: 1px solid var(--line-2); border-radius: 14px; background: var(--panel); box-shadow: var(--shadow); }
+    .wg-table th.row[data-desc] { cursor: help; }
     .wg-table table { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; font: 500 11px/1.2 'IBM Plex Mono', monospace; }
     .wg-table th, .wg-table td { padding: 3px 5px; text-align: center; vertical-align: middle; white-space: nowrap; border-bottom: 1px solid var(--line); }
     .wg-table th.row { position: sticky; left: 0; z-index: 1; background: var(--panel); text-align: left;
@@ -166,7 +174,10 @@
     .wg-note b { color: var(--ink); }
     .wg-note:empty { display: none; }
 
-    .actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .actions { display: flex; align-items: center; justify-content: space-between; gap: 6px 12px; flex-wrap: wrap; flex: none; }
+    .actions .hint { font: 500 10.5px/1.3 'IBM Plex Mono', monospace; color: var(--ink-soft); letter-spacing: .02em; }
+    .actions .hint:empty { display: none; }
+    .actions .links { display: inline-flex; gap: 14px; margin-left: auto; }
     .open-link { font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 500; color: var(--evergreen);
       text-decoration: none; border-bottom: 1px solid transparent; transition: border-color .15s; background: none; border-top: 0; border-left: 0; border-right: 0; padding: 0; }
     .open-link:hover { border-bottom-color: var(--evergreen); }
@@ -206,12 +217,14 @@
       #app[data-screen="forecast"] #finder { display: none; }
       .back { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 10px;
         border: 1px solid var(--line-2); background: var(--panel); color: var(--evergreen); font-size: 18px; box-shadow: var(--shadow); flex: none; }
-      .fc-inner { padding: 10px 14px calc(24px + var(--sab)); }
+      .fc-inner { padding: 8px 14px calc(10px + var(--sab)); gap: 8px; }
+      #windgram-content { gap: 8px; }
       .site-head h2 { font-size: 20px; }
+      .site-head .coords .ll { display: none; }              /* the area is enough; lat/lon are on the map */
+      .site-head .coords .area::before { content: none; }
       .segmented { max-width: none; }
-      .segmented label { padding: 8px 2px; }
-      .segmented label .res { font-size: 9.5px; letter-spacing: .02em; }
-      .wg-table { max-height: none; }
+      .segmented label { padding: 6px 2px; gap: 5px; }
+      .segmented label .res { font-size: 9.5px; letter-spacing: 0; }
       .wg-table th.row { min-width: 112px; max-width: 136px; }
     }
     /* Wide desktops: give the finder a little more room */
@@ -221,7 +234,7 @@
     @media (horizontal-viewport-segments: 2) {
       #app { display: grid; grid-template-columns: env(viewport-segment-right 0 0) calc(env(viewport-segment-left 1 0) - env(viewport-segment-right 0 0)) minmax(0, 1fr); }
       #finder { grid-column: 1; display: flex; }
-      #forecast { grid-column: 3; display: block; }
+      #forecast { grid-column: 3; display: flex; }
       #app::before { content: ""; grid-column: 2; }
       .back { display: none; }
     }
@@ -229,7 +242,7 @@
       #app { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: env(viewport-segment-bottom 0 0) calc(env(viewport-segment-top 1 0) - env(viewport-segment-bottom 0 0)) minmax(0, 1fr); height: 100dvh; }
       #finder { grid-row: 1; display: flex; height: auto; border-right: 0; border-bottom: 1px solid var(--line-2); }
       #app::before { content: ""; grid-row: 2; }
-      #forecast { grid-row: 3; display: block; height: auto; }
+      #forecast { grid-row: 3; display: flex; height: auto; }
       .back { display: none; }
     }
     @media (prefers-reduced-motion: reduce) { .reveal, .segmented .indicator, .site-marker .glyph { animation: none; transition: none; } }
@@ -262,7 +275,7 @@
           <button class="back" id="back-btn" type="button" aria-label="Back to the list">‹</button>
           <div class="site-head">
             <h2 id="site-name"></h2>
-            <span class="coords" id="site-coords"></span>
+            <span class="coords"><span class="ll" id="site-coords"></span><span class="area" id="site-area"></span></span>
           </div>
           <button class="btn" id="site-map-btn" type="button" title="Show on the map"><span class="glyph">⌖</span> Map</button>
         </div>
@@ -274,23 +287,24 @@
             <label><input type="radio" name="model" value="nam"><span class="name">NAM</span><span class="res" data-model="nam" data-res="1.3 km">1.3 km</span></label>
             <label><input type="radio" name="model" value="hrrr"><span class="name">HRRR <span class="beta">(beta)</span></span><span class="res" data-model="hrrr" data-res="1.3 km">1.3 km</span></label>
           </div>
-          <div class="row2">
-            <div class="days single" id="days" role="group" aria-label="Forecast day"></div>
-            <div class="view-toggle" role="tablist" aria-label="Chart or table">
-              <button type="button" role="tab" data-view="chart" aria-selected="true">Chart</button>
-              <button type="button" role="tab" data-view="table" aria-selected="false">Table</button>
-            </div>
+          <div class="days single" id="days" role="group" aria-label="Forecast day">
+            <button type="button" class="step" id="day-prev" aria-label="Previous day">‹</button>
+            <span class="day-now" id="day-now" aria-live="polite"></span>
+            <button type="button" class="step" id="day-next" aria-label="Next day">›</button>
           </div>
         </div>
 
-        <a class="wg-frame" id="windgram-link" href="#" target="_blank" rel="noopener"><img id="windgram-img" alt=""></a>
-        <div class="wg-table" id="windgram-table" hidden></div>
+        <div class="wg-frame" id="windgram-frame" role="button" tabindex="0" aria-label="Show the forecast as a table"><img id="windgram-img" alt="" draggable="false"></div>
+        <div class="wg-table" id="windgram-table" hidden title="Back to the chart"></div>
         <div class="wg-note" id="windgram-note"></div>
         <div class="no-data" id="windgram-nodata" hidden></div>
         <div class="actions">
-          <a class="open-link" id="open-full" href="#" target="_blank" rel="noopener">Open full size ↗</a>
-          <a class="open-link" id="open-data" href="#" target="_blank" rel="noopener" hidden>Raw data (JSON) ↗</a>
-          <button class="open-link" id="copy-link" type="button" title="Copy a link that opens this site">Copy link</button>
+          <span class="hint" id="view-hint"></span>
+          <span class="links">
+            <a class="open-link" id="open-full" href="#" target="_blank" rel="noopener">Open full size ↗</a>
+            <a class="open-link" id="open-data" href="#" target="_blank" rel="noopener" hidden>Raw data (JSON) ↗</a>
+            <button class="open-link" id="copy-link" type="button" title="Copy a link that opens this site">Copy link</button>
+          </span>
         </div>
       </div>
     </div>
@@ -325,7 +339,6 @@ const app = $('#app');
 
 let currentModel = DEFAULT_MODEL, currentSite = null, currentDate = null, currentDays = [];
 let currentView = 'chart';
-try { if (localStorage.getItem('wg-view') === 'table') currentView = 'table'; } catch (_) {}
 let metadata = {}, availableDays = {}, blipCache = new Map(), currentBlipUrl = null, imgFailed = false;
 let sites = [], siteIndex = {}, areas = {};
 let favorites = {};
@@ -418,9 +431,10 @@ const timeAgo = (d) => { const h = (Date.now() - d.getTime()) / 3.6e6; return h 
 function renderToggleMeta() {
   document.querySelectorAll('.res[data-model]').forEach(el => {
     const m = metadata[el.dataset.model];
+    el.title = `${el.dataset.res} grid`;
     if (!m) { el.textContent = el.dataset.res; el.classList.remove('stale'); return; }
     const updated = new Date(m.generated);
-    el.textContent = `${el.dataset.res} · ${timeAgo(updated)}`;
+    el.textContent = timeAgo(updated);
     el.classList.toggle('stale', (Date.now() - updated.getTime()) / 3.6e6 > 12);
   });
 }
@@ -452,14 +466,22 @@ async function discoverDays(model) {
   availableDays[model] = out; return out;
 }
 function renderDays(days) {
-  const el = $('#days'); el.innerHTML = ''; el.classList.toggle('single', days.length < 2);
-  days.forEach(d => {
-    const b = document.createElement('button'); b.type = 'button'; b.innerHTML = `${d.label}<span class="sub">${d.sub}</span>`;
-    b.classList.toggle('active', d.date === currentDate);
-    b.onclick = () => { currentDate = d.date; renderDays(days); updateWindgram(); syncUrl(); };
-    el.appendChild(b);
-  });
+  const i = days.findIndex(d => d.date === currentDate), d = days[i];
+  $('#days').classList.toggle('single', days.length < 2);
+  $('#day-now').innerHTML = d ? `${esc(d.label)}<span class="sub">${esc(d.sub)}</span>` : '';
+  $('#day-prev').disabled = i <= 0;
+  $('#day-next').disabled = i < 0 || i >= days.length - 1;
 }
+// Step to the previous (-1) or next (+1) day; false at either end.
+let slideDir = 0;
+function stepDay(delta) {
+  const i = currentDays.findIndex(d => d.date === currentDate), j = i + delta;
+  if (i < 0 || j < 0 || j >= currentDays.length) return false;
+  currentDate = currentDays[j].date; slideDir = delta;
+  renderDays(currentDays); updateWindgram(); syncUrl(); return true;
+}
+$('#day-prev').addEventListener('click', () => stepDay(-1));
+$('#day-next').addEventListener('click', () => stepDay(1));
 async function loadDays() {
   const days = await discoverDays(currentModel); currentDays = days;
   if (!days.find(d => d.date === currentDate)) currentDate = days.length ? days[0].date : null;
@@ -476,15 +498,21 @@ function updateWindgram() {
   const base = currentDate ? `${DATA_BASE}/forecasts/${currentDate}/${currentModel}` : `${DATA_BASE}/forecasts/latest/${currentModel}`;
   const src = `${base}/${encodeURIComponent(currentSite.region || 'issaquah')}/${encodeURIComponent(currentSite.name)}_windgram.png`;
   $('#site-name').textContent = prettyName(currentSite.name);
-  $('#site-coords').textContent = `${currentSite.lat.toFixed(4)}, ${currentSite.lon.toFixed(4)} · ${currentSite.area || currentSite.region}`;
+  $('#site-coords').textContent = `${currentSite.lat.toFixed(4)}, ${currentSite.lon.toFixed(4)}`;
+  $('#site-area').textContent = currentSite.area || currentSite.region;
   $('#windgram-nodata').textContent = `No ${currentModel.toUpperCase()} forecast for this site yet.`;
   const img = $('#windgram-img');
   imgFailed = false;
   img.alt = `${prettyName(currentSite.name)} windgram`;
   img.onerror = () => { imgFailed = true; applyView(); };
   img.onload = () => { imgFailed = false; applyView(); };
+  if (slideDir) {   // the new day slides in from the side it was swiped from
+    img.style.transition = 'none'; img.style.transform = `translateX(${slideDir * 28}px)`; img.style.opacity = '.4';
+    requestAnimationFrame(() => requestAnimationFrame(() => { img.style.transition = ''; img.style.transform = ''; img.style.opacity = ''; }));
+    slideDir = 0;
+  }
   img.src = src;
-  $('#windgram-link').href = src; $('#open-full').href = src;
+  $('#open-full').href = src;
   currentBlipUrl = src.replace(/_windgram\.png$/, '_blipspot.json');
   $('#open-data').href = currentBlipUrl;
   document.title = `${prettyName(currentSite.name)} · PNW Soaring Forecast`;
@@ -559,19 +587,20 @@ function renderBlipspot(b) {
   return html + '</tbody></table>';
 }
 const tableEl = $('#windgram-table'), noteEl = $('#windgram-note');
-function setView(v, remember = true) {
+function setView(v) {
   currentView = v === 'table' ? 'table' : 'chart';
-  if (remember) { try { localStorage.setItem('wg-view', currentView); } catch (_) {} }
   applyView(); syncUrl();
 }
+const touch = matchMedia('(hover: none)').matches, tapWord = touch ? 'Tap' : 'Click';
 function applyView() {
   const table = currentView === 'table';
-  document.querySelectorAll('.view-toggle button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.view === currentView)));
-  $('#windgram-link').hidden = table || imgFailed;
+  $('#windgram-frame').hidden = table || imgFailed;
   $('#windgram-nodata').hidden = table || !imgFailed;
   tableEl.hidden = !table;
   noteEl.textContent = '';
   $('#open-full').hidden = table; $('#open-data').hidden = !table;
+  const dayHint = currentDays.length < 2 ? '' : touch ? ' · swipe for the next day' : ' · ← → for the next day';
+  $('#view-hint').textContent = imgFailed && !table ? '' : table ? `${tapWord} the table to go back to the chart` : `${tapWord} the chart for the table${dayHint}`;
   if (table && currentSite) loadBlipspot();
 }
 async function loadBlipspot() {
@@ -586,8 +615,53 @@ async function loadBlipspot() {
   tableEl.innerHTML = data ? renderBlipspot(data) : `<div class="no-data">No table for this ${currentModel.toUpperCase()} forecast yet — it comes with the next forecast run.</div>`;
   tableEl.scrollTop = 0;
 }
-tableEl.addEventListener('click', (e) => { const th = e.target.closest('th.row[data-desc]'); if (th) noteEl.innerHTML = `<b>${esc(th.dataset.title)}</b> — ${esc(th.dataset.desc)}`; });
-document.querySelectorAll('.view-toggle button').forEach(b => b.addEventListener('click', () => setView(b.dataset.view)));
+// A row title explains the parameter; anywhere else on the table flips back to the chart (as on wxtofly).
+tableEl.addEventListener('click', (e) => {
+  const th = e.target.closest('th.row[data-desc]');
+  if (th) { noteEl.innerHTML = `<b>${esc(th.dataset.title)}</b> — ${esc(th.dataset.desc)}`; return; }
+  setView('chart');
+});
+
+// The chart: tap → table; a horizontal swipe → previous/next day (vertical swipes still scroll).
+const frame = $('#windgram-frame');
+let swipe = null, swipedAt = 0;
+frame.addEventListener('click', () => { if (Date.now() - swipedAt < 400) return; setView('table'); });
+frame.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setView('table'); } });
+frame.addEventListener('pointerdown', (e) => {
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
+  swipe = { id: e.pointerId, x: e.clientX, y: e.clientY, t: Date.now(), dx: 0, moved: false };
+  try { frame.setPointerCapture(e.pointerId); } catch (_) {}
+});
+frame.addEventListener('pointermove', (e) => {
+  if (!swipe || e.pointerId !== swipe.id) return;
+  const dx = e.clientX - swipe.x, dy = e.clientY - swipe.y;
+  if (!swipe.moved) {
+    if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+    if (Math.abs(dy) > Math.abs(dx)) { swipe = null; return; }   // a scroll, not a swipe
+    swipe.moved = true;
+  }
+  swipe.dx = dx;
+  const img = $('#windgram-img'); img.style.transition = 'none'; img.style.transform = `translateX(${dx * 0.35}px)`;
+});
+function endSwipe(e, cancelled) {
+  if (!swipe || e.pointerId !== swipe.id) return;
+  const s = swipe; swipe = null;
+  const img = $('#windgram-img'); img.style.transition = ''; img.style.transform = '';
+  if (!s.moved) return;
+  swipedAt = Date.now();
+  if (cancelled) return;
+  const quick = Date.now() - s.t < 700;
+  if ((quick && Math.abs(s.dx) > 40) || Math.abs(s.dx) > 110) stepDay(s.dx < 0 ? 1 : -1);
+}
+frame.addEventListener('pointerup', (e) => endSwipe(e, false));
+frame.addEventListener('pointercancel', (e) => endSwipe(e, true));
+// ← → step the day when the forecast is showing and nothing else wants the keys.
+document.addEventListener('keydown', (e) => {
+  if ((e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') || e.altKey || e.ctrlKey || e.metaKey) return;
+  if (!currentSite || $('#windgram-content').hidden || !overlay.hidden) return;
+  if (e.target.closest && e.target.closest('input, textarea, select, .wg-table')) return;
+  if (stepDay(e.key === 'ArrowRight' ? 1 : -1)) e.preventDefault();
+});
 
 function selectSite(site) {
   currentSite = site;
