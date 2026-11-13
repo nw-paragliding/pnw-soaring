@@ -113,6 +113,14 @@ The crons live in [`cloudflare-trigger/wrangler.toml`](cloudflare-trigger/wrangl
 | Morning HRRR | HRRR 1.33 km (beta) — HRRR 3 km → WRF 4 km → 1.33 km | 13:00 | 6:00am | Freshest, today + tomorrow (12z cycle; tomorrow ends at f39) |
 | Morning RRFS | RRFS → WRF 4 km → 1.33 km | 14:00 | 7:00am | Day-of update, today + two more days (12z cycle; waits for the GRIB: f27 ~14:25z, f51 ~14:52z, f75 ~15:18z) |
 
+`forecast-hrdps.yml` (a spike on the issaquah tile: ECCC's HRDPS 2.5 km, the
+model that reaches the BC sites) has no cron of its own: `workflow_run` chains
+it to the end of each RRFS run (~03:40z / ~15:42z), when the newest 6-hourly
+HRDPS cycle is complete on the MSC Datamart. Day 0 renders at once; day 1 waits
+on `scripts/wait-hrdps.sh`, which takes the previous cycle when the newest is
+not out and skips a day past HRDPS's 48 h reach, so the evening chain renders
+tomorrow only.
+
 `forecast-rrfs.yml` polls the RRFS data root until the files for the cycle are
 published before its arm legs start (two small `wait-day0` / `wait-day1` jobs).
 NCEP retired NAM on 2026-11-03 12Z; RRFS, which drives the identical WRF chain,

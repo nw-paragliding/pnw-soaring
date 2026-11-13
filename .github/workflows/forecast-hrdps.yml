@@ -8,9 +8,10 @@ name: Forecast (HRDPS)
 #
 # Chained to the end of each RRFS run (no free cron slots; chaining rules out
 # contention with the RRFS waves). Fires ~03:40z / ~15:42z; the newest HRDPS
-# cycle (00z / 12z) is complete on the Datamart ~35 min earlier. 48 h reach:
-# the evening chain gets tomorrow only (its day 1 would end at 52 h), the
-# morning chain today + tomorrow, as with HRRR.
+# cycle (00z / 12z) is complete on the Datamart ~35 min earlier, and the day-1
+# gate (scripts/wait-hrdps.sh) takes the cycle before it when the newest is
+# not out. 48 h reach: the evening chain gets tomorrow only (its day 1 would
+# end at 52 h), the morning chain today + tomorrow, as with HRRR.
 
 on:
   # TEMP (verification from the branch; remove before merge): GitHub cannot
