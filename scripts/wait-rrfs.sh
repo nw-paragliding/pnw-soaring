@@ -8,12 +8,15 @@
 # newest 00z/12z cycle from the current hour and poll the data root (AWS mirror
 # or NOMADS, $RASP_RRFS_ROOT) until BOTH the prslev and 2dfld files and their
 # .idx sidecars exist for the last forecast hour the day needs — f27
-# for day 0 (its soaring window ends 03z the next day = 00z+27h), f51 for day 1.
-# Expected arrival: 00z f27 ≈ 02:20z, f51 ≈ 02:50z; 12z f27 ≈ 14:20z,
-# f51 ≈ 14:50z on NOMADS; the AWS mirror is 1-4 min later (and puts the .idx
-# up 10-30 s after the GRIB, hence the .idx check). 16 checks x 5 min = up to 75 min of waiting, after which it
-# proceeds anyway (exit 0, ready=false): --target-date still renders from the
-# freshest cycle that covers the day, which beats no forecast.
+# for day 0 (its soaring window ends 03z the next day = 00z+27h), f51 for
+# day 1, f75 for day 2. Seen on the AWS mirror (2026-11-12/13): 00z f27 02:25z,
+# f51 02:52z, f75 03:16z, f84 03:26z; 12z f27 14:25z, f51 14:52z, f75 15:18z
+# (NOMADS is 1-4 min earlier; the .idx lands 10-30 s after the GRIB, hence the
+# .idx check). 16 checks x 5 min = up to 75 min of waiting, after which it
+# proceeds anyway (exit 0, ready=false): for days 0 and 1 --target-date still
+# renders from the freshest cycle that covers the day, which beats no forecast.
+# Day 2 has no such cycle (the previous 12z would need f88 > 84 h), so
+# forecast-rrfs.yml runs its day-2 legs only when ready=true.
 #
 # Runs in a small ubuntu-24.04 job that the arm forecast matrix `needs:`, so the
 # wait holds one cheap runner instead of one arm runner per region.
