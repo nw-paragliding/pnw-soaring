@@ -477,10 +477,12 @@ function layoutToggle() {
   seg.style.setProperty('--n', shown.length);
   seg.style.setProperty('--i', Math.max(0, shown.findIndex(l => l.querySelector('input').checked)));
 }
+let offeredModels = MODELS.slice();   // the models with anything published at all (set by pruneModels)
 async function pruneModels() {
   const avail = await Promise.all(MODELS.map(async m => !!metadata[m] && (await discoverDays(m)).length > 0));
   const offered = MODELS.filter((m, i) => avail[i]);
   if (!offered.length) { layoutToggle(); return; }
+  offeredModels = offered;
   MODELS.forEach((m, i) => { const input = document.querySelector(`input[name="model"][value="${m}"]`); if (input) input.closest('label').hidden = !avail[i]; });
   if (!offered.includes(currentModel)) { currentModel = offered[0]; document.querySelector(`input[name="model"][value="${currentModel}"]`).checked = true; }
   layoutToggle();
@@ -741,11 +743,37 @@ document.addEventListener('keydown', (e) => {
   e.preventDefault(); if (!stepDay(dir)) nudge(dir);
 });
 
-function selectSite(site) {
+// ── Which models run a site's tile. Not every model runs every tile (the GFS
+// outlook runs issaquah only; a BC tile would be HRDPS only), so the toggle is
+// trimmed per site: each tile's legs publish latest/<model>/<region>/metadata.json,
+// and its presence, checked once per model and region, is the answer. A network
+// error counts as present, so a hiccup never hides a model. ──
+const regionModels = {};
+function modelsForRegion(region) {
+  if (!regionModels[region]) regionModels[region] = Promise.all(MODELS.map(async m => {
+    if (!metadata[m]) return false;
+    try { const r = await fetch(`${DATA_BASE}/forecasts/latest/${m}/${encodeURIComponent(region)}/metadata.json`, { cache: 'no-cache' }); return r.status !== 404; }
+    catch (_) { return true; }
+  })).then(flags => MODELS.filter((m, i) => flags[i]));
+  return regionModels[region];
+}
+let selectSeq = 0;
+async function selectSite(site) {
   currentSite = site;
   if (site && site.node && !$('#q').value) node = site.node;
-  updateWindgram(); syncUrl(); renderFinder();
-  if (map) highlightMarker();
+  renderFinder(); if (map) highlightMarker();
+  const seq = ++selectSeq;
+  const here = site ? await modelsForRegion(site.region || 'issaquah') : offeredModels;
+  if (seq !== selectSeq) return;                               // another site was picked meanwhile
+  const both = offeredModels.filter(m => here.includes(m));
+  const shown = both.length ? both : offeredModels;            // nothing known for the tile: show them all
+  MODELS.forEach(m => { const input = document.querySelector(`input[name="model"][value="${m}"]`); if (input) input.closest('label').hidden = !shown.includes(m); });
+  if (!shown.includes(currentModel)) {                         // e.g. GFS selected, then a site outside its tile
+    currentModel = shown[0]; document.querySelector(`input[name="model"][value="${currentModel}"]`).checked = true;
+    await loadDays(); if (seq !== selectSeq) return;
+  }
+  layoutToggle();
+  updateWindgram(); syncUrl();
 }
 
 // ── Links: /<Site>[?model=..&day=..&view=table]; the 404 twin serves /<Site> ─
