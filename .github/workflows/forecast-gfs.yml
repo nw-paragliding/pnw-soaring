@@ -27,9 +27,10 @@ on:
 
 env:
   # Pinned, not :latest: the GFS registry entry with the AWS mirror root and the
-  # .idx subset list is windgram 0.8.1; older images would pull 540 MB global
-  # files from NOMADS per hour. Bump deliberately.
-  IMAGE: ghcr.io/nw-paragliding/windgram:0.8.1
+  # .idx subset (MSLET for sea-level pressure) is windgram 0.9.0; older images
+  # would pull 540 MB global files from NOMADS per hour, or stop in real.exe
+  # without PMSL. Bump deliberately.
+  IMAGE: ghcr.io/nw-paragliding/windgram:0.9.0
   # Data root for GFS GRIB: NOAA's Open Data mirror (noaa-gfs-bdp-pds, same
   # gfs.YYYYMMDD/HH/atmos/ layout and .idx files as NOMADS, no throttling). The
   # repository variable RASP_GFS_ROOT overrides it, e.g.

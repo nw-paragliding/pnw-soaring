@@ -6,7 +6,8 @@
 #   nam   the file as is
 #   rrfs  `model: rrfs` swapped in, nothing else changes
 #   gfs   `model: gfs` swapped in, nothing else changes (the days-3+ outlook:
-#         25 km GFS onto the same 4 km parent, as NAM's 40 km grid was)
+#         25 km GFS onto the same 4 km parent, as NAM's 40 km grid was; the
+#         registry entry in windgram 0.9.0 carries the .idx subset)
 #   hrrr  `model: hrrr` swapped in, plus the DrJack-chain override keys
 #         (direct_reader .. sfc_idx_subset) copied verbatim from
 #         domains/cascades-hrrr.yaml, the single source of truth for them: HRRR as initial/boundary conditions for
@@ -22,42 +23,8 @@ HRRR_REF="$HERE/domains/cascades-hrrr.yaml"
 
 grep -qE '^model: *[a-z]+' "$SRC" || { echo "derive-domain: no 'model:' line in $SRC" >&2; exit 1; }
 case "$MODEL" in
-  nam|rrfs)
+  nam|rrfs|gfs)
     sed -E "s/^model: *[a-z]+.*/model: $MODEL/" "$SRC" > "$OUT" ;;
-  gfs)
-    # Model line swapped, plus an .idx subset override (the pipeline lets a
-    # domain YAML override the registry's idx_subset). windgram 0.8.1's gfs
-    # entry keeps PRMSL but Vtable.GFS reads sea-level pressure from MSLET, so
-    # real.exe stopped with "not enough info for a p sfc computation"; the
-    # registry is fixed for 0.8.2, after which this block can go.
-    {
-      sed -E 's/^model: *[a-z]+.*/model: gfs/' "$SRC"
-      cat <<'YAML'
-
-# ---- gfs: .idx subset (Vtable.GFS's fields; overrides the image's registry entry)
-idx_max_gap_mb: 2
-idx_subset:
-  - "TMP:* mb"
-  - "UGRD:* mb"
-  - "VGRD:* mb"
-  - "RH:* mb"
-  - "HGT:* mb"
-  - "TMP:2 m above ground"
-  - "RH:2 m above ground"
-  - "UGRD:10 m above ground"
-  - "VGRD:10 m above ground"
-  - "PRES:surface"
-  - "MSLET:mean sea level"
-  - "HGT:surface"
-  - "TMP:surface"
-  - "WEASD:surface"
-  - "SNOD:surface"
-  - "LAND:surface"
-  - "ICEC:surface"
-  - "SOILW:* below ground"
-  - "TSOIL:* below ground"
-YAML
-    } > "$OUT" ;;
   hrrr)
     # The block must end at the grid-section marker, or the reference file's own
     # geometry (center_lat/lon ...) would be copied over the tile's.
