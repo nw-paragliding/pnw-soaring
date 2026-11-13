@@ -78,20 +78,20 @@
     .crumb button { background: none; border: 0; color: var(--evergreen); font: inherit; letter-spacing: inherit;
       text-transform: inherit; display: inline-flex; align-items: center; gap: 4px; }
     .crumb button:hover { text-decoration: underline; }
-    .row { display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    #tree .row { display: flex; align-items: center; justify-content: space-between; gap: 10px;
       width: 100%; text-align: left; padding: 10px 12px; border-radius: 10px;
       border: 1px solid transparent; background: none; color: var(--ink); font-size: 14px; }
-    .row:hover { background: rgba(251,249,244,.9); border-color: var(--line); }
-    .row.node { font-weight: 600; }
-    .row .count { font: 500 10.5px/1 'IBM Plex Mono', monospace; color: var(--ink-soft); }
-    .row .chev { color: var(--ink-soft); font-size: 16px; line-height: 1; }
-    .row .sub { display: block; font: 500 10px/1.4 'IBM Plex Mono', monospace; color: var(--ink-soft); letter-spacing: .04em; }
-    .row.site.current { background: var(--evergreen); color: #fff; border-color: var(--evergreen); }
-    .row.site.current .sub { color: rgba(255,255,255,.75); }
-    .row.site.current .star { color: #fff; }
+    #tree .row:hover { background: rgba(251,249,244,.9); border-color: var(--line); }
+    #tree .row.node { font-weight: 600; }
+    #tree .row .count { font: 500 10.5px/1 'IBM Plex Mono', monospace; color: var(--ink-soft); }
+    #tree .row .chev { color: var(--ink-soft); font-size: 16px; line-height: 1; }
+    #tree .row .sub { display: block; font: 500 10px/1.4 'IBM Plex Mono', monospace; color: var(--ink-soft); letter-spacing: .04em; }
+    #tree .row.site.current { background: var(--evergreen); color: #fff; border-color: var(--evergreen); }
+    #tree .row.site.current .sub { color: rgba(255,255,255,.75); }
+    #tree .row.site.current .star { color: #fff; }
     .star { background: none; border: 0; font-size: 16px; line-height: 1; color: var(--line-2); padding: 2px 4px; }
     .star.on { color: var(--thermal); }
-    .row.site.current .star:not(.on) { color: rgba(255,255,255,.5); }
+    #tree .row.site.current .star:not(.on) { color: rgba(255,255,255,.5); }
     .section-label { padding: 12px 6px 4px; }
     .finder-foot { margin-top: auto; padding: 12px 18px calc(14px + var(--sab)); border-top: 1px solid var(--line);
       font: 500 10.5px/1.5 'IBM Plex Mono', monospace; color: var(--ink-soft); }
@@ -132,7 +132,7 @@
 
     /* Days: gallery dots under the chart, one per forecast day. Swiping or
        scrolling the chart, a dot, or ← → step through them. */
-    .days { display: flex; align-items: center; justify-content: center; flex: none; min-height: 22px; margin-top: -2px; }
+    .days { display: flex; align-items: center; justify-content: center; flex: none; min-height: 22px; margin-top: -4px; }
     .days.single { display: none; }
     .dots { display: inline-flex; }
     .dots button { position: relative; width: 22px; height: 22px; border: 0; background: none; padding: 0; cursor: pointer; }
@@ -141,9 +141,12 @@
     .dots button:hover::before { background: var(--ink-soft); }
     .dots button[aria-selected="true"]::before { background: var(--evergreen); transform: scale(1.35); }
 
-    /* The chart: a tap flips it to the table; a swipe, or the wheel, steps the day.
-       It flexes to the room left in the pane and the image fits inside it. */
-    .wg-frame { flex: 1 1 auto; min-height: 220px; display: flex; align-items: flex-start; justify-content: center;
+    /* The stage takes the room the controls leave. The chart (or table) and the
+       dots sit in it, centred when there is spare height (a tall phone), and the
+       chart shrinks to fit when there is not (a short screen). */
+    .wg-stage { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; justify-content: center; justify-content: safe center; gap: 10px; }
+    /* The chart: a tap flips it to the table; a swipe, or the wheel, steps the day. */
+    .wg-frame { flex: 0 1 auto; min-height: 220px; display: flex; align-items: center; justify-content: center;
       cursor: pointer; touch-action: pan-y; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; outline-offset: 4px; }
     .wg-frame img { display: block; width: auto; height: auto; max-width: 100%; max-height: 100%; pointer-events: none;
       border: 1px solid var(--line-2); border-radius: 14px; background: var(--panel); box-shadow: var(--shadow);
@@ -156,10 +159,11 @@
     .wg-table { flex: 1 1 auto; min-height: 220px; overflow: auto; -webkit-overflow-scrolling: touch; cursor: pointer;
       border: 1px solid var(--line-2); border-radius: 14px; background: var(--panel); box-shadow: var(--shadow); }
     .wg-table th.row[data-desc] { cursor: help; }
+    /* (#tree .row is scoped to the finder: an unscoped .row once turned these th into flex boxes.) */
     .wg-table table { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; font: 500 11px/1.2 'IBM Plex Mono', monospace; }
     .wg-table th, .wg-table td { padding: 3px 5px; text-align: center; vertical-align: middle; white-space: nowrap; border-bottom: 1px solid var(--line); }
     .wg-table th.row { position: sticky; left: 0; z-index: 1; background: var(--panel); text-align: left;
-      font: 500 11px/1.25 'Bricolage Grotesque', system-ui, sans-serif; color: var(--ink); min-width: 132px; max-width: 160px;
+      font: 500 11px/1.25 'Bricolage Grotesque', system-ui, sans-serif; color: var(--ink); width: 160px; min-width: 132px; max-width: 160px;
       white-space: normal; cursor: help; border-right: 1px solid var(--line-2); border-radius: 0; }
     .wg-table th.row .u { color: var(--ink-soft); font-size: 10px; }
     .wg-table tr.time th, .wg-table tr.time td { position: sticky; top: 0; z-index: 2; background: var(--evergreen); color: #fff; font-weight: 600; border-bottom-color: var(--evergreen-d); }
@@ -218,14 +222,14 @@
       .back { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 10px;
         border: 1px solid var(--line-2); background: var(--panel); color: var(--evergreen); font-size: 18px; box-shadow: var(--shadow); flex: none; }
       .fc-inner { padding: 8px 14px calc(10px + var(--sab)); gap: 8px; }
-      #windgram-content { gap: 8px; }
+      #windgram-content, .wg-stage { gap: 8px; }
       .site-head h2 { font-size: 20px; }
       .site-head .coords .ll { display: none; }              /* the area is enough; lat/lon are on the map */
       .site-head .coords .area::before { content: none; }
       .segmented { max-width: none; }
       .segmented label { padding: 6px 2px; gap: 5px; }
       .segmented label .res { font-size: 9.5px; letter-spacing: 0; }
-      .wg-table th.row { min-width: 112px; max-width: 136px; }
+      .wg-table th.row { width: 136px; min-width: 112px; max-width: 136px; }
     }
     /* Wide desktops: give the finder a little more room */
     @media (min-width: 1400px) { :root { --finder-w: 400px; } }
@@ -289,13 +293,15 @@
           </div>
         </div>
 
-        <div class="wg-frame" id="windgram-frame" role="button" tabindex="0" aria-label="Show the forecast as a table"><img id="windgram-img" alt="" draggable="false"></div>
-        <div class="wg-table" id="windgram-table" hidden title="Back to the chart"></div>
-        <div class="days single" id="days">
-          <span class="dots" id="dots" role="tablist" aria-label="Forecast day"></span>
+        <div class="wg-stage">
+          <div class="wg-frame" id="windgram-frame" role="button" tabindex="0" aria-label="Show the forecast as a table"><img id="windgram-img" alt="" draggable="false"></div>
+          <div class="wg-table" id="windgram-table" hidden title="Back to the chart"></div>
+          <div class="no-data" id="windgram-nodata" hidden></div>
+          <div class="days single" id="days">
+            <span class="dots" id="dots" role="tablist" aria-label="Forecast day"></span>
+          </div>
         </div>
         <div class="wg-note" id="windgram-note"></div>
-        <div class="no-data" id="windgram-nodata" hidden></div>
       </div>
 
       <!-- Outside the panel: static apart from its text, so it never animates with it. -->
