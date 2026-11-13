@@ -14,11 +14,6 @@ name: Forecast (HRDPS)
 # end at 52 h), the morning chain today + tomorrow, as with HRRR.
 
 on:
-  # TEMP (verification from the branch; remove before merge): GitHub cannot
-  # dispatch a workflow that exists only on a branch, so a push runs it instead.
-  # Publishing is main-only, so this renders and keeps artifacts, nothing more.
-  push:
-    branches: [feat/hrdps-spike]
   workflow_run:
     workflows: ["Forecast (RRFS)"]
     types: [completed]
