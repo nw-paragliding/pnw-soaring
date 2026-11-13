@@ -8,6 +8,8 @@
 #   gfs   `model: gfs` swapped in, nothing else changes (the days-3+ outlook:
 #         25 km GFS onto the same 4 km parent, as NAM's 40 km grid was; the
 #         registry entry in windgram 0.9.0 carries the .idx subset)
+#   hrdps `model: hrdps` swapped in, nothing else changes (ECCC's 2.5 km run onto
+#         the same 4 km parent; the Canadian driver for sites north of the US grids)
 #   hrrr  `model: hrrr` swapped in, plus the DrJack-chain override keys
 #         (direct_reader .. sfc_idx_subset) copied verbatim from
 #         domains/cascades-hrrr.yaml, the single source of truth for them: HRRR as initial/boundary conditions for
@@ -15,7 +17,7 @@
 # The geometry is never touched, so every model shares the tile's geo_em.
 # Writes to out.yaml (default stdout).
 set -euo pipefail
-SRC=${1:?usage: derive-domain.sh <domain.yaml> <nam|rrfs|hrrr|gfs> [out.yaml]}
+SRC=${1:?usage: derive-domain.sh <domain.yaml> <nam|rrfs|hrrr|gfs|hrdps> [out.yaml]}
 MODEL=${2:?model}
 OUT=${3:-/dev/stdout}
 HERE=$(cd "$(dirname "$0")/.." && pwd)
@@ -23,7 +25,7 @@ HRRR_REF="$HERE/domains/cascades-hrrr.yaml"
 
 grep -qE '^model: *[a-z]+' "$SRC" || { echo "derive-domain: no 'model:' line in $SRC" >&2; exit 1; }
 case "$MODEL" in
-  nam|rrfs|gfs)
+  nam|rrfs|gfs|hrdps)
     sed -E "s/^model: *[a-z]+.*/model: $MODEL/" "$SRC" > "$OUT" ;;
   hrrr)
     # The block must end at the grid-section marker, or the reference file's own
