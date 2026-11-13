@@ -487,7 +487,7 @@ function renderDays(days) {
   });
 }
 // Show day k of currentDays; false when there is no such day or it is already up.
-let slideDir = 0;
+let slideDir = 0, revealedSite = null;
 function goToDay(k) {
   const i = currentDays.findIndex(d => d.date === currentDate);
   if (k < 0 || k >= currentDays.length || k === i) return false;
@@ -507,7 +507,9 @@ function updateWindgram() {
   $('#classic-link').href = currentSite ? '/old/#' + encodeURIComponent(currentSite.name) : '/old/';
   if (!currentSite) { empty.hidden = false; content.hidden = true; return; }
   empty.hidden = true; content.hidden = false;
-  content.classList.remove('reveal'); void content.offsetWidth; content.classList.add('reveal');
+  if (revealedSite !== currentSite) {   // the reveal is for a new site, not a new day or model
+    content.classList.remove('reveal'); void content.offsetWidth; content.classList.add('reveal'); revealedSite = currentSite;
+  }
   const base = currentDate ? `${DATA_BASE}/forecasts/${currentDate}/${currentModel}` : `${DATA_BASE}/forecasts/latest/${currentModel}`;
   const src = `${base}/${encodeURIComponent(currentSite.region || 'issaquah')}/${encodeURIComponent(currentSite.name)}_windgram.png`;
   $('#site-name').textContent = prettyName(currentSite.name);
@@ -668,23 +670,46 @@ function endSwipe(e, cancelled) {
 }
 frame.addEventListener('pointerup', (e) => endSwipe(e, false));
 frame.addEventListener('pointercancel', (e) => endSwipe(e, true));
+// No day that way: nudge the chart a little in the direction asked for.
+function nudge(dir) {
+  const img = $('#windgram-img'); if (!img.animate) return;
+  img.animate([{ transform: 'translateX(0)' }, { transform: `translateX(${dir * -12}px)` }, { transform: 'translateX(0)' }], { duration: 240, easing: 'ease-out' });
+}
 // Wheel or trackpad over the chart: one day per gesture, in whichever direction
-// dominates. The gesture ends after 250 ms without events (inertia included).
-let wheelAcc = 0, wheelDone = false, wheelTimer = 0;
+// dominates. A trackpad keeps sending decaying momentum events long after the
+// fingers lift, so the end of a gesture is not silence: a new one is a pause of
+// 150 ms, a discrete wheel notch, or, once 300 ms have passed since the step, a
+// delta that grows past twice the recent ones or reverses direction.
+let wAcc = 0, wArmed = true, wLast = 0, wStep = -1e9, wHist = [];
 frame.addEventListener('wheel', (e) => {
   if (currentDays.length < 2) return;
   e.preventDefault();
-  clearTimeout(wheelTimer); wheelTimer = setTimeout(() => { wheelAcc = 0; wheelDone = false; }, 250);
-  if (wheelDone) return;
-  wheelAcc += Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
-  if (Math.abs(wheelAcc) >= 40) { wheelDone = true; stepDay(wheelAcc > 0 ? 1 : -1); wheelAcc = 0; }
+  let d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+  if (e.deltaMode === 1) d *= 16; else if (e.deltaMode === 2) d *= innerHeight;
+  const now = performance.now(), gap = now - wLast, ad = Math.abs(d);
+  wLast = now;
+  if (ad < 0.5) return;
+  let fresh = gap > 150;
+  if (!fresh && !wArmed && now - wStep > 300 && wHist.length) {
+    const prev = wHist[wHist.length - 1], floor = Math.min(...wHist.map(Math.abs));
+    fresh = (gap > 50 && ad >= 50) || (ad >= 20 && ad > floor * 2) || (ad >= 8 && Math.sign(d) !== Math.sign(prev));
+  }
+  wHist.push(d); if (wHist.length > 3) wHist.shift();
+  if (fresh) { wArmed = true; wAcc = 0; }
+  if (!wArmed) return;
+  wAcc += d;
+  if (Math.abs(wAcc) < 30) return;
+  wArmed = false; wStep = now;
+  const dir = wAcc > 0 ? 1 : -1; wAcc = 0;
+  if (!stepDay(dir)) nudge(dir);
 }, { passive: false });
 // ← → step the day when the forecast is showing and nothing else wants the keys.
 document.addEventListener('keydown', (e) => {
   if ((e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') || e.altKey || e.ctrlKey || e.metaKey) return;
   if (!currentSite || $('#windgram-content').hidden || !overlay.hidden) return;
   if (e.target.closest && e.target.closest('input, textarea, select, .wg-table')) return;
-  if (stepDay(e.key === 'ArrowRight' ? 1 : -1)) e.preventDefault();
+  const dir = e.key === 'ArrowRight' ? 1 : -1;
+  e.preventDefault(); if (!stepDay(dir)) nudge(dir);
 });
 
 function selectSite(site) {
