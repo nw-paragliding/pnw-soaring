@@ -109,10 +109,10 @@ The crons live in [`cloudflare-trigger/wrangler.toml`](cloudflare-trigger/wrangl
 
 | Run | Model | Cron (UTC) | Local (PDT) | Coverage |
 |-----|-------|------------|-------------|----------|
-| Evening HRRR | HRRR 1.33 km (beta) — HRRR 3 km → WRF 4 km → 1.33 km | 01:15 | 6:15pm | Night-before: tomorrow only (00z cycle; the next day would need f51 > 48 h, skipped) |
+| Evening HRRR | HRRR 1.33 km — HRRR 3 km → WRF 4 km → 1.33 km | 01:15 | 6:15pm | Night-before: tomorrow only (00z cycle; the next day would need f51 > 48 h, skipped) |
 | Evening RRFS | RRFS → WRF 4 km → 1.33 km | 02:05 | 7:05pm | Overnight outlook, tomorrow + two more days (00z cycle; waits for the GRIB: f27 ~02:25z, f51 ~02:52z, f75 ~03:16z) |
-| Pre-dawn HRRR | HRRR 1.33 km (beta) — HRRR 3 km → WRF 4 km → 1.33 km | 07:15 | 12:15am | Pre-dawn refresh, today + tomorrow (06z cycle; tomorrow ends at f45) |
-| Morning HRRR | HRRR 1.33 km (beta) — HRRR 3 km → WRF 4 km → 1.33 km | 13:00 | 6:00am | Freshest, today + tomorrow (12z cycle; tomorrow ends at f39) |
+| Pre-dawn HRRR | HRRR 1.33 km — HRRR 3 km → WRF 4 km → 1.33 km | 07:15 | 12:15am | Pre-dawn refresh, today + tomorrow (06z cycle; tomorrow ends at f45) |
+| Morning HRRR | HRRR 1.33 km — HRRR 3 km → WRF 4 km → 1.33 km | 13:00 | 6:00am | Freshest, today + tomorrow (12z cycle; tomorrow ends at f39) |
 | Morning RRFS | RRFS → WRF 4 km → 1.33 km | 14:00 | 7:00am | Day-of update, today + two more days (12z cycle; waits for the GRIB: f27 ~14:25z, f51 ~14:52z, f75 ~15:18z) |
 | GFS outlook (spike) | GFS 25 km → WRF 4 km → 1.33 km | after each RRFS run (~03:40 / ~15:42) | ~8:40pm / ~8:40am | Days 3 and 4, the **issaquah tile only** while we learn whether they are worth showing (`forecast-gfs.yml`, chained by `workflow_run`; the newest 6-hourly GFS cycle, f099 / f123 ~20 min after the chain fires). RRFS reaches 84 h, GFS 384 h. |
 

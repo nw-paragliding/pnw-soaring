@@ -61,7 +61,7 @@ jobs:
   # (scripts/derive-domain.sh), so it shares the tile's geo_em cache and runs in
   # the NAM product's auto --target-date mode (the pipeline takes the freshest
   # 00/06/12/18z cycle whose files for the whole window are published and starts
-  # WRF at the window start, fhr >= 3). "HRRR (beta)" on the site.
+  # WRF at the window start, fhr >= 3). "HRRR" on the site (no longer marked beta).
   forecast-day0:
     strategy:
       fail-fast: false
