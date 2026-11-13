@@ -181,7 +181,9 @@ jobs:
     # Day 1 legs for every region; start once wait-day1 has seen the files.
     # Skipped (not failed) when the day is out of reach or the gate timed out.
     needs: wait-day1
-    if: needs.wait-day1.outputs.ready == 'true'
+    # `!cancelled()`: the default success() spans the whole chain of needs, so
+    # one failed day-0 leg would otherwise skip the entire day-1 wave.
+    if: ${{ !cancelled() && needs.wait-day1.result == 'success' && needs.wait-day1.outputs.ready == 'true' }}
     strategy:
       fail-fast: false
       matrix:

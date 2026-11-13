@@ -167,7 +167,11 @@ jobs:
 
   forecast-day1:
     # Day 1 legs for every region; start once wait-day1 has seen the files.
+    # `!cancelled()`: a job's default condition is success() over the WHOLE
+    # chain of needs, not just the gate, so without it one failed day-0 leg
+    # (any tile) would skip the entire day-1 wave.
     needs: wait-day1
+    if: ${{ !cancelled() && needs.wait-day1.result == 'success' }}
     strategy:
       fail-fast: false
       matrix:
@@ -268,7 +272,7 @@ jobs:
     # fall back to rendering near-term hours under the wrong date. Skipping the
     # day is the right answer; the day-1 forecast stands until the next run.
     needs: wait-day2
-    if: needs.wait-day2.outputs.ready == 'true'
+    if: ${{ !cancelled() && needs.wait-day2.result == 'success' && needs.wait-day2.outputs.ready == 'true' }}
     strategy:
       fail-fast: false
       matrix:

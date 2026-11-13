@@ -4,6 +4,9 @@
   <title>PNW Soaring Forecast</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta charset="utf-8">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f3efe6">
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#131917">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -27,9 +30,49 @@
       --line-2:    rgba(28,38,34,0.18);
       --stale:     #b67410;
       --shadow:    0 1px 2px rgba(28,38,34,.06), 0 8px 24px -12px rgba(28,38,34,.28);
+      --accent-text: #1f5240;              /* evergreen as text: links, back, section titles */
+      --on-accent: #fff;                   /* text on an evergreen fill */
+      --hover:     rgba(251,249,244,.9);   /* list row hover */
+      --panel-soft:  rgba(251,249,244,.5); /* empty state, no-data boxes */
+      --panel-soft-2:rgba(251,249,244,.7); /* the note under the chart */
+      --tint-green: rgba(31,82,64,.07);    /* table section rows */
+      --tint-ink:   rgba(28,38,34,.07);    /* table row hover */
+      --inset:      rgba(28,38,34,.04);    /* inset shadow in inputs */
+      --map-bg:     #e4e4e2;
+      --tint-base:  #fbf9f4;               /* under the table's tinted cells, in both themes */
+      color-scheme: light;
       --finder-w:  360px;
       --sat:       env(safe-area-inset-top, 0px);
       --sab:       env(safe-area-inset-bottom, 0px);
+    }
+    /* Dark follows the device setting (prefers-color-scheme); there is no
+       switch. Same tokens, so every rule below is theme-agnostic. The table's
+       tinted cells paint their tint over a fixed light base (inline, see
+       renderBlipspot), so they keep dark ink whatever the theme; the windgram
+       image is what it is. */
+    @media (prefers-color-scheme: dark) {
+      :root {
+      --ink:       #e6ece7;
+      --ink-soft:  #9db0a4;
+      --paper:     #131917;
+      --panel:     #1b2320;
+      --evergreen: #2b6a52;
+      --evergreen-d:#1f5240;
+      --line:      rgba(230,236,231,.10);
+      --line-2:    rgba(230,236,231,.16);
+      --stale:     #e0a040;
+      --shadow:    0 1px 2px rgba(0,0,0,.35), 0 8px 24px -12px rgba(0,0,0,.6);
+      --accent-text: #7cc4a0;
+      --hover:     rgba(255,255,255,.05);
+      --panel-soft:  rgba(27,35,32,.5);
+      --panel-soft-2:rgba(27,35,32,.7);
+      --tint-green: rgba(124,196,160,.10);
+      --tint-ink:   rgba(255,255,255,.06);
+      --inset:      rgba(0,0,0,.3);
+      --map-bg:     #1f2422;
+      color-scheme: dark;
+      }
+      .wg-table td[style] { color: #1c2622; }
     }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { height: 100%; }
@@ -37,7 +80,7 @@
       -webkit-font-smoothing: antialiased; overflow: hidden; }
     button, input { font: inherit; color: inherit; }
     button { cursor: pointer; }
-    a { color: var(--evergreen); }
+    a { color: var(--accent-text); }
     .mono { font-family: 'IBM Plex Mono', monospace; }
     .micro { font: 500 9.5px/1 'IBM Plex Mono', monospace; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-soft); }
     [hidden] { display: none !important; }
@@ -62,40 +105,40 @@
     .brand h1 { font-weight: 800; font-size: 22px; letter-spacing: -.025em; line-height: 1; }
     .brand h1 .lift { color: var(--thermal); }
     .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 11px; border-radius: 9px;
-      border: 1px solid var(--line-2); background: var(--panel); color: var(--evergreen);
+      border: 1px solid var(--line-2); background: var(--panel); color: var(--accent-text);
       font: 600 12px/1 'Bricolage Grotesque', system-ui, sans-serif; white-space: nowrap; box-shadow: var(--shadow);
       transition: background .15s, color .15s, border-color .15s; }
-    .btn:hover { border-color: var(--evergreen); }
-    .btn.primary { background: var(--evergreen); color: #fff; border-color: var(--evergreen); }
+    .btn:hover { border-color: var(--accent-text); }
+    .btn.primary { background: var(--evergreen); color: var(--on-accent); border-color: var(--evergreen); }
     .btn .glyph { font-size: 13px; line-height: 1; }
     .search { padding: 10px 14px 6px; }
     .search input { width: 100%; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--line-2);
-      background: var(--panel); font-size: 14px; outline: none; box-shadow: inset 0 1px 2px rgba(28,38,34,.04); }
-    .search input:focus { border-color: var(--evergreen); }
+      background: var(--panel); font-size: 14px; outline: none; box-shadow: inset 0 1px 2px var(--inset); }
+    .search input:focus { border-color: var(--accent-text); }
     .tree { padding: 4px 14px 16px; display: flex; flex-direction: column; gap: 2px; }
     .crumb { display: flex; align-items: center; gap: 8px; padding: 8px 6px 6px; color: var(--ink-soft);
       font: 600 11px/1 'IBM Plex Mono', monospace; letter-spacing: .1em; text-transform: uppercase; }
-    .crumb button { background: none; border: 0; color: var(--evergreen); font: inherit; letter-spacing: inherit;
+    .crumb button { background: none; border: 0; color: var(--accent-text); font: inherit; letter-spacing: inherit;
       text-transform: inherit; display: inline-flex; align-items: center; gap: 4px; }
     .crumb button:hover { text-decoration: underline; }
     #tree .row { display: flex; align-items: center; justify-content: space-between; gap: 10px;
       width: 100%; text-align: left; padding: 10px 12px; border-radius: 10px;
       border: 1px solid transparent; background: none; color: var(--ink); font-size: 14px; }
-    #tree .row:hover { background: rgba(251,249,244,.9); border-color: var(--line); }
+    #tree .row:hover { background: var(--hover); border-color: var(--line); }
     #tree .row.node { font-weight: 600; }
     #tree .row .count { font: 500 10.5px/1 'IBM Plex Mono', monospace; color: var(--ink-soft); }
     #tree .row .chev { color: var(--ink-soft); font-size: 16px; line-height: 1; }
     #tree .row .sub { display: block; font: 500 10px/1.4 'IBM Plex Mono', monospace; color: var(--ink-soft); letter-spacing: .04em; }
-    #tree .row.site.current { background: var(--evergreen); color: #fff; border-color: var(--evergreen); }
+    #tree .row.site.current { background: var(--evergreen); color: var(--on-accent); border-color: var(--evergreen); }
     #tree .row.site.current .sub { color: rgba(255,255,255,.75); }
-    #tree .row.site.current .star { color: #fff; }
+    #tree .row.site.current .star { color: var(--on-accent); }
     .star { background: none; border: 0; font-size: 16px; line-height: 1; color: var(--line-2); padding: 2px 4px; }
     .star.on { color: var(--thermal); }
     #tree .row.site.current .star:not(.on) { color: rgba(255,255,255,.5); }
     .section-label { padding: 12px 6px 4px; }
     .finder-foot { margin-top: auto; padding: 12px 18px calc(14px + var(--sab)); border-top: 1px solid var(--line);
       font: 500 10.5px/1.5 'IBM Plex Mono', monospace; color: var(--ink-soft); }
-    .finder-foot a { color: var(--evergreen); text-decoration: none; border-bottom: 1px solid currentColor; }
+    .finder-foot a { color: var(--accent-text); text-decoration: none; border-bottom: 1px solid currentColor; }
 
     /* ── Forecast ──────────────────────────────────────────────── */
     #forecast { background: var(--paper); padding-top: var(--sat); display: flex; flex-direction: column; }
@@ -115,7 +158,7 @@
 
     .segmented { --n: 3; --i: 0; position: relative; display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr));
       background: var(--panel); border: 1px solid var(--line-2); border-radius: 10px; padding: 3px;
-      box-shadow: inset 0 1px 2px rgba(28,38,34,.04); flex: 1 1 260px; max-width: 420px; min-width: 0; }
+      box-shadow: inset 0 1px 2px var(--inset); flex: 1 1 260px; max-width: 420px; min-width: 0; }
     .segmented .indicator { position: absolute; top: 3px; left: 3px; bottom: 3px; width: calc((100% - 6px) / var(--n));
       background: var(--evergreen); border-radius: 7px; box-shadow: 0 2px 8px -2px rgba(22,58,45,.5);
       transform: translateX(calc(var(--i) * 100%)); transition: transform .28s cubic-bezier(.5,.1,.1,1); z-index: 0; }
@@ -125,7 +168,7 @@
     .segmented label .name .beta { font-weight: 500; font-size: 10px; opacity: .75; }
     .segmented label .res { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: .02em; color: var(--ink-soft); white-space: nowrap; }
     .segmented input { position: absolute; opacity: 0; pointer-events: none; }
-    .segmented label:has(input:checked) .name { color: #fff; }
+    .segmented label:has(input:checked) .name { color: var(--on-accent); }
     .segmented label:has(input:checked) .res { color: rgba(255,255,255,.72); }
     .segmented label .res.stale { color: var(--stale); font-weight: 600; }
     .segmented label:has(input:checked) .res.stale { color: #f4b860; }
@@ -139,7 +182,7 @@
     .dots button::before { content: ""; position: absolute; left: 50%; top: 50%; width: 8px; height: 8px; margin: -4px 0 0 -4px;
       border-radius: 50%; background: var(--line-2); transition: transform .18s, background .18s; }
     .dots button:hover::before { background: var(--ink-soft); }
-    .dots button[aria-selected="true"]::before { background: var(--evergreen); transform: scale(1.35); }
+    .dots button[aria-selected="true"]::before { background: var(--accent-text); transform: scale(1.35); }
 
     /* The stage takes the room the controls leave. The chart (or table) and the
        dots sit in it, centred when there is spare height (a tall phone), and the
@@ -152,7 +195,7 @@
       border: 1px solid var(--line-2); border-radius: 14px; background: var(--panel); box-shadow: var(--shadow);
       transition: transform .22s cubic-bezier(.2,.7,.2,1), opacity .22s; }
     .no-data { padding: 40px 20px; text-align: center; color: var(--ink-soft); font-size: 14px;
-      border: 1px dashed var(--line-2); border-radius: 14px; background: rgba(251,249,244,.5); }
+      border: 1px dashed var(--line-2); border-radius: 14px; background: var(--panel-soft); }
     .reveal { animation: wgIn .4s cubic-bezier(.2,.7,.2,1) both; }
     @keyframes wgIn { from { opacity: 0; transform: translateY(8px) scale(.99); } to { opacity: 1; transform: none; } }
 
@@ -166,15 +209,15 @@
       font: 500 11px/1.25 'Bricolage Grotesque', system-ui, sans-serif; color: var(--ink); width: 160px; min-width: 132px; max-width: 160px;
       white-space: normal; cursor: help; border-right: 1px solid var(--line-2); border-radius: 0; }
     .wg-table th.row .u { color: var(--ink-soft); font-size: 10px; }
-    .wg-table tr.time th, .wg-table tr.time td { position: sticky; top: 0; z-index: 2; background: var(--evergreen); color: #fff; font-weight: 600; border-bottom-color: var(--evergreen-d); }
-    .wg-table tr.time th.row { z-index: 3; color: #fff; border-right-color: var(--evergreen-d); }
-    .wg-table tr.section th { font: 700 11.5px/1.2 'Bricolage Grotesque', system-ui, sans-serif; color: var(--evergreen-d); background: rgba(31,82,64,.07); padding: 7px 8px; }
-    .wg-table tr.section td { background: rgba(31,82,64,.07); }
-    .wg-table tbody tr:hover td:not(.sec) { background-image: linear-gradient(rgba(28,38,34,.07), rgba(28,38,34,.07)); }
+    .wg-table tr.time th, .wg-table tr.time td { position: sticky; top: 0; z-index: 2; background: var(--evergreen); color: var(--on-accent); font-weight: 600; border-bottom-color: var(--evergreen-d); }
+    .wg-table tr.time th.row { z-index: 3; color: var(--on-accent); border-right-color: var(--evergreen-d); }
+    .wg-table tr.section th { font: 700 11.5px/1.2 'Bricolage Grotesque', system-ui, sans-serif; color: var(--accent-text); background: var(--tint-green); padding: 7px 8px; }
+    .wg-table tr.section td { background: var(--tint-green); }
+    .wg-table tbody tr:hover td:not(.sec) { background-image: linear-gradient(var(--tint-ink), var(--tint-ink)); }
     .wg-table td.wind { line-height: 1.05; padding-top: 2px; padding-bottom: 2px; }
     .wg-table .arrow { display: block; width: 11px; height: 11px; margin: 0 auto 1px; }
     .wg-table .arrow svg { display: block; width: 100%; height: 100%; fill: var(--ink); }
-    .wg-note { font-size: 12px; line-height: 1.45; color: var(--ink-soft); padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: rgba(251,249,244,.7); }
+    .wg-note { font-size: 12px; line-height: 1.45; color: var(--ink-soft); padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-soft-2); }
     .wg-note b { color: var(--ink); }
     .wg-note:empty { display: none; }
 
@@ -182,12 +225,12 @@
     .actions .hint { font: 500 10.5px/1.3 'IBM Plex Mono', monospace; color: var(--ink-soft); letter-spacing: .02em; }
     .actions .hint:empty { display: none; }
     .actions .links { display: inline-flex; gap: 14px; margin-left: auto; }
-    .open-link { font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 500; color: var(--evergreen);
+    .open-link { font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 500; color: var(--accent-text);
       text-decoration: none; border-bottom: 1px solid transparent; transition: border-color .15s; background: none; border-top: 0; border-left: 0; border-right: 0; padding: 0; }
     .open-link:hover { border-bottom-color: var(--evergreen); }
 
     .empty { margin: 8vh auto 0; max-width: 460px; text-align: center; color: var(--ink-soft); padding: 40px 24px;
-      border: 1px dashed var(--line-2); border-radius: 16px; background: rgba(251,249,244,.5); }
+      border: 1px dashed var(--line-2); border-radius: 16px; background: var(--panel-soft); }
     .empty .mark { font-size: 34px; display: block; margin-bottom: 12px; }
     .empty .lead { font-weight: 600; font-size: 16px; color: var(--ink); }
     .empty .hint { font-size: 13px; margin-top: 6px; line-height: 1.5; }
@@ -199,7 +242,7 @@
     .map-top .title { font-weight: 700; font-size: 15px; }
     .map-top .hint { font: 500 11px/1.3 'IBM Plex Mono', monospace; color: var(--ink-soft); }
     .map-top .btn { margin-left: auto; }
-    #map { flex: 1; min-height: 0; background: #e4e4e2; }
+    #map { flex: 1; min-height: 0; background: var(--map-bg); }
     .site-marker { width: 26px; height: 26px; text-align: center; line-height: 26px; font-size: 19px; cursor: pointer; }
     .site-marker .glyph { display: inline-block; transition: transform .12s cubic-bezier(.2,.7,.2,1); filter: drop-shadow(0 1px 1px rgba(0,0,0,.35)); }
     .site-marker:hover .glyph { transform: scale(1.25); }
@@ -209,7 +252,7 @@
     @keyframes ring { 0% { transform: scale(.39); opacity: .8; } 100% { transform: scale(1); opacity: 0; } }
     .maplibregl-ctrl-group { background: var(--panel); border: 1px solid var(--line-2); box-shadow: var(--shadow); }
     .site-tip .maplibregl-popup-content { font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 500;
-      background: var(--evergreen-d); color: #fff; box-shadow: var(--shadow); padding: 3px 8px; border-radius: 6px; pointer-events: none; }
+      background: var(--evergreen-d); color: var(--on-accent); box-shadow: var(--shadow); padding: 3px 8px; border-radius: 6px; pointer-events: none; }
     .site-tip .maplibregl-popup-tip { border-top-color: var(--evergreen-d); }
     .maplibregl-ctrl-attrib { font-family: 'IBM Plex Mono', monospace; font-size: 10px; }
 
@@ -220,7 +263,7 @@
       #app[data-screen="list"] #forecast { display: none; }
       #app[data-screen="forecast"] #finder { display: none; }
       .back { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 10px;
-        border: 1px solid var(--line-2); background: var(--panel); color: var(--evergreen); font-size: 18px; box-shadow: var(--shadow); flex: none; }
+        border: 1px solid var(--line-2); background: var(--panel); color: var(--accent-text); font-size: 18px; box-shadow: var(--shadow); flex: none; }
       .fc-inner { padding: 8px 14px calc(10px + var(--sab)); gap: 8px; }
       #windgram-content, .wg-stage { gap: 8px; }
       .site-head h2 { font-size: 20px; }
@@ -623,7 +666,7 @@ function renderBlipspot(b) {
       const unit = r.unit ? ` <span class="u">(${esc(r.unit)})</span>` : '';
       html += `<tr><th class="row" scope="row" data-title="${esc(r.title)}" data-desc="${esc(r.desc)}" title="${esc(r.desc)}">${esc(r.title)}${lvl}${unit}</th>`;
       for (let i = 0; i < n; i++) {
-        const v = vals[i], bg = r.tint && TINTS[r.tint] ? TINTS[r.tint](v) : '', style = bg ? ` style="background-color:${bg}"` : '';
+        const v = vals[i], bg = r.tint && TINTS[r.tint] ? TINTS[r.tint](v) : '', style = bg ? ` style="background:linear-gradient(${bg},${bg}) var(--tint-base)"` : '';
         if (v == null) { html += `<td${style}>–</td>`; continue; }
         html += r.wind ? `<td class="wind"${style}>${dirs && dirs[i] != null ? arrow(dirs[i]) : ''}${v}</td>` : `<td${style}>${v}</td>`;
       }
