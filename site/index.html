@@ -132,7 +132,7 @@
 
     /* Days: gallery dots under the chart, one per forecast day. Swiping or
        scrolling the chart, a dot, or ← → step through them. */
-    .days { display: flex; align-items: center; justify-content: center; gap: 8px; flex: none; min-height: 22px; margin-top: -2px; }
+    .days { display: flex; align-items: center; justify-content: center; flex: none; min-height: 22px; margin-top: -2px; }
     .days.single { display: none; }
     .dots { display: inline-flex; }
     .dots button { position: relative; width: 22px; height: 22px; border: 0; background: none; padding: 0; cursor: pointer; }
@@ -140,8 +140,6 @@
       border-radius: 50%; background: var(--line-2); transition: transform .18s, background .18s; }
     .dots button:hover::before { background: var(--ink-soft); }
     .dots button[aria-selected="true"]::before { background: var(--evergreen); transform: scale(1.35); }
-    .days .day-now { font: 600 12px/1 'Bricolage Grotesque', system-ui, sans-serif; color: var(--ink); white-space: nowrap; }
-    .days .day-now .sub { font: 500 10px/1 'IBM Plex Mono', monospace; color: var(--ink-soft); margin-left: 5px; }
 
     /* The chart: a tap flips it to the table; a swipe, or the wheel, steps the day.
        It flexes to the room left in the pane and the image fits inside it. */
@@ -295,7 +293,6 @@
         <div class="wg-table" id="windgram-table" hidden title="Back to the chart"></div>
         <div class="days single" id="days">
           <span class="dots" id="dots" role="tablist" aria-label="Forecast day"></span>
-          <span class="day-now" id="day-now" aria-live="polite"></span>
         </div>
         <div class="wg-note" id="windgram-note"></div>
         <div class="no-data" id="windgram-nodata" hidden></div>
@@ -398,16 +395,19 @@ function renderFinder() {
   const tree = $('#tree'); tree.innerHTML = '';
   const q = $('#q').value.trim().toLowerCase();
   if (q) {
-    // Site-name matches first (a word starting with the query, then anywhere in
-    // the name), and only then the sites whose area or state matches.
+    // Site names first: the exact name, names starting with the query, names with
+    // a later word starting with it, names containing it anywhere; and only then
+    // the sites whose area or state matches. Alphabetical within each group.
     const rank = (s) => {
-      const name = (prettyName(s.name) + ' ' + s.name).toLowerCase();
-      if (name.startsWith(q) || name.includes(' ' + q)) return 0;
-      if (name.includes(q)) return 1;
-      if ((s.area || '').toLowerCase().includes(q) || (s.state || '').toLowerCase().includes(q)) return 2;
-      return 3;
+      const names = [prettyName(s.name).toLowerCase(), s.name.toLowerCase().replace(/_/g, ' ')];
+      if (names.some(n => n === q)) return 0;
+      if (names.some(n => n.startsWith(q))) return 1;
+      if (names.some(n => n.includes(' ' + q))) return 2;
+      if (names.some(n => n.includes(q))) return 3;
+      if ((s.area || '').toLowerCase().includes(q) || (s.state || '').toLowerCase().includes(q)) return 4;
+      return 5;
     };
-    const hits = sites.map(s => [rank(s), s]).filter(([r]) => r < 3).sort((a, b) => a[0] - b[0] || byName(a[1], b[1])).slice(0, 60).map(([, s]) => s);
+    const hits = sites.map(s => [rank(s), s]).filter(([r]) => r < 5).sort((a, b) => a[0] - b[0] || byName(a[1], b[1])).slice(0, 60).map(([, s]) => s);
     if (!hits.length) { tree.innerHTML = '<div class="no-data">No site matches.</div>'; return; }
     for (const s of hits) tree.appendChild(siteRow(s, `${s.area} · ${s.state}`));
     return;
@@ -476,7 +476,7 @@ async function discoverDays(model) {
   availableDays[model] = out; return out;
 }
 function renderDays(days) {
-  const i = days.findIndex(d => d.date === currentDate), d = days[i];
+  const i = days.findIndex(d => d.date === currentDate);
   $('#days').classList.toggle('single', days.length < 2);
   const dots = $('#dots'); dots.innerHTML = '';
   days.forEach((day, k) => {
@@ -485,7 +485,6 @@ function renderDays(days) {
     b.addEventListener('click', () => goToDay(k));
     dots.appendChild(b);
   });
-  $('#day-now').innerHTML = d ? `${esc(d.label)}<span class="sub">${esc(d.sub)}</span>` : '';
 }
 // Show day k of currentDays; false when there is no such day or it is already up.
 let slideDir = 0;
