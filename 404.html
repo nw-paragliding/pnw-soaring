@@ -162,11 +162,14 @@
     .segmented .indicator { position: absolute; top: 3px; left: 3px; bottom: 3px; width: calc((100% - 6px) / var(--n));
       background: var(--evergreen); border-radius: 7px; box-shadow: 0 2px 8px -2px rgba(22,58,45,.5);
       transform: translateX(calc(var(--i) * 100%)); transition: transform .28s cubic-bezier(.5,.1,.1,1); z-index: 0; }
-    .segmented label { position: relative; z-index: 1; display: flex; align-items: baseline; justify-content: center; gap: 6px; min-width: 0;
+    /* Labels clip rather than overlap: with four models the row is tight, so
+       the age gives way first (ellipsis), then the name. */
+    .segmented label { position: relative; z-index: 1; display: flex; align-items: baseline; justify-content: center; gap: 6px; min-width: 0; overflow: hidden;
       padding: 6px 6px; cursor: pointer; user-select: none; border-radius: 7px; transition: color .2s; }
-    .segmented label .name { font-weight: 600; font-size: 13px; letter-spacing: -.01em; white-space: nowrap; }
+    .segmented label .name { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: 600; font-size: 13px; letter-spacing: -.01em; white-space: nowrap; }
     .segmented label .name .beta { font-weight: 500; font-size: 10px; opacity: .75; }
-    .segmented label .res { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: .02em; color: var(--ink-soft); white-space: nowrap; }
+    .segmented label .res { flex: 0 2 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: .02em; color: var(--ink-soft); white-space: nowrap; }
+    .segmented label .res:empty { display: none; }
     .segmented input { position: absolute; opacity: 0; pointer-events: none; }
     .segmented label:has(input:checked) .name { color: var(--on-accent); }
     .segmented label:has(input:checked) .res { color: rgba(255,255,255,.72); }
@@ -218,6 +221,8 @@
     .wg-table .arrow { display: block; width: 11px; height: 11px; margin: 0 auto 1px; }
     .wg-table .arrow svg { display: block; width: 100%; height: 100%; fill: var(--ink); }
     .wg-note { font-size: 12px; line-height: 1.45; color: var(--ink-soft); padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-soft-2); }
+    .wg-note.warn { color: var(--stale); border-color: var(--stale); }
+    #data-warning, #debug-line { flex: none; overflow-wrap: anywhere; }
     .wg-note b { color: var(--ink); }
     .wg-note:empty { display: none; }
 
@@ -270,7 +275,8 @@
       .site-head .coords .ll { display: none; }              /* the area is enough; lat/lon are on the map */
       .site-head .coords .area::before { content: none; }
       .segmented { max-width: none; }
-      .segmented label { padding: 6px 2px; gap: 5px; }
+      .segmented label { flex-direction: column; align-items: center; gap: 1px; padding: 5px 3px; line-height: 1.2; }
+      .segmented label .name, .segmented label .res { max-width: 100%; }
       .segmented label .res { font-size: 9.5px; letter-spacing: 0; }
       .wg-table th.row { width: 136px; min-width: 112px; max-width: 136px; }
     }
@@ -345,13 +351,14 @@
         <div class="controls">
           <div class="segmented" role="radiogroup" aria-label="Forecast model">
             <span class="indicator" aria-hidden="true"></span>
-            <label><input type="radio" name="model" value="rrfs" checked><span class="name">RRFS</span><span class="res" data-model="rrfs" data-res="1.3 km">1.3 km</span></label>
-            <label><input type="radio" name="model" value="nam"><span class="name">NAM</span><span class="res" data-model="nam" data-res="1.3 km">1.3 km</span></label>
-            <label><input type="radio" name="model" value="hrrr"><span class="name">HRRR</span><span class="res" data-model="hrrr" data-res="1.3 km">1.3 km</span></label>
-            <label><input type="radio" name="model" value="hrdps"><span class="name">HRDPS <span class="beta">(beta)</span></span><span class="res" data-model="hrdps" data-res="1.3 km">1.3 km</span></label>
-            <label><input type="radio" name="model" value="gfs"><span class="name">GFS <span class="beta">(outlook)</span></span><span class="res" data-model="gfs" data-res="1.3 km">1.3 km</span></label>
+            <label><input type="radio" name="model" value="rrfs" checked><span class="name">RRFS</span><span class="res" data-model="rrfs"></span></label>
+            <label><input type="radio" name="model" value="hrrr"><span class="name">HRRR</span><span class="res" data-model="hrrr"></span></label>
+            <label><input type="radio" name="model" value="hrdps"><span class="name">HRDPS <span class="beta">(beta)</span></span><span class="res" data-model="hrdps"></span></label>
+            <label><input type="radio" name="model" value="gfs"><span class="name">GFS <span class="beta">(outlook)</span></span><span class="res" data-model="gfs"></span></label>
           </div>
         </div>
+        <div class="wg-note warn" id="data-warning" hidden role="status"></div>
+        <div class="wg-note" id="debug-line" hidden></div>
 
         <div class="wg-stage">
           <div class="wg-frame" id="windgram-frame" role="button" tabindex="0" aria-label="Show the forecast as a table"><img id="windgram-img" alt="" draggable="false"></div>
@@ -389,6 +396,13 @@
 <script>
 (() => {
 'use strict';
+// The data bucket's CORS rule names the https origin only. Loaded over http
+// (a typed address while Pages still answered on it) the page got images but
+// none of the JSON: one day, no dots, every model listed. Go to https first.
+if (location.protocol === 'http:' && !/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)) {
+  location.replace('https://' + location.host + location.pathname + location.search + location.hash);
+  return;
+}
 // ── Data paths ───────────────────────────────────────────────────────────
 // Windgrams, their blipspot JSON and the metadata probes live in R2; every
 // forecast leg uploads its own files the moment it finishes
@@ -396,11 +410,15 @@
 // The bucket's CORS rule allows GET/HEAD from this origin; objects carry a
 // 2-minute Cache-Control, so JSON probes ask with no-cache to revalidate.
 const DATA_BASE = 'https://pub-de96e47b1e91464bb2959747602c1914.r2.dev';
-// Toggle order. RRFS is the default (it replaced NAM, retired 2026-11-03);
-// NAM stays listed only while it has forecasts to show.
+// Toggle order. RRFS is the default (it replaced NAM, retired 2026-11-03).
 // hrdps: ECCC's 2.5 km run, spike on the issaquah tile; gfs: the days-3-and-4 outlook spike (issaquah tile).
-const MODELS = ['rrfs', 'nam', 'hrrr', 'hrdps', 'gfs'];
+const MODELS = ['rrfs', 'hrrr', 'hrdps', 'gfs'];
 const DEFAULT_MODEL = 'rrfs';
+// What to assume when the forecast index cannot be read at all (offline, or
+// the bucket blocked from this origin): every model, and each model's usual
+// reach as day offsets from today. A day drops out when its chart 404s.
+const USUAL_DAYS = { rrfs: [0, 1, 2], hrrr: [0, 1], hrdps: [0, 1], gfs: [3, 4] };
+let indexDown = false;
 const $ = (s) => document.querySelector(s);
 const app = $('#app');
 
@@ -504,14 +522,14 @@ async function loadMetadata() {
   await Promise.all(MODELS.map(async model => {
     try { const r = await fetch(`${DATA_BASE}/forecasts/latest/${model}/metadata.json`, { cache: 'no-cache' }); if (r.ok) metadata[model] = await r.json(); } catch (_) {}
   }));
+  indexDown = MODELS.every(m => !metadata[m]);
   renderToggleMeta();
 }
 const timeAgo = (d) => { const h = (Date.now() - d.getTime()) / 3.6e6; return h < 1 ? `${Math.round(h * 60)}m ago` : h < 24 ? `${Math.round(h)}h ago` : `${Math.round(h / 24)}d ago`; };
 function renderToggleMeta() {
   document.querySelectorAll('.res[data-model]').forEach(el => {
     const m = metadata[el.dataset.model];
-    el.title = `${el.dataset.res} grid`;
-    if (!m) { el.textContent = el.dataset.res; el.classList.remove('stale'); return; }
+    if (!m) { el.textContent = ''; el.classList.remove('stale'); return; }
     const updated = new Date(m.generated);
     el.textContent = timeAgo(updated);
     el.classList.toggle('stale', (Date.now() - updated.getTime()) / 3.6e6 > 12);
@@ -526,6 +544,8 @@ let offeredModels = MODELS.slice();   // the models with anything published at a
 async function pruneModels() {
   const avail = await Promise.all(MODELS.map(async m => !!metadata[m] && (await discoverDays(m)).length > 0));
   const offered = MODELS.filter((m, i) => avail[i]);
+  $('#data-warning').hidden = !indexDown;
+  if (indexDown) $('#data-warning').textContent = 'The forecast index did not load, so this shows the usual days without freshness. Reload if it keeps happening.';
   if (!offered.length) { layoutToggle(); return; }
   offeredModels = offered;
   MODELS.forEach((m, i) => { const input = document.querySelector(`input[name="model"][value="${m}"]`); if (input) input.closest('label').hidden = !avail[i]; });
@@ -542,7 +562,9 @@ async function discoverDays(model) {
   for (let off = 0; off <= 4; off++) {
     const ds = new Date(Date.UTC(by, bm - 1, bd + off)).toISOString().slice(0, 10);
     if (Date.now() > Date.parse(ds + 'T20:00:00-08:00')) continue;   // the day's soaring window is over
-    try { const r = await fetch(`${DATA_BASE}/forecasts/${ds}/${model}/metadata.json`, { cache: 'no-cache' }); if (r.ok) out.push({ date: ds, off, label: dayLabel(off, ds), sub: ds.slice(5) }); } catch (_) {}
+    const day = { date: ds, off, label: dayLabel(off, ds), sub: ds.slice(5) };
+    if (indexDown) { if ((USUAL_DAYS[model] || []).includes(off)) out.push(day); continue; }   // assume the usual reach
+    try { const r = await fetch(`${DATA_BASE}/forecasts/${ds}/${model}/metadata.json`, { cache: 'no-cache' }); if (r.ok) out.push(day); } catch (_) {}
   }
   availableDays[model] = out; return out;
 }
@@ -595,7 +617,15 @@ function updateWindgram() {
   const img = $('#windgram-img');
   imgFailed = false;
   img.alt = `${prettyName(currentSite.name)} windgram`;
-  img.onerror = () => { imgFailed = true; applyView(); };
+  img.onerror = () => {
+    // Index down and the assumed day is not there: drop it and show a neighbour.
+    if (indexDown && currentDate && currentDays.length > 1) {
+      const k = currentDays.findIndex(d => d.date === currentDate);
+      currentDays = currentDays.filter(d => d.date !== currentDate); availableDays[currentModel] = currentDays;
+      currentDate = currentDays[Math.max(0, k - 1)].date; renderDays(currentDays); updateWindgram(); syncUrl(); return;
+    }
+    imgFailed = true; applyView();
+  };
   img.onload = () => { imgFailed = false; applyView(); };
   if (slideDir) {   // the new day slides in from the side it was swiped from
     img.style.transition = 'none'; img.style.transform = `translateX(${slideDir * 28}px)`; img.style.opacity = '.4';
@@ -932,6 +962,13 @@ const pendingLink = parseLink();
 if (pendingLink.model) { const r = document.querySelector(`input[name="model"][value="${pendingLink.model}"]`); if (r) { r.checked = true; currentModel = pendingLink.model; } }
 if (pendingLink.day) currentDate = pendingLink.day;
 if (pendingLink.view) currentView = pendingLink.view;
+if (new URLSearchParams(location.search).has('debug')) {
+  const segs = matchMedia('(horizontal-viewport-segments: 2)').matches ? 'h2' : matchMedia('(vertical-viewport-segments: 2)').matches ? 'v2' : '1';
+  const api = window.getWindowSegments ? window.getWindowSegments().length : (visualViewport && visualViewport.segments ? visualViewport.segments.length : 'n/a');
+  const dbg = $('#debug-line'); dbg.hidden = false;
+  const line = () => { dbg.textContent = `debug · viewport ${innerWidth}×${innerHeight} css px · screen ${screen.width}×${screen.height} · dpr ${devicePixelRatio} · pinch ${visualViewport ? visualViewport.scale.toFixed(2) : '?'} · segments media ${segs}, api ${api} · ${navigator.userAgent.replace(/^.*\) /, '')}`; };
+  line(); addEventListener('resize', line);
+}
 (async () => {
   const sitesP = fetch('/sites.json').then(r => r.json()).catch(() => []);
   const areasP = fetch('/areas.json').then(r => r.json()).catch(() => ({}));
