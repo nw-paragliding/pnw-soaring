@@ -22,8 +22,42 @@ HRRR_REF="$HERE/domains/cascades-hrrr.yaml"
 
 grep -qE '^model: *[a-z]+' "$SRC" || { echo "derive-domain: no 'model:' line in $SRC" >&2; exit 1; }
 case "$MODEL" in
-  nam|rrfs|gfs)
+  nam|rrfs)
     sed -E "s/^model: *[a-z]+.*/model: $MODEL/" "$SRC" > "$OUT" ;;
+  gfs)
+    # Model line swapped, plus an .idx subset override (the pipeline lets a
+    # domain YAML override the registry's idx_subset). windgram 0.8.1's gfs
+    # entry keeps PRMSL but Vtable.GFS reads sea-level pressure from MSLET, so
+    # real.exe stopped with "not enough info for a p sfc computation"; the
+    # registry is fixed for 0.8.2, after which this block can go.
+    {
+      sed -E 's/^model: *[a-z]+.*/model: gfs/' "$SRC"
+      cat <<'YAML'
+
+# ---- gfs: .idx subset (Vtable.GFS's fields; overrides the image's registry entry)
+idx_max_gap_mb: 2
+idx_subset:
+  - "TMP:* mb"
+  - "UGRD:* mb"
+  - "VGRD:* mb"
+  - "RH:* mb"
+  - "HGT:* mb"
+  - "TMP:2 m above ground"
+  - "RH:2 m above ground"
+  - "UGRD:10 m above ground"
+  - "VGRD:10 m above ground"
+  - "PRES:surface"
+  - "MSLET:mean sea level"
+  - "HGT:surface"
+  - "TMP:surface"
+  - "WEASD:surface"
+  - "SNOD:surface"
+  - "LAND:surface"
+  - "ICEC:surface"
+  - "SOILW:* below ground"
+  - "TSOIL:* below ground"
+YAML
+    } > "$OUT" ;;
   hrrr)
     # The block must end at the grid-section marker, or the reference file's own
     # geometry (center_lat/lon ...) would be copied over the tile's.
