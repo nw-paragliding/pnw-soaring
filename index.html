@@ -234,20 +234,35 @@
     /* Wide desktops: give the finder a little more room */
     @media (min-width: 1400px) { :root { --finder-w: 400px; } }
 
-    /* ── Foldables: one pane per screen, the hinge in the gutter ─── */
+    /* ── Foldables: one pane per screen, the hinge in the gutter ───
+       Browsers that report viewport segments place the panes by the real
+       hinge. The selectors carry the data-screen attribute so they outrank the
+       one-screen-at-a-time rules above (a stacked fold is under 760px wide),
+       and every env() has a fallback so a browser that matches the media
+       feature but cannot resolve the variable still gets a sane split. */
     @media (horizontal-viewport-segments: 2) {
-      #app { display: grid; grid-template-columns: env(viewport-segment-right 0 0) calc(env(viewport-segment-left 1 0) - env(viewport-segment-right 0 0)) minmax(0, 1fr); }
-      #finder { grid-column: 1; display: flex; }
-      #forecast { grid-column: 3; display: flex; }
+      #app { display: grid; grid-template-columns: env(viewport-segment-right 0 0, 50%) calc(env(viewport-segment-left 1 0, 50%) - env(viewport-segment-right 0 0, 50%)) minmax(0, 1fr); }
+      #app[data-screen] #finder { grid-column: 1; display: flex; height: auto; }
+      #app[data-screen] #forecast { grid-column: 3; display: flex; height: auto; }
       #app::before { content: ""; grid-column: 2; }
       .back { display: none; }
     }
     @media (vertical-viewport-segments: 2) {
-      #app { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: env(viewport-segment-bottom 0 0) calc(env(viewport-segment-top 1 0) - env(viewport-segment-bottom 0 0)) minmax(0, 1fr); height: 100dvh; }
-      #finder { grid-row: 1; display: flex; height: auto; border-right: 0; border-bottom: 1px solid var(--line-2); }
+      #app { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: env(viewport-segment-bottom 0 0, 50%) calc(env(viewport-segment-top 1 0, 50%) - env(viewport-segment-bottom 0 0, 50%)) minmax(0, 1fr); height: 100dvh; }
+      #app[data-screen] #finder { grid-row: 1; display: flex; height: auto; border-right: 0; border-bottom: 1px solid var(--line-2); }
       #app::before { content: ""; grid-row: 2; }
-      #forecast { grid-row: 3; display: flex; height: auto; }
+      #app[data-screen] #forecast { grid-row: 3; display: flex; height: auto; }
       .back { display: none; }
+    }
+    /* Surface Duo spanned side by side without segment support (Chrome there
+       reports none): the viewport is exactly 540 + 34 hinge + 540 = 1114px wide,
+       and the plain two-column layout would run the forecast across the hinge.
+       Give each screen its pane. Nothing else is 1114px wide and this short. */
+    @media (min-width: 1108px) and (max-width: 1120px) and (max-height: 760px) {
+      #app { display: grid; grid-template-columns: calc(50% - 17px) 34px minmax(0, 1fr); }
+      #finder { grid-column: 1; }
+      #forecast { grid-column: 3; }
+      #app::before { content: ""; grid-column: 2; }
     }
     @media (prefers-reduced-motion: reduce) { .reveal, .segmented .indicator, .site-marker .glyph { animation: none; transition: none; } }
   </style>
