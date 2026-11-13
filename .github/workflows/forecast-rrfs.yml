@@ -16,7 +16,7 @@ on:
   workflow_dispatch:
     inputs:
       target_date:
-        description: 'Base date YYYY-MM-DD for the 2-day window (blank = today UTC)'
+        description: 'Base date YYYY-MM-DD for the 3-day window (blank = today UTC)'
         required: false
       regions:
         description: 'Region tiles to run, JSON list (blank = every tile)'
@@ -40,14 +40,18 @@ env:
   # by .github/actions/run-forecast).
   RASP_RRFS_ROOT: ${{ vars.RASP_RRFS_ROOT || 'https://noaa-rrfs-ops-pds.s3.amazonaws.com' }}
 
-# Seven WA region tiles x a two-day forecast = 14 arm jobs (day 0 = today UTC,
-# day 1 = tomorrow UTC). Both the evening (00z) and morning (12z) dispatches fire
-# on the same UTC date, so {today, tomorrow} covers "tomorrow+next-day" (evening)
-# and "today+tomorrow" (morning) alike. --target-date auto-selects the freshest
-# covering cycle (the mode NAM ran in — --target-cycle would force an fhr-0 start
-# and a ~50 h WRF run on the day-1 leg). The days are two jobs rather than one
-# matrix axis only so that each waits on its own gate: day 0 starts when f27 is
-# out (~20 min after the dispatch), day 1 when f51 is (~45 min).
+# 20 region tiles x a three-day forecast = 60 arm jobs in three waves (day 0 =
+# today UTC, day 1 = tomorrow UTC, day 2 = the day after). Both the evening
+# (00z) and morning (12z) dispatches fire on the same UTC date, so the window
+# reads "tomorrow + two more" in the evening and "today + two more" in the
+# morning. --target-date auto-selects the freshest covering cycle (the mode NAM
+# ran in — --target-cycle would force an fhr-0 start and a ~50 h WRF run on the
+# day-1 leg). The days are separate jobs rather than one matrix axis so that
+# each waits on its own gate and the waves run one after another under the
+# 20-job cap: day 0 starts when f27 is out (~02:25z / 14:25z on the mirror),
+# day 1 when f51 is (~02:52z / 14:52z), day 2 when f75 is (~03:16z / 15:18z).
+# Day 2 is RRFS's last reachable day (f64-f76 from 00z, f52-f64 from 12z; 84 h
+# reach) and HRRR never reaches it, so it is RRFS-only on the site.
 jobs:
   wait-day0:
     # RRFS readiness gate for the day-0 legs (f027): one small x86 runner polls
@@ -234,3 +238,104 @@ jobs:
         with:
           model: rrfs
           day: 1
+
+  wait-day2:
+    # RRFS readiness gate for the day-2 legs (f075): one small x86 runner polls
+    # NOMADS so the arm matrix doesn't hold 7 runners idle for up to 75 min
+    # against the 20-job cap. Times out and proceeds (see scripts/wait-rrfs.sh).
+    # Starts only once the day-1 wave is over (whatever its outcome), so it never
+    # takes a runner slot from those legs. f75 lands ~25 min after f51, about
+    # when the day-1 legs finish, so nothing waits long.
+    needs: forecast-day1
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    outputs:
+      ready: ${{ steps.ready.outputs.ready }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Wait for RRFS GRIB (day 2, f075)
+        id: ready
+        run: scripts/wait-rrfs.sh 2
+
+  forecast-day2:
+    # Day 2 legs for every region; start once wait-day2 has seen the files, and
+    # ONLY then: unlike days 0 and 1, no older cycle covers day 2 (the previous
+    # 12z would need f88, past RRFS's 84 h reach), so if the gate timed out the
+    # pipeline's auto-cycle would have nothing covering the window and would
+    # fall back to rendering near-term hours under the wrong date. Skipping the
+    # day is the right answer; the day-1 forecast stands until the next run.
+    needs: wait-day2
+    if: needs.wait-day2.outputs.ready == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        region: ${{ fromJson(inputs.regions || '["issaquah","wenatchee","skykomish","chelan","baker","methow","waterville","salish","gorge","tillamook","tricities","bend","lakeview","colville","siskiyou","olympics","palouse","wallowa","newport","goldendale"]') }}
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 360
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Soaring date (day 2)
+        id: date
+        run: |
+          # Per-day target date: base (manual input, else today UTC) + matrix offset.
+          BASE="${{ inputs.target_date }}${{ github.event.client_payload.target_date }}"
+          [ -z "$BASE" ] && BASE=$(date -u +%F)
+          TARGET_DATE=$(date -u -d "$BASE +2 days" +%F)
+          echo "Day 2 → soaring date $TARGET_DATE (auto-cycle)"
+          echo "target_date=$TARGET_DATE" >> "$GITHUB_OUTPUT"
+
+      - name: Run forecast
+        id: run
+        uses: ./.github/actions/run-forecast
+        with:
+          model: rrfs
+          region: ${{ matrix.region }}
+          target_date: ${{ steps.date.outputs.target_date }}
+          image: ${{ env.IMAGE }}
+
+      - name: Upload windgrams
+        uses: actions/upload-artifact@v4
+        with:
+          name: rrfs-${{ matrix.region }}-day2
+          path: |
+            output/*.png
+            output/*_blipspot.json
+          retention-days: 7
+
+      # Publish this leg's windgrams straight to R2 (the site reads them from
+      # there), the moment they exist: no publish job, nothing waits for the
+      # other legs. Main-only, so a branch run renders and keeps its artifacts
+      # but never touches what pilots see.
+      - name: Publish windgrams to R2
+        if: github.ref == 'refs/heads/main'
+        uses: ./.github/actions/publish-r2
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        with:
+          model: rrfs
+          region: ${{ matrix.region }}
+          day: "2"
+
+      # Disabled while UPLOAD_CUBES is 'false'. When on, only the home tile writes the v2 soaring cube: R2 keeps its
+      # <model>/<date>/soaring.zarr layout and site/v2 shows the issaquah tile.
+      # Publishing is main-only: a run from any other ref renders + uploads
+      # artifacts but never touches R2.
+      - name: Upload soaring cube to R2 (v2)
+        if: always() && env.UPLOAD_CUBES == 'true' && matrix.region == 'issaquah' && github.ref == 'refs/heads/main'
+        uses: ./.github/actions/upload-cube
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        with:
+          model: rrfs
+          day: 2
