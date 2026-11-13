@@ -10,7 +10,9 @@ name: Forecast (GFS outlook)
 # Worker's five free cron slots are used, and chaining makes contention with
 # the RRFS waves impossible by construction. Fires ~03:40z and ~15:42z; the
 # newest GFS cycle's f099 / f123 land ~03:57z / 04:03z (12z: 16:02z / 16:07z),
-# so the gate waits ~20 min. HRRR's next dispatch is hours away either way.
+# so the gate waits ~20 min for it; a run started hours before the newest
+# cycle exists takes the previous one at once (scripts/wait-gfs.sh). HRRR's
+# next dispatch is hours away either way.
 
 on:
   workflow_run:
@@ -40,8 +42,9 @@ env:
 
 jobs:
   wait-day3:
-    # One small x86 runner polls the mirror for the newest cycle's day-3 hour so
-    # the arm legs start only once the GRIB is out.
+    # One small x86 runner polls the mirror for the day-3 hour of the newest
+    # cycle, or of the one before it when the newest is not imminent, so the
+    # arm legs start only once the GRIB is out.
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     permissions:
