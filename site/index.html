@@ -397,7 +397,16 @@ function renderFinder() {
   const tree = $('#tree'); tree.innerHTML = '';
   const q = $('#q').value.trim().toLowerCase();
   if (q) {
-    const hits = sites.filter(s => (prettyName(s.name) + ' ' + s.name + ' ' + (s.area || '') + ' ' + (s.state || '')).toLowerCase().includes(q)).sort(byName).slice(0, 60);
+    // Site-name matches first (a word starting with the query, then anywhere in
+    // the name), and only then the sites whose area or state matches.
+    const rank = (s) => {
+      const name = (prettyName(s.name) + ' ' + s.name).toLowerCase();
+      if (name.startsWith(q) || name.includes(' ' + q)) return 0;
+      if (name.includes(q)) return 1;
+      if ((s.area || '').toLowerCase().includes(q) || (s.state || '').toLowerCase().includes(q)) return 2;
+      return 3;
+    };
+    const hits = sites.map(s => [rank(s), s]).filter(([r]) => r < 3).sort((a, b) => a[0] - b[0] || byName(a[1], b[1])).slice(0, 60).map(([, s]) => s);
     if (!hits.length) { tree.innerHTML = '<div class="no-data">No site matches.</div>'; return; }
     for (const s of hits) tree.appendChild(siteRow(s, `${s.area} · ${s.state}`));
     return;
