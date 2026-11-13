@@ -13,12 +13,16 @@ behind a map-based site on GitHub Pages.
 
 **[forecast.nwparagliding.com](https://forecast.nwparagliding.com/)**
 
-Click a site marker on the map to see its windgram.
+Find a site by name, under Favourites, or by State › Area in the list on the left
+(the map is a picker behind the Map button); the forecast shows the windgram, a
+model toggle, the day picker and the hourly table. Phones show the list and the
+forecast one at a time; foldables put one on each screen.
 
 [`/old`](https://forecast.nwparagliding.com/old/) is a plain wxtofly-style page: a
 State → Area → Site list down the side, the site's windgrams for each published day
 stacked on the right, each flipping to its table on click (`site/old/`; the
-State/Area grouping comes from wxtofly's site list via `site/old/areas.json`).
+State/Area grouping comes from wxtofly's site list via `site/areas.json`, which the
+main page uses too).
 
 ## Regions
 
