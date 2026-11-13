@@ -33,7 +33,7 @@ on:
 env:
   # Pinned to the pre-release image that carries the hrdps registry entry,
   # Vtable.HRDPS and the per-field downloader; bumped deliberately.
-  IMAGE: ghcr.io/nw-paragliding/windgram:0.9.0-hrdps.2
+  IMAGE: ghcr.io/nw-paragliding/windgram:0.9.0-hrdps.3
   # Data root: the MSC Datamart's rolling /today/ tree (one file per field, no
   # mirror on AWS). The HPFX mirror has the same layout with more bandwidth:
   # https://hpfx.collab.science.gc.ca/today/model_hrdps/continental/2.5km
