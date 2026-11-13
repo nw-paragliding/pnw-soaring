@@ -296,14 +296,16 @@
         </div>
         <div class="wg-note" id="windgram-note"></div>
         <div class="no-data" id="windgram-nodata" hidden></div>
-        <div class="actions">
-          <span class="hint" id="view-hint"></span>
-          <span class="links">
-            <a class="open-link" id="open-full" href="#" target="_blank" rel="noopener">Open full size ↗</a>
-            <a class="open-link" id="open-data" href="#" target="_blank" rel="noopener" hidden>Raw data (JSON) ↗</a>
-            <button class="open-link" id="copy-link" type="button" title="Copy a link that opens this site">Copy link</button>
-          </span>
-        </div>
+      </div>
+
+      <!-- Outside the panel: static apart from its text, so it never animates with it. -->
+      <div class="actions" id="wg-actions" hidden>
+        <span class="hint" id="view-hint"></span>
+        <span class="links">
+          <a class="open-link" id="open-full" href="#" target="_blank" rel="noopener">Open full size ↗</a>
+          <a class="open-link" id="open-data" href="#" target="_blank" rel="noopener" hidden>Raw data (JSON) ↗</a>
+          <button class="open-link" id="copy-link" type="button" title="Copy a link that opens this site">Copy link</button>
+        </span>
       </div>
     </div>
   </main>
@@ -505,6 +507,7 @@ async function loadDays() {
 function updateWindgram() {
   const empty = $('#windgram-empty'), content = $('#windgram-content');
   $('#classic-link').href = currentSite ? '/old/#' + encodeURIComponent(currentSite.name) : '/old/';
+  $('#wg-actions').hidden = !currentSite;
   if (!currentSite) { empty.hidden = false; content.hidden = true; return; }
   empty.hidden = true; content.hidden = false;
   if (revealedSite !== currentSite) {   // the reveal is for a new site, not a new day or model
