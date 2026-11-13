@@ -81,19 +81,23 @@ Each tile's geo_em grids are cached in Actions under
 edited YAML, new windgram image) the job downloads the WPS GEOG data and runs geogrid itself.
 `bootstrap-geoem.yml` can pre-warm the caches.
 
-**Jobs per run:** RRFS and HRRR each run every tile for day 0 and day 1 =
-40 arm jobs, in two waves of 20 (one per day) that never overlap. HRRR's cycles reach only 48 h, so a day HRRR cannot reach (day 1
-of the 01:15z run) ends its job in seconds with a notice and publishes nothing;
+**Jobs per run:** RRFS runs every tile for days 0, 1 and 2 = 60 arm jobs in
+three waves of 20 (one per day); HRRR runs days 0 and 1 = 40 jobs in two waves.
+Waves never overlap. Day 2 is RRFS's last reachable day (f64–f76 from 00z,
+f52–f64 from 12z; 84 h reach), and because no older cycle covers it, its legs
+run only when the `wait-day2` gate saw f75 — otherwise the day is skipped and
+the day-1 forecast stands. HRRR's cycles reach only 48 h, so a day HRRR cannot reach (day 1
+of the 01:15z run, day 2 always) ends its job in seconds with a notice and publishes nothing;
 HRRR's day-1 legs start only after a small `wait-day1` job
 (`scripts/wait-hrrr.sh`), which itself starts once the day-0 wave is over, has
 seen the cycle's window-end GRIB (f45 / f39), while its day-0 legs start at once. There is no publish job: every leg writes its
 windgrams to R2 itself, so a slow or queued leg never delays the others'.
-RRFS's readiness polling likewise runs in two small
-`wait-day0` / `wait-day1` jobs, so the arm runners start only once the GRIB is
-out. The free tier allows 20 concurrent jobs: a wave is 20 legs, and the day-1
-gate job starts only once the day-0 wave is over (`needs: forecast-day0`), so the
-cap is met exactly and nothing queues; a 21st tile would have one leg wait for
-the first finisher. The 13:00z HRRR day-1 wave ends before the 14:00z RRFS legs
+RRFS's readiness polling likewise runs in three small
+`wait-day0` / `wait-day1` / `wait-day2` jobs, so the arm runners start only once the GRIB is
+out. The free tier allows 20 concurrent jobs: a wave is 20 legs, and each
+gate job starts only once the previous wave is over (`needs: forecast-day0`,
+`needs: forecast-day1`), so the cap is met exactly and nothing queues; a 21st
+tile would have one leg wait for the first finisher. The 13:00z HRRR day-1 wave ends before the 14:00z RRFS legs
 start.
 
 ## Schedule
@@ -104,10 +108,10 @@ The crons live in [`cloudflare-trigger/wrangler.toml`](cloudflare-trigger/wrangl
 | Run | Model | Cron (UTC) | Local (PDT) | Coverage |
 |-----|-------|------------|-------------|----------|
 | Evening HRRR | HRRR 1.33 km (beta) — HRRR 3 km → WRF 4 km → 1.33 km | 01:15 | 6:15pm | Night-before: tomorrow only (00z cycle; the next day would need f51 > 48 h, skipped) |
-| Evening RRFS | RRFS → WRF 4 km → 1.33 km | 02:05 | 7:05pm | Overnight outlook, today + tomorrow (00z cycle; waits for the GRIB: f27 ~02:20z, f51 ~02:50z) |
+| Evening RRFS | RRFS → WRF 4 km → 1.33 km | 02:05 | 7:05pm | Overnight outlook, tomorrow + two more days (00z cycle; waits for the GRIB: f27 ~02:25z, f51 ~02:52z, f75 ~03:16z) |
 | Pre-dawn HRRR | HRRR 1.33 km (beta) — HRRR 3 km → WRF 4 km → 1.33 km | 07:15 | 12:15am | Pre-dawn refresh, today + tomorrow (06z cycle; tomorrow ends at f45) |
 | Morning HRRR | HRRR 1.33 km (beta) — HRRR 3 km → WRF 4 km → 1.33 km | 13:00 | 6:00am | Freshest, today + tomorrow (12z cycle; tomorrow ends at f39) |
-| Morning RRFS | RRFS → WRF 4 km → 1.33 km | 14:00 | 7:00am | Day-of update, today + tomorrow (12z cycle; waits for the GRIB: f27 ~14:20z, f51 ~14:50z) |
+| Morning RRFS | RRFS → WRF 4 km → 1.33 km | 14:00 | 7:00am | Day-of update, today + two more days (12z cycle; waits for the GRIB: f27 ~14:25z, f51 ~14:52z, f75 ~15:18z) |
 
 `forecast-rrfs.yml` polls the RRFS data root until the files for the cycle are
 published before its arm legs start (two small `wait-day0` / `wait-day1` jobs).
