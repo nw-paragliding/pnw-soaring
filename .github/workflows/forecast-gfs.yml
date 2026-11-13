@@ -13,6 +13,11 @@ name: Forecast (GFS outlook)
 # so the gate waits ~20 min. HRRR's next dispatch is hours away either way.
 
 on:
+  # TEMP (verification from the branch; remove before merge): GitHub cannot
+  # dispatch a workflow that exists only on a branch, so a push runs it instead.
+  # Publishing is main-only, so this renders and keeps artifacts, nothing more.
+  push:
+    branches: [feat/gfs-spike]
   workflow_run:
     workflows: ["Forecast (RRFS)"]
     types: [completed]
