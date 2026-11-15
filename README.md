@@ -18,11 +18,9 @@ Find a site by name, under Favourites, or by State › Area in the list on the l
 model toggle, the day picker and the hourly table. Phones show the list and the
 forecast one at a time; foldables put one on each screen.
 
-[`/old`](https://forecast.nwparagliding.com/old/) is a plain wxtofly-style page: a
-State → Area → Site list down the side, the site's windgrams for each published day
-stacked on the right, each flipping to its table on click (`site/old/`; the
-State/Area grouping comes from wxtofly's site list via `site/areas.json`, which the
-main page uses too).
+`/old`, the wxtofly-style classic page, retired on 2026-11-14: `site/old/index.html`
+is now a redirect to the home page. The State › Area grouping it introduced lives on
+in `site/areas.json`, which the main page uses.
 
 ## Regions
 
@@ -175,8 +173,8 @@ retrying if a publish landed in between). The live site does not change; only th
 history goes.
 
 A publisher that fetched `gh-pages` before a squash and pushes after it is
-rejected and retries; every publish retry loop (`deploy-site.yml`,
-the lab A/B publish) rebases with `git rebase --onto origin/gh-pages HEAD~1`, so it
+rejected and retries; the publish retry loop (`deploy-site.yml`) rebases with
+`git rebase --onto origin/gh-pages HEAD~1`, so it
 replays only its own commit onto the new root and never brings history back.
 
 GitHub reclaims the space only after its own garbage collection of the now
