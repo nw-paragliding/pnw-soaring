@@ -17,7 +17,7 @@ name: Squash gh-pages history
 #   * A publisher that fetched gh-pages before this squash and pushes after it
 #     is rejected (non-fast-forward) and its retry loop replays only its own
 #     commit onto the new root (`git rebase --onto origin/gh-pages HEAD~1`, in
-#     deploy-forecast, deploy-site and ab-pairs), so history never comes back.
+#     deploy-forecast and deploy-site), so history never comes back.
 #     The publishers deliberately have NO shared concurrency group: a group
 #     keeps only one pending job and cancels the older one, which could drop a
 #     forecast publish. The group below only stops two squashes overlapping.
@@ -29,7 +29,7 @@ on:
   schedule:
     # Tuesday 10:30 UTC (3:30am PDT): hours clear of every forecast cron in
     # cloudflare-trigger/wrangler.toml (HRRR 01:15/07:15/13:00, NAM+RRFS
-    # 02:05/14:00) and the lab A/B run (22:30).
+    #     02:05/14:00).
     - cron: '30 10 * * 2'
   workflow_dispatch:
 
