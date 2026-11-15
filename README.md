@@ -16,9 +16,11 @@ behind a map-based site on GitHub Pages.
 Find a site by name, under Favourites, or by State › Area in the list on the left
 (the map is a picker behind the Map button); the forecast shows the windgram, the
 model toggle, the day strip (Today to +4) and the hourly table. Toggle and strip
-are the two rows of one picker: a day the model lacks, or a model that lacks the
-day, is dimmed with the alternative named, and choosing it switches the other row
-(so swiping past RRFS's last day lands on GFS). Phones show the list and the
+are the two rows of one picker: a day the model lacks is dimmed and names the
+model a tap switches to; a model that lacks the day is dimmed (its tooltip names
+the day it opens); choosing either switches the other row, so swiping past RRFS's
+last day lands on GFS. The run age of the chart on screen sits on the hint line
+under it. Phones show the list and the
 forecast one at a time; foldables put one on each screen.
 
 `/old`, the wxtofly-style classic page, retired on 2026-11-14: `site/old/index.html`

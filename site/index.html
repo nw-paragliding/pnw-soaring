@@ -163,20 +163,16 @@
     .segmented .indicator { position: absolute; top: 3px; left: 3px; bottom: 3px; width: calc((100% - 6px) / var(--n));
       background: var(--evergreen); border-radius: 7px; box-shadow: 0 2px 8px -2px rgba(22,58,45,.5);
       transform: translateX(calc(var(--i) * 100%)); transition: transform .28s cubic-bezier(.5,.1,.1,1); z-index: 0; }
-    /* The toggle is as wide as its widest label needs (equal columns), at least
-       260px, never wider than the row. Only in a row narrower than that do labels
-       clip rather than overlap: the age gives way first (ellipsis), then the name. */
-    .segmented label { position: relative; z-index: 1; display: flex; align-items: baseline; justify-content: center; gap: 6px; min-width: 0; overflow: hidden;
-      padding: 6px 6px; cursor: pointer; user-select: none; border-radius: 7px; transition: color .2s; }
+    /* Names only: the toggle is as wide as its widest name needs (equal columns),
+       at least 260px, never wider than the row; only in a row narrower than that
+       do names clip. A model that lacks the current day is dimmed and its tooltip
+       names the day a tap opens; the run age sits on the hint line under the chart. */
+    .segmented label { position: relative; z-index: 1; display: flex; align-items: baseline; justify-content: center; min-width: 0; overflow: hidden;
+      padding: 6px 10px; cursor: pointer; user-select: none; border-radius: 7px; transition: color .2s; }
     .segmented label .name { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: 600; font-size: 13px; letter-spacing: -.01em; white-space: nowrap; }
-    .segmented label.dim .name, .segmented label.dim .res { color: var(--ink-soft); }   /* lacks the current day; .res names its nearest */
-    .segmented label .res { flex: 0 2 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: .02em; color: var(--ink-soft); white-space: nowrap; }
-    .segmented label .res:empty { display: none; }
+    .segmented label.dim .name { color: var(--ink-soft); }   /* lacks the current day */
     .segmented input { position: absolute; opacity: 0; pointer-events: none; }
     .segmented label:has(input:checked) .name { color: var(--on-accent); }
-    .segmented label:has(input:checked) .res { color: rgba(255,255,255,.72); }
-    .segmented label .res.stale { color: var(--stale); font-weight: 600; }
-    .segmented label:has(input:checked) .res.stale { color: #f4b860; }
 
     /* Days: one pill per day, Today to +4, under the chart. Lit when the current
        model has the day; dashed, naming the model a tap would switch to, when
@@ -237,6 +233,7 @@
     .actions { display: flex; align-items: center; justify-content: space-between; gap: 6px 12px; flex-wrap: wrap; flex: none; }
     .actions .hint { font: 500 10.5px/1.3 'IBM Plex Mono', monospace; color: var(--ink-soft); letter-spacing: .02em; }
     .actions .hint:empty { display: none; }
+    .actions .hint .age.stale { color: var(--stale); font-weight: 600; }   /* a chart older than a day: a refresh was missed */
     .actions .links { display: inline-flex; gap: 14px; margin-left: auto; }
     .open-link { font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 500; color: var(--accent-text);
       text-decoration: none; border-bottom: 1px solid transparent; transition: border-color .15s; background: none; border-top: 0; border-left: 0; border-right: 0; padding: 0; }
@@ -285,9 +282,7 @@
       .segmented { flex: 1 1 260px; width: auto; min-width: 0; max-width: none; }   /* fills the row */
       .pills button { padding: 5px 2px; }
       .pills button .n { font-size: 9px; letter-spacing: 0; }   /* "14 · HRDPS" fits a 65px pill */
-      .segmented label { flex-direction: column; align-items: center; gap: 1px; padding: 5px 3px; line-height: 1.2; }
-      .segmented label .name, .segmented label .res { max-width: 100%; }
-      .segmented label .res { font-size: 9.5px; letter-spacing: 0; }
+      .segmented label { padding: 6px 4px; }
       .wg-table th.row { width: 136px; min-width: 112px; max-width: 136px; }
     }
     /* Wide desktops: give the finder a little more room */
@@ -361,10 +356,10 @@
         <div class="controls">
           <div class="segmented" role="radiogroup" aria-label="Forecast model">
             <span class="indicator" aria-hidden="true"></span>
-            <label><input type="radio" name="model" value="rrfs" checked><span class="name">RRFS</span><span class="res" data-model="rrfs"></span></label>
-            <label><input type="radio" name="model" value="hrrr"><span class="name">HRRR</span><span class="res" data-model="hrrr"></span></label>
-            <label><input type="radio" name="model" value="hrdps"><span class="name">HRDPS</span><span class="res" data-model="hrdps"></span></label>
-            <label><input type="radio" name="model" value="gfs"><span class="name">GFS</span><span class="res" data-model="gfs"></span></label>
+            <label><input type="radio" name="model" value="rrfs" checked><span class="name">RRFS</span></label>
+            <label><input type="radio" name="model" value="hrrr"><span class="name">HRRR</span></label>
+            <label><input type="radio" name="model" value="hrdps"><span class="name">HRDPS</span></label>
+            <label><input type="radio" name="model" value="gfs"><span class="name">GFS</span></label>
           </div>
         </div>
         <div class="wg-note warn" id="data-warning" hidden role="status"></div>
@@ -435,7 +430,7 @@ const app = $('#app');
 
 let currentModel = DEFAULT_MODEL, currentSite = null, currentDate = null;
 let currentView = 'chart';
-let metadata = {}, availableDays = {}, blipCache = new Map(), currentBlipUrl = null, imgFailed = false;
+let metadata = {}, availableDays = {}, generatedAt = {}, blipCache = new Map(), currentBlipUrl = null, imgFailed = false;
 let sites = [], siteIndex = {}, areas = {};
 let favorites = {};
 try { (localStorage.getItem('favorites') || '').split(';').filter(Boolean).forEach(n => favorites[n] = 1); } catch (_) {}
@@ -553,17 +548,23 @@ async function loadMetadata() {
 }
 const timeAgo = (d) => { const h = (Date.now() - d.getTime()) / 3.6e6; return h < 1 ? `${Math.round(h * 60)}m ago` : h < 24 ? `${Math.round(h)}h ago` : `${Math.round(h / 24)}d ago`; };
 function renderToggleMeta() {
-  document.querySelectorAll('.res[data-model]').forEach(el => {
-    const model = el.dataset.model, label = el.closest('label');
+  document.querySelectorAll('input[name="model"]').forEach(input => {
+    const model = input.value, label = input.closest('label');
     const lacks = !!(currentSite && currentDate) && shownModels.includes(model) && !has(model, currentDate);
     label.classList.toggle('dim', lacks);
-    if (lacks) { const d = nearestDay(model, currentDate); el.textContent = d ? `→ ${d.short}` : ''; el.classList.remove('stale'); return; }
-    const m = metadata[model];
-    if (!m) { el.textContent = ''; el.classList.remove('stale'); return; }
-    const updated = new Date(m.generated);
-    el.textContent = timeAgo(updated);
-    el.classList.toggle('stale', (Date.now() - updated.getTime()) / 3.6e6 > 12);
+    const d = lacks ? nearestDay(model, currentDate) : null;
+    label.title = d ? `No ${model.toUpperCase()} forecast for this day · opens ${d.label}` : '';
   });
+}
+// "HRRR run 2h ago" opens the hint line under the chart: the age of the chart on
+// screen (its day's metadata), or of the model's latest run when the day's is unknown.
+function runAge() {
+  const gen = currentSite && currentModel && ((currentDate && generatedAt[`${currentModel}/${currentDate}`]) || (metadata[currentModel] || {}).generated);
+  if (!gen) return null;
+  const updated = new Date(gen), el = document.createElement('span');
+  el.className = 'age' + ((Date.now() - updated.getTime()) / 3.6e6 > 24 ? ' stale' : '');
+  el.textContent = `${currentModel.toUpperCase()} run ${timeAgo(updated)}`;
+  return el;
 }
 function layoutToggle() {
   const seg = $('.segmented'); const shown = [...seg.querySelectorAll('label')].filter(l => !l.hidden);
@@ -606,7 +607,10 @@ async function discoverDays(model) {
   const out = [];
   for (const day of SLOTS) {
     if (indexDown) { if ((USUAL_DAYS[model] || []).includes(day.off)) out.push(day); continue; }   // assume the usual reach
-    try { const r = await fetch(`${DATA_BASE}/forecasts/${day.date}/${model}/metadata.json`, { cache: 'no-cache' }); if (r.ok) out.push(day); } catch (_) {}
+    try {
+      const r = await fetch(`${DATA_BASE}/forecasts/${day.date}/${model}/metadata.json`, { cache: 'no-cache' });
+      if (r.ok) { out.push(day); const j = await r.json().catch(() => null); if (j && j.generated) generatedAt[`${model}/${day.date}`] = j.generated; }
+    } catch (_) {}
   }
   availableDays[model] = out; return out;
 }
@@ -797,7 +801,10 @@ function applyView() {
   noteEl.textContent = '';
   $('#open-full').hidden = table; $('#open-data').hidden = !table;
   const dayHint = openDays() < 2 ? '' : touch ? ' · swipe for the next day' : ' · scroll or ← → for the next day';
-  $('#view-hint').textContent = imgFailed && !table ? '' : table ? `${tapWord} the table to go back to the chart` : `${tapWord} the chart for the table${dayHint}`;
+  const text = imgFailed && !table ? '' : table ? `${tapWord} the table to go back to the chart` : `${tapWord} the chart for the table${dayHint}`;
+  const hint = $('#view-hint'), age = text && runAge(); hint.replaceChildren();
+  if (age) hint.append(age, ' · ');
+  hint.append(text);
   if (table && currentSite) loadBlipspot();
 }
 async function loadBlipspot() {
