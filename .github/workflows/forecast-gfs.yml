@@ -52,6 +52,7 @@ jobs:
     outputs:
       ready: ${{ steps.ready.outputs.ready }}
       target_date: ${{ steps.ready.outputs.target_date }}
+      skip: ${{ steps.ready.outputs.skip }}
     steps:
       - uses: actions/checkout@v4
       - name: Wait for GFS GRIB (day 3)
@@ -62,7 +63,7 @@ jobs:
     needs: wait-day3
     # !cancelled(): a job's default condition is success() over the WHOLE chain
     # of needs, so without this a failed leg upstream skips the wave.
-    if: ${{ !cancelled() && needs.wait-day3.result == 'success' }}
+    if: ${{ !cancelled() && needs.wait-day3.result == 'success' && needs.wait-day3.outputs.skip != 'true' }}
     strategy:
       fail-fast: false
       matrix:
@@ -121,6 +122,7 @@ jobs:
     outputs:
       ready: ${{ steps.ready.outputs.ready }}
       target_date: ${{ steps.ready.outputs.target_date }}
+      skip: ${{ steps.ready.outputs.skip }}
     steps:
       - uses: actions/checkout@v4
       - name: Wait for GFS GRIB (day 4)
@@ -129,7 +131,7 @@ jobs:
 
   forecast-day4:
     needs: wait-day4
-    if: ${{ !cancelled() && needs.wait-day4.result == 'success' }}
+    if: ${{ !cancelled() && needs.wait-day4.result == 'success' && needs.wait-day4.outputs.skip != 'true' }}
     strategy:
       fail-fast: false
       matrix:

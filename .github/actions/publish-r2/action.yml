@@ -6,7 +6,9 @@ description: >-
     forecasts/<date>/<model>/<region>/<Site>_blipspot.json
     forecasts/<date>/<model>/<region>/metadata.json   (this leg)
     forecasts/<date>/<model>/metadata.json            (day-picker probe)
-  and, when day == latest_day, the same again under forecasts/latest/.
+  and, when day == latest_day, the same again under forecasts/latest/. A
+  short-range model's leg also retires forecasts/<date>/gfs/ for its day: GFS
+  is the outlook for the days those models have not reached.
   Every leg publishes itself the moment it finishes, so no leg waits for
   another and a queued tile never delays the rest. The calling step passes the
   R2 credentials as env (R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY);
@@ -95,3 +97,11 @@ runs:
         fi
         rm -rf "$STAGE"
         echo "Published ${#PNGS[@]} windgrams → r2://${R2_BUCKET}/${WHERE}"
+        # GFS is the outlook for the days no short-range model has reached. Once
+        # another model publishes a day, a GFS copy of it is stale: drop it, so the
+        # site never offers last week's GFS chart for a day RRFS now covers. (Every
+        # tile's leg runs this for the same day; only the first finds anything.)
+        if [ "$MODEL" != gfs ] && rclone lsf ":s3:${R2_BUCKET}/forecasts/${DATE}/gfs/" --max-depth 1 2>/dev/null | grep -q .; then
+          rclone purge ":s3:${R2_BUCKET}/forecasts/${DATE}/gfs" --s3-no-check-bucket -q 2>/dev/null || true
+          echo "Retired forecasts/${DATE}/gfs (superseded by ${MODEL})"
+        fi

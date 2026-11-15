@@ -169,7 +169,7 @@
     .segmented label { position: relative; z-index: 1; display: flex; align-items: baseline; justify-content: center; gap: 6px; min-width: 0; overflow: hidden;
       padding: 6px 6px; cursor: pointer; user-select: none; border-radius: 7px; transition: color .2s; }
     .segmented label .name { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: 600; font-size: 13px; letter-spacing: -.01em; white-space: nowrap; }
-    .segmented label .name .beta { font-weight: 500; font-size: 10px; opacity: .75; }
+    .segmented label.dim .name, .segmented label.dim .res { color: var(--ink-soft); }   /* lacks the current day; .res names its nearest */
     .segmented label .res { flex: 0 2 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: .02em; color: var(--ink-soft); white-space: nowrap; }
     .segmented label .res:empty { display: none; }
     .segmented input { position: absolute; opacity: 0; pointer-events: none; }
@@ -178,16 +178,22 @@
     .segmented label .res.stale { color: var(--stale); font-weight: 600; }
     .segmented label:has(input:checked) .res.stale { color: #f4b860; }
 
-    /* Days: gallery dots under the chart, one per forecast day. Swiping or
-       scrolling the chart, a dot, or ← → step through them. */
-    .days { display: flex; align-items: center; justify-content: center; flex: none; min-height: 22px; margin-top: -4px; }
+    /* Days: one pill per day, Today to +4, under the chart. Lit when the current
+       model has the day; dashed, naming the model a tap would switch to, when
+       only another model has it; faded when no model has it yet. Swiping or
+       scrolling the chart, a pill, or ← → step the day. */
+    .days { display: flex; align-items: center; justify-content: center; flex: none; margin-top: -2px; }
     .days.single { display: none; }
-    .dots { display: inline-flex; }
-    .dots button { position: relative; width: 22px; height: 22px; border: 0; background: none; padding: 0; cursor: pointer; }
-    .dots button::before { content: ""; position: absolute; left: 50%; top: 50%; width: 8px; height: 8px; margin: -4px 0 0 -4px;
-      border-radius: 50%; background: var(--line-2); transition: transform .18s, background .18s; }
-    .dots button:hover::before { background: var(--ink-soft); }
-    .dots button[aria-selected="true"]::before { background: var(--accent-text); transform: scale(1.35); }
+    .pills { display: flex; gap: 5px; width: 100%; max-width: 520px; }
+    .pills button { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 5px 4px; line-height: 1.2;
+      border: 1px solid var(--line-2); border-radius: 9px; background: var(--panel); color: var(--ink); cursor: pointer; transition: background .18s, border-color .18s, color .18s; }
+    .pills button .d { font-weight: 600; font-size: 12.5px; letter-spacing: -.01em; white-space: nowrap; }
+    .pills button .n { font: 500 10px/1.2 'IBM Plex Mono', monospace; color: var(--ink-soft); letter-spacing: .02em; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+    .pills button:hover { border-color: var(--ink-soft); }
+    .pills button[aria-selected="true"] { background: var(--evergreen); border-color: var(--evergreen); color: var(--on-accent); }
+    .pills button[aria-selected="true"] .n { color: rgba(255,255,255,.75); }
+    .pills button.dim { border-style: dashed; background: none; color: var(--ink-soft); }
+    .pills button.off { border-color: transparent; background: none; color: var(--ink-soft); opacity: .45; cursor: default; }
 
     /* The stage takes the room the controls leave. The chart (or table) and the
        dots sit in it, centred when there is spare height (a tall phone), and the
@@ -277,6 +283,8 @@
       .site-head .coords .ll { display: none; }              /* the area is enough; lat/lon are on the map */
       .site-head .coords .area::before { content: none; }
       .segmented { flex: 1 1 260px; width: auto; min-width: 0; max-width: none; }   /* fills the row */
+      .pills button { padding: 5px 2px; }
+      .pills button .n { font-size: 9px; letter-spacing: 0; }   /* "14 · HRDPS" fits a 65px pill */
       .segmented label { flex-direction: column; align-items: center; gap: 1px; padding: 5px 3px; line-height: 1.2; }
       .segmented label .name, .segmented label .res { max-width: 100%; }
       .segmented label .res { font-size: 9.5px; letter-spacing: 0; }
@@ -355,8 +363,8 @@
             <span class="indicator" aria-hidden="true"></span>
             <label><input type="radio" name="model" value="rrfs" checked><span class="name">RRFS</span><span class="res" data-model="rrfs"></span></label>
             <label><input type="radio" name="model" value="hrrr"><span class="name">HRRR</span><span class="res" data-model="hrrr"></span></label>
-            <label><input type="radio" name="model" value="hrdps"><span class="name">HRDPS <span class="beta">(beta)</span></span><span class="res" data-model="hrdps"></span></label>
-            <label><input type="radio" name="model" value="gfs"><span class="name">GFS <span class="beta">(outlook)</span></span><span class="res" data-model="gfs"></span></label>
+            <label><input type="radio" name="model" value="hrdps"><span class="name">HRDPS</span><span class="res" data-model="hrdps"></span></label>
+            <label><input type="radio" name="model" value="gfs"><span class="name">GFS</span><span class="res" data-model="gfs"></span></label>
           </div>
         </div>
         <div class="wg-note warn" id="data-warning" hidden role="status"></div>
@@ -367,7 +375,7 @@
           <div class="wg-table" id="windgram-table" hidden title="Back to the chart"></div>
           <div class="no-data" id="windgram-nodata" hidden></div>
           <div class="days single" id="days">
-            <span class="dots" id="dots" role="tablist" aria-label="Forecast day"></span>
+            <span class="pills" id="pills" role="tablist" aria-label="Forecast day"></span>
           </div>
         </div>
         <div class="wg-note" id="windgram-note"></div>
@@ -413,7 +421,8 @@ if (location.protocol === 'http:' && !/^(localhost|127\.0\.0\.1|\[::1\])$/.test(
 // 2-minute Cache-Control, so JSON probes ask with no-cache to revalidate.
 const DATA_BASE = 'https://pub-de96e47b1e91464bb2959747602c1914.r2.dev';
 // Toggle order. RRFS is the default (it replaced NAM, retired 2026-11-03).
-// hrdps: ECCC's 2.5 km run, spike on the issaquah tile; gfs: the days-3-and-4 outlook spike (issaquah tile).
+// hrdps: ECCC's 2.5 km run (issaquah tile so far); gfs: the days beyond RRFS's reach (issaquah tile).
+// The order is also the preference order when several models have a day.
 const MODELS = ['rrfs', 'hrrr', 'hrdps', 'gfs'];
 const DEFAULT_MODEL = 'rrfs';
 // What to assume when the forecast index cannot be read at all (offline, or
@@ -424,7 +433,7 @@ let indexDown = false;
 const $ = (s) => document.querySelector(s);
 const app = $('#app');
 
-let currentModel = DEFAULT_MODEL, currentSite = null, currentDate = null, currentDays = [];
+let currentModel = DEFAULT_MODEL, currentSite = null, currentDate = null;
 let currentView = 'chart';
 let metadata = {}, availableDays = {}, blipCache = new Map(), currentBlipUrl = null, imgFailed = false;
 let sites = [], siteIndex = {}, areas = {};
@@ -545,7 +554,11 @@ async function loadMetadata() {
 const timeAgo = (d) => { const h = (Date.now() - d.getTime()) / 3.6e6; return h < 1 ? `${Math.round(h * 60)}m ago` : h < 24 ? `${Math.round(h)}h ago` : `${Math.round(h / 24)}d ago`; };
 function renderToggleMeta() {
   document.querySelectorAll('.res[data-model]').forEach(el => {
-    const m = metadata[el.dataset.model];
+    const model = el.dataset.model, label = el.closest('label');
+    const lacks = !!(currentSite && currentDate) && shownModels.includes(model) && !has(model, currentDate);
+    label.classList.toggle('dim', lacks);
+    if (lacks) { const d = nearestDay(model, currentDate); el.textContent = d ? `→ ${d.short}` : ''; el.classList.remove('stale'); return; }
+    const m = metadata[model];
     if (!m) { el.textContent = ''; el.classList.remove('stale'); return; }
     const updated = new Date(m.generated);
     el.textContent = timeAgo(updated);
@@ -564,55 +577,98 @@ async function pruneModels() {
   $('#data-warning').hidden = !indexDown;
   if (indexDown) $('#data-warning').textContent = 'The forecast index did not load, so this shows the usual days without freshness. Reload if it keeps happening.';
   if (!offered.length) { layoutToggle(); return; }
-  offeredModels = offered;
+  offeredModels = offered; shownModels = offered;
   MODELS.forEach((m, i) => { const input = document.querySelector(`input[name="model"][value="${m}"]`); if (input) input.closest('label').hidden = !avail[i]; });
   if (!offered.includes(currentModel)) { currentModel = offered[0]; document.querySelector(`input[name="model"][value="${currentModel}"]`).checked = true; }
   layoutToggle();
 }
 
-// ── Days: which forecast days exist for a model (today .. +4, Pacific) ──
+// ── Days: Today to +4 (Pacific) as fixed slots; per model, which of them has a
+// published chart. The day strip under the chart and the model toggle are the
+// two rows of one picker: a day the current model lacks, or a model that lacks
+// the current day, is dimmed with the alternative named, and choosing it
+// switches the other row. The day wins: the model follows the day, and snaps
+// back to the one you chose whenever that one has the day. ──
 const dayLabel = (off, ds) => off === 0 ? 'Today' : off === 1 ? 'Tomorrow' : new Date(ds + 'T12:00:00Z').toLocaleDateString(undefined, { weekday: 'short' });
-async function discoverDays(model) {
-  if (availableDays[model]) return availableDays[model];
+const weekday = (ds) => new Date(ds + 'T12:00:00Z').toLocaleDateString(undefined, { weekday: 'short' });
+const SLOTS = (() => {
   const [by, bm, bd] = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' }).split('-').map(Number);
   const out = [];
   for (let off = 0; off <= 4; off++) {
     const ds = new Date(Date.UTC(by, bm - 1, bd + off)).toISOString().slice(0, 10);
     if (Date.now() > Date.parse(ds + 'T20:00:00-08:00')) continue;   // the day's soaring window is over
-    const day = { date: ds, off, label: dayLabel(off, ds), sub: ds.slice(5) };
-    if (indexDown) { if ((USUAL_DAYS[model] || []).includes(off)) out.push(day); continue; }   // assume the usual reach
-    try { const r = await fetch(`${DATA_BASE}/forecasts/${ds}/${model}/metadata.json`, { cache: 'no-cache' }); if (r.ok) out.push(day); } catch (_) {}
+    out.push({ date: ds, off, label: dayLabel(off, ds), short: off === 0 ? 'Today' : weekday(ds), sub: ds.slice(5), num: String(Number(ds.slice(8))) });
+  }
+  return out;
+})();
+async function discoverDays(model) {
+  if (availableDays[model]) return availableDays[model];
+  const out = [];
+  for (const day of SLOTS) {
+    if (indexDown) { if ((USUAL_DAYS[model] || []).includes(day.off)) out.push(day); continue; }   // assume the usual reach
+    try { const r = await fetch(`${DATA_BASE}/forecasts/${day.date}/${model}/metadata.json`, { cache: 'no-cache' }); if (r.ok) out.push(day); } catch (_) {}
   }
   availableDays[model] = out; return out;
 }
-function renderDays(days) {
-  const i = days.findIndex(d => d.date === currentDate);
-  $('#days').classList.toggle('single', days.length < 2);
-  const dots = $('#dots'); dots.innerHTML = '';
-  days.forEach((day, k) => {
+let shownModels = MODELS.slice();   // the toggle's models for the current site (set by pruneModels and selectSite)
+let chosenModel = null;             // the model picked in the toggle or the link; null = whichever is best for the day
+const has = (m, date) => (availableDays[m] || []).some(d => d.date === date);
+const modelsFor = (date) => shownModels.filter(m => has(m, date));
+const autoModel = (date) => modelsFor(date)[0] || null;
+const openDays = () => SLOTS.filter(s => modelsFor(s.date).length).length;   // days with any forecast
+// The model to show for a day: the chosen one when it has the day, else the best that does.
+const modelFor = (date) => (chosenModel && shownModels.includes(chosenModel) && has(chosenModel, date)) ? chosenModel : autoModel(date);
+// A model's day nearest to a date: the latest on or before it, else its first.
+function nearestDay(m, date) {
+  const days = shownModels.includes(m) ? (availableDays[m] || []) : [];
+  const earlier = days.filter(d => d.date <= date);
+  return earlier.length ? earlier[earlier.length - 1] : days[0] || null;
+}
+function checkRadio(m) { const r = document.querySelector(`input[name="model"][value="${m}"]`); if (r) r.checked = true; }
+function setModel(m) { currentModel = m; checkRadio(m); layoutToggle(); renderToggleMeta(); }
+function renderDays() {
+  const list = $('#pills'); list.innerHTML = '';
+  $('#days').classList.toggle('single', openDays() < 2);
+  for (const day of SLOTS) {
+    const models = modelsFor(day.date), here = has(currentModel, day.date);
+    const via = !here && models.length ? modelFor(day.date) : null;   // the model a tap would switch to
     const b = document.createElement('button'); b.type = 'button'; b.setAttribute('role', 'tab');
-    const tip = `${day.label} · ${day.sub}${day.off >= 2 ? ' · outlook' : ''}`;
-    b.setAttribute('aria-selected', String(k === i)); b.setAttribute('aria-label', tip.replace(/ · /g, ' ')); b.title = tip;
-    b.addEventListener('click', () => goToDay(k));
-    dots.appendChild(b);
-  });
-}
-// Show day k of currentDays; false when there is no such day or it is already up.
-let slideDir = 0, revealedSite = null;
-function goToDay(k) {
-  const i = currentDays.findIndex(d => d.date === currentDate);
-  if (k < 0 || k >= currentDays.length || k === i) return false;
-  currentDate = currentDays[k].date; slideDir = k > i ? 1 : -1;
-  renderDays(currentDays); updateWindgram(); syncUrl(); return true;
-}
-const stepDay = (delta) => { const i = currentDays.findIndex(d => d.date === currentDate); return i >= 0 && goToDay(i + delta); };
-async function loadDays() {
-  const days = await discoverDays(currentModel); currentDays = days;
-  if (!days.find(d => d.date === currentDate)) {
-    const earlier = currentDate ? days.filter(d => d.date <= currentDate) : [];
-    currentDate = earlier.length ? earlier[earlier.length - 1].date : days.length ? days[0].date : null;
+    b.className = !models.length ? 'off' : !here ? 'dim' : '';
+    b.innerHTML = `<span class="d">${day.short}</span><span class="n">${via ? `${day.num} · ${via.toUpperCase()}` : day.num}</span>`;
+    const tip = `${day.label} · ${day.sub}` + (via ? ` · ${via.toUpperCase()}` : !models.length ? ' · no forecast yet' : '');
+    b.setAttribute('aria-selected', String(day.date === currentDate)); b.setAttribute('aria-label', tip.replace(/ · /g, ' ')); b.title = tip;
+    if (!models.length) b.setAttribute('aria-disabled', 'true');
+    b.addEventListener('click', () => goToDate(day.date));
+    list.appendChild(b);
   }
-  renderDays(days);
+}
+let slideDir = 0, revealedSite = null;
+// Show a day, switching the model when the current one lacks it; false when no model has it or it is already up.
+function goToDate(date) {
+  if (date === currentDate) return false;
+  const m = modelFor(date); if (!m) return false;
+  slideDir = !currentDate || date > currentDate ? 1 : -1;
+  currentDate = date; setModel(m);
+  renderDays(); updateWindgram(); syncUrl(); return true;
+}
+// The next day with any forecast in that direction.
+function stepDay(delta) {
+  let i = SLOTS.findIndex(s => s.date === currentDate);
+  if (i < 0) return false;
+  for (i += delta; i >= 0 && i < SLOTS.length; i += delta) if (modelsFor(SLOTS[i].date).length) return goToDate(SLOTS[i].date);
+  return false;
+}
+// Settle the day and model: the linked or current day when some model has it,
+// else the nearest earlier day with one, else the first; then that day's model.
+async function loadDays() {
+  await Promise.all(shownModels.map(discoverDays));
+  const open = SLOTS.filter(s => modelsFor(s.date).length);
+  if (!currentDate || !modelsFor(currentDate).length) {
+    const earlier = currentDate ? open.filter(d => d.date <= currentDate) : [];
+    currentDate = earlier.length ? earlier[earlier.length - 1].date : open.length ? open[0].date : null;
+  }
+  setModel(currentDate ? modelFor(currentDate) : (shownModels[0] || currentModel));
+  renderDays();
 }
 
 // ── The forecast panel ──────────────────────────────────────────────────
@@ -634,11 +690,15 @@ function updateWindgram() {
   imgFailed = false;
   img.alt = `${prettyName(currentSite.name)} windgram`;
   img.onerror = () => {
-    // Index down and the assumed day is not there: drop it and show a neighbour.
-    if (indexDown && currentDate && currentDays.length > 1) {
-      const k = currentDays.findIndex(d => d.date === currentDate);
-      currentDays = currentDays.filter(d => d.date !== currentDate); availableDays[currentModel] = currentDays;
-      currentDate = currentDays[Math.max(0, k - 1)].date; renderDays(currentDays); updateWindgram(); syncUrl(); return;
+    // Index down and the assumed day is not there for this model: drop it, then
+    // show the day from another model that has it, else the nearest earlier day.
+    if (indexDown && currentDate && has(currentModel, currentDate)) {
+      availableDays[currentModel] = availableDays[currentModel].filter(d => d.date !== currentDate);
+      if (!modelsFor(currentDate).length) {
+        const open = SLOTS.filter(s => modelsFor(s.date).length), earlier = open.filter(d => d.date <= currentDate);
+        currentDate = earlier.length ? earlier[earlier.length - 1].date : open.length ? open[0].date : null;
+      }
+      if (currentDate) { setModel(modelFor(currentDate)); renderDays(); updateWindgram(); syncUrl(); return; }
     }
     imgFailed = true; applyView();
   };
@@ -736,7 +796,7 @@ function applyView() {
   tableEl.hidden = !table;
   noteEl.textContent = '';
   $('#open-full').hidden = table; $('#open-data').hidden = !table;
-  const dayHint = currentDays.length < 2 ? '' : touch ? ' · swipe for the next day' : ' · scroll or ← → for the next day';
+  const dayHint = openDays() < 2 ? '' : touch ? ' · swipe for the next day' : ' · scroll or ← → for the next day';
   $('#view-hint').textContent = imgFailed && !table ? '' : table ? `${tapWord} the table to go back to the chart` : `${tapWord} the chart for the table${dayHint}`;
   if (table && currentSite) loadBlipspot();
 }
@@ -804,7 +864,7 @@ function nudge(dir) {
 // delta that grows past twice the recent ones or reverses direction.
 let wAcc = 0, wArmed = true, wLast = 0, wStep = -1e9, wHist = [];
 frame.addEventListener('wheel', (e) => {
-  if (currentDays.length < 2) return;
+  if (openDays() < 2) return;
   e.preventDefault();
   let d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
   if (e.deltaMode === 1) d *= 16; else if (e.deltaMode === 2) d *= innerHeight;
@@ -864,11 +924,8 @@ async function selectSite(site) {
   const both = offeredModels.filter(m => here.includes(m));
   const shown = both.length ? both : offeredModels;            // nothing known for the tile: show them all
   MODELS.forEach(m => { const input = document.querySelector(`input[name="model"][value="${m}"]`); if (input) input.closest('label').hidden = !shown.includes(m); });
-  if (!shown.includes(currentModel)) {                         // e.g. GFS selected, then a site outside its tile
-    currentModel = shown[0]; document.querySelector(`input[name="model"][value="${currentModel}"]`).checked = true;
-    await loadDays(); if (seq !== selectSeq) return;
-  }
-  layoutToggle();
+  shownModels = shown;
+  await loadDays(); if (seq !== selectSeq) return;             // settles the day and model for this tile (e.g. GFS, then a site outside its tile)
   updateWindgram(); syncUrl();
 }
 
@@ -893,8 +950,9 @@ function parseLink() {
 function syncUrl() {
   if (!currentSite) { history.replaceState(null, '', '/'); return; }
   const p = new URLSearchParams();
-  if (currentModel !== DEFAULT_MODEL) p.set('model', currentModel);
-  if (currentDate && currentDays.length && currentDate !== currentDays[0].date) p.set('day', currentDate);
+  const first = SLOTS.find(s => modelsFor(s.date).length);
+  if (currentDate && first && currentDate !== first.date) p.set('day', currentDate);
+  if (currentDate && currentModel !== autoModel(currentDate)) p.set('model', currentModel);
   if (currentView === 'table') p.set('view', 'table');
   const q = p.toString();
   history.replaceState(null, '', '/' + encodeURIComponent(currentSite.name) + (q ? '?' + q : ''));
@@ -974,13 +1032,16 @@ $('#site-map-btn').addEventListener('click', openMap);
 $('#map-close').addEventListener('click', closeMap);
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !overlay.hidden) closeMap(); });
 
-document.querySelectorAll('input[name="model"]').forEach(r => r.addEventListener('change', async e => {
-  currentModel = e.target.value; layoutToggle(); await loadDays(); updateWindgram(); syncUrl();
+// A model that lacks the current day takes you to its nearest day instead.
+document.querySelectorAll('input[name="model"]').forEach(r => r.addEventListener('change', e => {
+  const m = e.target.value; chosenModel = m;
+  if (currentDate && !has(m, currentDate)) { const d = nearestDay(m, currentDate); if (d) { slideDir = d.date > currentDate ? 1 : -1; currentDate = d.date; } }
+  setModel(m); renderDays(); updateWindgram(); syncUrl();
 }));
 
 // ── Boot: link → metadata → models → days → sites ──────────────────────
 const pendingLink = parseLink();
-if (pendingLink.model) { const r = document.querySelector(`input[name="model"][value="${pendingLink.model}"]`); if (r) { r.checked = true; currentModel = pendingLink.model; } }
+if (pendingLink.model) { chosenModel = currentModel = pendingLink.model; checkRadio(currentModel); }
 if (pendingLink.day) currentDate = pendingLink.day;
 if (pendingLink.view) currentView = pendingLink.view;
 if (new URLSearchParams(location.search).has('debug')) {
