@@ -32,6 +32,19 @@ OUT=${GITHUB_OUTPUT:-/dev/null}
 TARGET_DATE=$(date -u -d "$BASE +${DAY} days" +%F)
 echo "target_date=$TARGET_DATE" >> "$OUT"
 
+# GFS is the outlook for the days no short-range model has reached. When RRFS,
+# HRRR or HRDPS already published this date (a hand-started run asking for a
+# near day), the leg has nothing to add and is skipped (output skip=true): the
+# publish step retires a GFS day the moment another model publishes it anyway.
+SITE_DATA=${SITE_DATA_BASE:-https://pub-de96e47b1e91464bb2959747602c1914.r2.dev}
+for m in rrfs hrrr hrdps; do
+  if [ "$(curl -sI --max-time 20 -o /dev/null -w '%{http_code}' -A 'pnw-soaring forecast gate (github.com/nw-paragliding/pnw-soaring)' "$SITE_DATA/forecasts/$TARGET_DATE/$m/metadata.json")" = 200 ]; then
+    echo "::warning::$(echo "$m" | tr a-z A-Z) already covers $TARGET_DATE — the GFS day-$DAY leg is skipped."
+    { echo "skip=true"; echo "ready=false"; } >> "$OUT"; exit 0
+  fi
+done
+echo "skip=false" >> "$OUT"
+
 REACH=384
 DUE_AFTER=$(( 4 * 3600 + 15 * 60 ))   # the mirror has a whole cycle by cycle + 4 h 15
 GRACE=1800                            # accept the previous cycle once the newest is this late
