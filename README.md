@@ -54,7 +54,7 @@ points coincide where they overlap.
 | `tricities` | 46.59, -119.30 | Tri-Cities, Saddle Mountain, Kiona, Eagle Butte, Frenchman Hills | 6 |
 | `bend` | 44.32, -121.51 | Central Oregon: Black Butte, Pine Ridge, Haystack, Pine Mountain, Hoover Ridge | 5 |
 | `lakeview` | 42.19, -119.99 | Lakeview: Abert Rim, Black Cap, Doherty Slide, Sugar Hill | 4 |
-| `colville` | 48.20, -117.80 | Chewelah / Colville: Inkler, Parker, Wrights | 3 |
+| `colville` | 48.55, -118.16 | Chewelah / Colville / Curlew: Inkler, Parker, Wrights, Little Vulcan | 4 |
 | `siskiyou` | 41.89, -122.49 | Siskiyous: Woodrat, Herd Peak, Whaleback | 3 |
 | `olympics` | 47.26, -122.58 | South Olympics: Shelton, Mt Ellinor, Jupiter, Dinosaur | 3 |
 | `palouse` | 47.13, -117.13 | Palouse: Steptoe Butte, Tekoa | 2 |

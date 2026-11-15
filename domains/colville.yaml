@@ -1,11 +1,15 @@
-# Region tile: colville -- Chewelah / Colville: Inkler, Parker, Wrights.
+# Region tile: colville -- Chewelah / Colville / Curlew: Inkler, Parker, Wrights,
+# Little Vulcan.
 #
 # One of the region tiles (README "Regions"). Every tile runs the SAME chain as
 # domains/cascades.yaml -- parent -> WRF 4 km -> WRF 1.33 km, e_vert 52, DrJack
 # physics -- with a 120 km x 120 km 1.33 km nest (the 4 km parent auto-sizes to
 # 200 km). Sites: sites/colville-sites.csv, each >= 10 km inside the nest. The
-# centre was chosen so the 200 km parent stays inside the HRRR/RRFS 3 km grid,
-# whose northern edge runs from 50.0N at the coast to 51.3N at Idaho.
+# centre moved north-west on 2026-11-15 (from 48.20, -117.80) to take in Little
+# Vulcan near Curlew: the Chewelah sites sit ~40 km south / ~30 km east of it and
+# Little Vulcan ~40 km north / ~37 km west, all >= 20 km inside the nest edge.
+# The 200 km parent reaches 49.45N, inside the HRRR/RRFS 3 km grid, whose
+# northern edge runs from 50.0N at the coast to 51.3N at Idaho.
 #
 # This file is the tile's base config, still written as the NAM config. The
 # forecast workflows derive the other models at run time instead of keeping
@@ -22,8 +26,8 @@
 name: colville
 model: nam
 
-center_lat: 48.20
-center_lon: -117.80
+center_lat: 48.55
+center_lon: -118.16
 
 # Shared map projection + lattice: all tiles use the same block so their
 # grids coincide where they overlap (needs windgram >= 0.7.0; older images
