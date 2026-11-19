@@ -23,6 +23,9 @@ env:
   # just isn't uploaded. 'true' re-enables it for the issaquah tile;
   # r2-prune.yml keeps ageing out the existing objects.
   UPLOAD_CUBES: 'false'
+  # TEMPORARY (branch test only, reverted before the PR is ready): force the
+  # run-forecast action's attempt 1 to fail after 10 s to exercise the retry.
+  RUN_FORECAST_FAIL_FIRST: '1'
   IMAGE: ghcr.io/nw-paragliding/windgram:latest
   # Data root for HRRR GRIB. Default: NOAA's Open Data mirror on AWS
   # (noaa-hrrr-bdp-pds, same hrrr.YYYYMMDD/conus/ layout and .idx files as
