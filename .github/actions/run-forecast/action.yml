@@ -30,6 +30,9 @@ outputs:
   sites:
     description: Number of sites in the region's site list
     value: ${{ steps.prep.outputs.sites }}
+  attempts:
+    description: Pipeline attempts the leg took (1, or 2 after one early transient failure)
+    value: ${{ steps.forecast.outputs.attempts }}
 
 runs:
   using: composite
@@ -47,15 +50,67 @@ runs:
         docker system prune -af 2>/dev/null || true
         echo "Disk after cleanup:"; df -h /
 
-    - uses: docker/login-action@v3
-      with:
-        registry: ghcr.io
-        username: ${{ github.actor }}
-        password: ${{ github.token }}
-
-    - name: Pull image
+    # Registry login and image pull: three attempts each, 15 s apart. This
+    # replaces docker/login-action, which has no retry: one HRRR leg on
+    # 2026-11-16 died 51 s in on `Get "https://ghcr.io/v2/": EOF`. The package
+    # (ghcr.io/nw-paragliding/windgram) is public, so a login that still fails
+    # after three tries is only a warning and the pull goes ahead anonymously;
+    # the visibility is checked first (packages API, then the registry's own
+    # anonymous-token probe), and a package not known to be public keeps a
+    # failed login fatal, as before.
+    - name: Log in to ghcr.io and pull image
+      id: pull
       shell: bash
-      run: docker pull "${{ inputs.image }}"
+      env:
+        IMAGE: ${{ inputs.image }}
+        ACTOR: ${{ github.actor }}
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        # ghcr.io/<org>/<package>[:tag|@digest] -> org + package name
+        PKG_PATH=${IMAGE#ghcr.io/}; PKG_PATH=${PKG_PATH%%@*}; PKG_PATH=${PKG_PATH%%:*}
+        ORG=${PKG_PATH%%/*}; PKG=${PKG_PATH#*/}
+        VIS=$(gh api "/orgs/$ORG/packages/container/$PKG" --jq .visibility 2>/dev/null) || VIS=unknown
+        echo "Package $ORG/$PKG visibility: $VIS (packages API)"
+        if [ "$VIS" != public ]; then
+          # The packages API wants read:packages; the registry answers for free:
+          # a public package hands out an anonymous pull token and lists its tags.
+          TOK=$(curl -fsS --max-time 20 "https://ghcr.io/token?scope=repository:${PKG_PATH}:pull" | sed -n 's/.*"token":"\([^"]*\)".*/\1/p' || true)
+          if [ -n "$TOK" ] && [ "$(curl -sS -o /dev/null --max-time 20 -w '%{http_code}' \
+              -H "Authorization: Bearer $TOK" "https://ghcr.io/v2/${PKG_PATH}/tags/list")" = 200 ]; then
+            VIS="public"
+            echo "Package $ORG/$PKG visibility: public (anonymous registry probe)"
+          fi
+        fi
+
+        logged_in=false
+        for attempt in 1 2 3; do
+          if echo "$GH_TOKEN" | docker login ghcr.io -u "$ACTOR" --password-stdin; then
+            echo "ghcr.io login OK (attempt $attempt of 3)"
+            logged_in=true
+            break
+          fi
+          echo "ghcr.io login failed (attempt $attempt of 3)"
+          if [ "$attempt" -lt 3 ]; then sleep 15; fi
+        done
+        if [ "$logged_in" != true ]; then
+          if [ "$VIS" = public ]; then
+            echo "::warning::ghcr.io login failed 3 times; $ORG/$PKG is public, pulling anonymously"
+          else
+            echo "::error::ghcr.io login failed 3 times and $ORG/$PKG is not known to be public (visibility: $VIS)"
+            exit 1
+          fi
+        fi
+
+        for attempt in 1 2 3; do
+          if docker pull "$IMAGE"; then
+            echo "Pulled $IMAGE (attempt $attempt of 3)"
+            exit 0
+          fi
+          echo "docker pull failed (attempt $attempt of 3)"
+          if [ "$attempt" -lt 3 ]; then sleep 15; fi
+        done
+        echo "::error::docker pull $IMAGE failed 3 times"
+        exit 1
 
     - name: Prepare domain config (${{ inputs.region }} / ${{ inputs.model }})
       id: prep
@@ -121,13 +176,34 @@ runs:
         path: geog/
         key: wps-geog-lowres-plus-30s-v1
 
+    # One automatic retry for an early failure. The 2026-11-10..17 audit found
+    # 21 production legs lost to transient errors ~90 s in: the AWS mirror
+    # replicates a cycle's forecast hours out of order, so an hour the pipeline
+    # needed was HTTP 404 and landed 2-3 min later (18 HRRR legs, 2 GFS legs),
+    # plus the ghcr.io EOF above. A pipeline exit within the first 8 min is one
+    # of those (data, registry or network: WRF has not really started), so the
+    # leg wipes its output and runs the pipeline once more after 3 min; a later
+    # failure (WRF blow-ups are not transient) or a second one fails the step
+    # as before. Re-running the job from GitHub is the wrong tool: it drags the
+    # dependent waves back through and re-fires the workflow_run chains.
+    # The step output `attempts` (1 or 2) says what it took.
+    #
+    # Test hook: RUN_FORECAST_FAIL_FIRST=1 in the environment (never set by any
+    # workflow; put it in a temporary workflow `env:` edit on a branch) makes
+    # attempt 1 exit 1 after 10 s instead of running the pipeline, so the retry
+    # path can be exercised end to end (attempts=2, windgrams from attempt 2).
     - name: Run forecast (${{ inputs.region }} / ${{ inputs.model }} / ${{ inputs.target_date }})
+      id: forecast
       shell: bash
       env:
         IMAGE: ${{ inputs.image }}
         TARGET_DATE: ${{ inputs.target_date }}
+        REGION: ${{ inputs.region }}
+        MODEL: ${{ inputs.model }}
+        EARLY_FAIL_S: "480"   # a failure this soon after the start is retried once
+        RETRY_SLEEP_S: "180"  # the mirror's out-of-order hours land 2-3 min late
       run: |
-        echo "${{ inputs.region }}: soaring date $TARGET_DATE (auto-cycle)"
+        echo "$REGION: soaring date $TARGET_DATE (auto-cycle)"
         EXTRA=()
         [ -d geog ] && EXTRA+=(-v "$PWD/geog:/mnt/geog:ro")
         # GRIB data roots (forecast-rrfs/-hrrr.yml env: AWS mirror or NOMADS);
@@ -139,25 +215,63 @@ runs:
         # geo_em/ is mounted rw: a cached grid is copied into the WPS dir (the
         # pipeline then skips geogrid); on a miss the pipeline runs geogrid and
         # the fresh grids are copied back out for the cache save below.
-        docker run --rm \
-          "${EXTRA[@]}" \
-          -v "$PWD/geo_em:/mnt/geo_em:rw" \
-          -v "$PWD/output:/mnt/output:rw" \
-          -v "$PWD/job/domain.yaml:/opt/rasp/domain.yaml:ro" \
-          -v "$PWD/job/sites.csv:/opt/rasp/sites.csv:ro" \
-          --entrypoint bash \
-          "$IMAGE" -c "
-            cp /mnt/geo_em/geo_em.d0*.nc /opt/rasp/wps/ 2>/dev/null || true
-            python3 -m rasp.pipeline domain.yaml \
-              --sites sites.csv \
-              --output-dir /mnt/output \
-              --num-procs 4 \
-              --target-date $TARGET_DATE; EC=\$?
-            if [ ! -f /mnt/geo_em/geo_em.d01.nc ] && [ -f /opt/rasp/wps/geo_em.d01.nc ]; then
-              cp /opt/rasp/wps/geo_em.d0*.nc /mnt/geo_em/ && echo 'geo_em: copied fresh geogrid output out for caching'
-            fi
-            exit \$EC
-          "
+        run_pipeline() {
+          docker run --rm \
+            "${EXTRA[@]}" \
+            -v "$PWD/geo_em:/mnt/geo_em:rw" \
+            -v "$PWD/output:/mnt/output:rw" \
+            -v "$PWD/job/domain.yaml:/opt/rasp/domain.yaml:ro" \
+            -v "$PWD/job/sites.csv:/opt/rasp/sites.csv:ro" \
+            --entrypoint bash \
+            "$IMAGE" -c "
+              cp /mnt/geo_em/geo_em.d0*.nc /opt/rasp/wps/ 2>/dev/null || true
+              python3 -m rasp.pipeline domain.yaml \
+                --sites sites.csv \
+                --output-dir /mnt/output \
+                --num-procs 4 \
+                --target-date $TARGET_DATE; EC=\$?
+              if [ ! -f /mnt/geo_em/geo_em.d01.nc ] && [ -f /opt/rasp/wps/geo_em.d01.nc ]; then
+                cp /opt/rasp/wps/geo_em.d0*.nc /mnt/geo_em/ && echo 'geo_em: copied fresh geogrid output out for caching'
+              fi
+              exit \$EC
+            "
+        }
+
+        attempt=1
+        while :; do
+          LOG="forecast-attempt-$attempt.log"
+          START=$SECONDS
+          set +e
+          if [ "$attempt" -eq 1 ] && [ "${RUN_FORECAST_FAIL_FIRST:-}" = 1 ]; then
+            echo "RUN_FORECAST_FAIL_FIRST=1: attempt 1 is a simulated early failure (test hook), exit 1 in 10 s"
+            sleep 10
+            echo "  ERROR: simulated early failure (RUN_FORECAST_FAIL_FIRST=1 test hook)" | tee "$LOG"
+            EC=1
+          else
+            run_pipeline 2>&1 | tee "$LOG"; EC=${PIPESTATUS[0]}
+          fi
+          set -e
+          ELAPSED=$(( SECONDS - START ))
+          echo "attempt $attempt: pipeline exit $EC after ${ELAPSED}s"
+          if [ "$EC" -eq 0 ]; then break; fi
+          if [ "$attempt" -ge 2 ] || [ "$ELAPSED" -ge "$EARLY_FAIL_S" ]; then
+            echo "attempts=$attempt" >> "$GITHUB_OUTPUT"
+            if [ "$attempt" -ge 2 ]; then WHY="second failure"; else WHY="failed ${ELAPSED}s in, past the ${EARLY_FAIL_S}s early-failure limit"; fi
+            echo "$REGION/$MODEL: attempt $attempt $WHY; not retrying"
+            exit "$EC"
+          fi
+          # Early failure: say what killed it, start the next attempt clean. The
+          # GRIB downloads live inside the container and went with it (--rm);
+          # output/ is the only host-side state of the attempt. geo_em/ stays:
+          # it is the restored cache, or geogrid output worth keeping.
+          LAST=$(grep -aE 'ERROR|HTTP|FATAL' "$LOG" | tail -1)
+          [ -n "$LAST" ] || LAST=$(grep -av '^[[:space:]]*$' "$LOG" | tail -1)
+          echo "::warning::$REGION/$MODEL: attempt $attempt failed ${ELAPSED}s in (exit $EC), retrying once in ${RETRY_SLEEP_S}s. Last error: $LAST"
+          rm -rf output && mkdir output
+          sleep "$RETRY_SLEEP_S"
+          attempt=$(( attempt + 1 ))
+        done
+        echo "attempts=$attempt" >> "$GITHUB_OUTPUT"
 
     - name: Check forecast output
       id: check
@@ -171,7 +285,7 @@ runs:
         fi
         RENDERED=$(ls output/*.png | head -1 | xargs basename | cut -d_ -f1)
         echo "rendered_date=$RENDERED" >> "$GITHUB_OUTPUT"
-        echo "Rendered $count windgrams (of ${{ steps.prep.outputs.sites }} sites) for $RENDERED."
+        echo "Rendered $count windgrams (of ${{ steps.prep.outputs.sites }} sites) for $RENDERED (attempts: ${{ steps.forecast.outputs.attempts }})."
 
     - name: Save geo_em cache
       if: always() && steps.geo.outputs.cache-hit != 'true' && hashFiles('geo_em/geo_em.d02.nc') != ''
