@@ -416,7 +416,7 @@ if (location.protocol === 'http:' && !/^(localhost|127\.0\.0\.1|\[::1\])$/.test(
 // 2-minute Cache-Control, so JSON probes ask with no-cache to revalidate.
 const DATA_BASE = 'https://pub-de96e47b1e91464bb2959747602c1914.r2.dev';
 // Toggle order. RRFS is the default (it replaced NAM, retired 2026-11-03).
-// hrdps: ECCC's 2.5 km run (issaquah tile so far); gfs: the days beyond RRFS's reach (issaquah tile).
+// hrdps: ECCC's 2.5 km run (issaquah tile so far); gfs: days 3 and 4, beyond RRFS's reach (every tile).
 // The order is also the preference order when several models have a day.
 const MODELS = ['rrfs', 'hrrr', 'hrdps', 'gfs'];
 const DEFAULT_MODEL = 'rrfs';
