@@ -86,8 +86,8 @@ edited YAML, new windgram image) the job downloads the WPS GEOG data and runs ge
 
 **Jobs per run:** RRFS runs every tile for days 0, 1 and 2 = 60 arm jobs in
 three waves of 20 (one per day); HRRR runs days 0 and 1 = 40 jobs in two waves;
-the GFS outlook spike adds two one-tile legs (days 3 and 4) chained after each
-RRFS run.
+the GFS outlook runs days 3 and 4 for every tile = 40 jobs in two waves of 20,
+chained after each RRFS run.
 Waves never overlap. Day 2 is RRFS's last reachable day (f64–f76 from 00z,
 f52–f64 from 12z; 84 h reach), and because no older cycle covers it, its legs
 run only when the `wait-day2` gate saw f75 — otherwise the day is skipped and
@@ -117,7 +117,7 @@ The crons live in [`cloudflare-trigger/wrangler.toml`](cloudflare-trigger/wrangl
 | Pre-dawn HRRR | HRRR 1.33 km — HRRR 3 km → WRF 4 km → 1.33 km | 07:15 | 12:15am | Pre-dawn refresh, today + tomorrow (06z cycle; tomorrow ends at f45) |
 | Morning HRRR | HRRR 1.33 km — HRRR 3 km → WRF 4 km → 1.33 km | 13:00 | 6:00am | Freshest, today + tomorrow (12z cycle; tomorrow ends at f39) |
 | Morning RRFS | RRFS → WRF 4 km → 1.33 km | 14:00 | 7:00am | Day-of update, today + two more days (12z cycle; waits for the GRIB: f27 ~14:25z, f51 ~14:52z, f75 ~15:18z) |
-| GFS outlook (spike) | GFS 25 km → WRF 4 km → 1.33 km | after each RRFS run (~03:40 / ~15:42) | ~8:40pm / ~8:40am | Days 3 and 4, the **issaquah tile only** while we learn whether they are worth showing (`forecast-gfs.yml`, chained by `workflow_run`; the newest 6-hourly GFS cycle, f099 / f123 ~20 min after the chain fires, or the cycle before it when a hand-started run comes hours before the newest exists). RRFS reaches 84 h, GFS 384 h. A GFS day is retired the moment RRFS (or HRRR/HRDPS) publishes that date (`publish-r2`), and the gate skips a day they already cover. |
+| GFS outlook | GFS 25 km → WRF 4 km → 1.33 km | after each RRFS run (~03:40 / ~15:42) | ~8:40pm / ~8:40am | Days 3 and 4 for every tile, two waves of 20 legs (`forecast-gfs.yml`, chained by `workflow_run`). The gate releases a wave once every 3-hourly file of the soaring window (f087–f099 / f111–f123 from 00z) and its `.idx` is on the mirror, ~20 min after the chain fires, taking the cycle before the newest when a hand-started run comes hours before the newest exists (`scripts/wait-gfs.sh`; the mirror posts hours out of order, so a last-hour-only check let a leg die on a missing f090 on 2026-11-17). RRFS reaches 84 h, GFS 384 h. A GFS day is retired the moment RRFS (or HRRR/HRDPS) publishes that date (`publish-r2`), and the gate skips a day they already cover. Days 3–4 ran on the issaquah tile alone from 2026-11-13 to 11-17. |
 
 `forecast-hrdps.yml` (a spike on the issaquah tile: ECCC's HRDPS 2.5 km, the
 model that reaches the BC sites) has no cron of its own: `workflow_run` chains
