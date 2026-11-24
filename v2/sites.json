@@ -1,0 +1,21 @@
+[
+  { "name": "Poo Poo Point",  "type": "launch",  "lat": 47.49927,   "lon": -122.00819 },
+  { "name": "Grand Prospect", "type": "launch",  "lat": 47.47162,   "lon": -121.82094 },
+  { "name": "Mount Si",       "type": "launch",  "lat": 47.507751,  "lon": -121.739688 },
+  { "name": "Green Mountain", "type": "launch",  "lat": 47.5121111, "lon": -121.6777222 },
+  { "name": "5 Mile",         "type": "launch",  "lat": 47.6145,    "lon": -121.691243 },
+  { "name": "Bandera",        "type": "launch",  "lat": 47.41984,   "lon": -121.55438 },
+  { "name": "Granite",        "type": "launch",  "lat": 47.415878,  "lon": -121.477933 },
+  { "name": "Mailbox",        "type": "launch",  "lat": 47.46226,   "lon": -121.63947 },
+  { "name": "Index",          "type": "launch",  "lat": 47.83572,   "lon": -121.53549 },
+  { "name": "Rampart",        "type": "launch",  "lat": 47.38733,   "lon": -121.36333 },
+  { "name": "Manastash Ridge","type": "launch",  "lat": 46.96015,   "lon": -120.68688 },
+  { "name": "Tumwater",       "type": "launch",  "lat": 47.597,     "lon": -120.695 },
+  { "name": "Icicle Ridge",   "type": "launch",  "lat": 47.563,     "lon": -120.723 },
+  { "name": "Eagle Creek",    "type": "launch",  "lat": 47.6685,    "lon": -120.5601 },
+
+  { "name": "Tiger LZ",        "type": "landing", "lat": 47.49800,   "lon": -122.02100 },
+  { "name": "Green Mtn LZ",    "type": "landing", "lat": 47.4874722, "lon": -121.6756111 },
+  { "name": "Index LZ",        "type": "landing", "lat": 47.81783,   "lon": -121.56702 },
+  { "name": "Bandera Airstrip","type": "landing", "lat": 47.39533,   "lon": -121.53650 }
+]

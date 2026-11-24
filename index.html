@@ -1,0 +1,1073 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>PNW Soaring Forecast</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta charset="utf-8">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f3efe6">
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#131917">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <!--
+    List-first layout (2026-11): a finder column (search, favourites, State >
+    Area > Site) beside the forecast; the map is a picker behind a button.
+    Phones show one of the two at a time; foldables put one on each screen.
+    Data: /sites.json + /areas.json here, windgrams/tables/metadata in R2.
+  -->
+  <style>
+    :root {
+      --ink:       #1c2622;   /* deep evergreen-black text */
+      --ink-soft:  #4a554f;
+      --paper:     #f3efe6;   /* warm topo paper */
+      --panel:     #fbf9f4;
+      --evergreen: #1f5240;   /* primary */
+      --evergreen-d:#163a2d;
+      --thermal:   #e0662a;   /* lift / accent */
+      --sky:       #3d7ea6;
+      --line:      rgba(28,38,34,0.12);
+      --line-2:    rgba(28,38,34,0.18);
+      --stale:     #b67410;
+      --shadow:    0 1px 2px rgba(28,38,34,.06), 0 8px 24px -12px rgba(28,38,34,.28);
+      --accent-text: #1f5240;              /* evergreen as text: links, back, section titles */
+      --on-accent: #fff;                   /* text on an evergreen fill */
+      --hover:     rgba(251,249,244,.9);   /* list row hover */
+      --panel-soft:  rgba(251,249,244,.5); /* empty state, no-data boxes */
+      --panel-soft-2:rgba(251,249,244,.7); /* the note under the chart */
+      --tint-green: rgba(31,82,64,.07);    /* table section rows */
+      --tint-ink:   rgba(28,38,34,.07);    /* table row hover */
+      --inset:      rgba(28,38,34,.04);    /* inset shadow in inputs */
+      --map-bg:     #e4e4e2;
+      --tint-base:  #fbf9f4;               /* under the table's tinted cells, in both themes */
+      color-scheme: light;
+      --finder-w:  360px;
+      --sat:       env(safe-area-inset-top, 0px);
+      --sab:       env(safe-area-inset-bottom, 0px);
+    }
+    /* Dark follows the device setting (prefers-color-scheme); there is no
+       switch. Same tokens, so every rule below is theme-agnostic. The table's
+       tinted cells paint their tint over a fixed light base (inline, see
+       renderBlipspot), so they keep dark ink whatever the theme; the windgram
+       image is what it is. */
+    @media (prefers-color-scheme: dark) {
+      :root {
+      --ink:       #e6ece7;
+      --ink-soft:  #9db0a4;
+      --paper:     #131917;
+      --panel:     #1b2320;
+      --evergreen: #2b6a52;
+      --evergreen-d:#1f5240;
+      --line:      rgba(230,236,231,.10);
+      --line-2:    rgba(230,236,231,.16);
+      --stale:     #e0a040;
+      --shadow:    0 1px 2px rgba(0,0,0,.35), 0 8px 24px -12px rgba(0,0,0,.6);
+      --accent-text: #7cc4a0;
+      --hover:     rgba(255,255,255,.05);
+      --panel-soft:  rgba(27,35,32,.5);
+      --panel-soft-2:rgba(27,35,32,.7);
+      --tint-green: rgba(124,196,160,.10);
+      --tint-ink:   rgba(255,255,255,.06);
+      --inset:      rgba(0,0,0,.3);
+      --map-bg:     #1f2422;
+      color-scheme: dark;
+      }
+      .wg-table td[style] { color: #1c2622; }
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; }
+    body { font-family: 'Bricolage Grotesque', system-ui, sans-serif; color: var(--ink); background: var(--paper);
+      -webkit-font-smoothing: antialiased; overflow: hidden; }
+    button, input { font: inherit; color: inherit; }
+    button { cursor: pointer; }
+    a { color: var(--accent-text); }
+    .mono { font-family: 'IBM Plex Mono', monospace; }
+    .micro { font: 500 9.5px/1 'IBM Plex Mono', monospace; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-soft); }
+    [hidden] { display: none !important; }
+
+    /* ── Frame: finder | forecast ─────────────────────────────── */
+    #app { display: grid; grid-template-columns: var(--finder-w) minmax(0, 1fr); height: 100dvh; }
+    #finder, #forecast { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+
+    /* ── Finder (the list) ─────────────────────────────────────── */
+    #finder {
+      display: flex; flex-direction: column;
+      background: var(--paper);
+      background-image:
+        radial-gradient(120% 80% at 100% 0%, rgba(31,82,64,.06), transparent 60%),
+        repeating-radial-gradient(circle at 18% -10%, transparent 0 22px, rgba(28,38,34,.025) 22px 23px);
+      border-right: 1px solid var(--line-2);
+      padding-top: var(--sat);
+    }
+    .brand { display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      padding: 14px 18px 10px; border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(31,82,64,.05), transparent); }
+    .brand h1 { font-weight: 800; font-size: 22px; letter-spacing: -.025em; line-height: 1; }
+    .brand h1 .lift { color: var(--thermal); }
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 11px; border-radius: 9px;
+      border: 1px solid var(--line-2); background: var(--panel); color: var(--accent-text);
+      font: 600 12px/1 'Bricolage Grotesque', system-ui, sans-serif; white-space: nowrap; box-shadow: var(--shadow);
+      transition: background .15s, color .15s, border-color .15s; }
+    .btn:hover { border-color: var(--accent-text); }
+    .btn.primary { background: var(--evergreen); color: var(--on-accent); border-color: var(--evergreen); }
+    .btn .glyph { font-size: 13px; line-height: 1; }
+    .search { padding: 10px 14px 6px; }
+    .search input { width: 100%; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--line-2);
+      background: var(--panel); font-size: 14px; outline: none; box-shadow: inset 0 1px 2px var(--inset); }
+    .search input:focus { border-color: var(--accent-text); }
+    .tree { padding: 4px 14px 16px; display: flex; flex-direction: column; gap: 2px; }
+    .crumb { display: flex; align-items: center; gap: 8px; padding: 8px 6px 6px; color: var(--ink-soft);
+      font: 600 11px/1 'IBM Plex Mono', monospace; letter-spacing: .1em; text-transform: uppercase; }
+    .crumb button { background: none; border: 0; color: var(--accent-text); font: inherit; letter-spacing: inherit;
+      text-transform: inherit; display: inline-flex; align-items: center; gap: 4px; }
+    .crumb button:hover { text-decoration: underline; }
+    #tree .row { display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      width: 100%; text-align: left; padding: 10px 12px; border-radius: 10px;
+      border: 1px solid transparent; background: none; color: var(--ink); font-size: 14px; }
+    #tree .row:hover { background: var(--hover); border-color: var(--line); }
+    #tree .row.kbd { border-color: var(--evergreen); box-shadow: inset 0 0 0 1px var(--evergreen); }   /* ↑ ↓ from the search box */
+    #tree .row.node { font-weight: 600; }
+    #tree .row .count { font: 500 10.5px/1 'IBM Plex Mono', monospace; color: var(--ink-soft); }
+    #tree .row .chev { color: var(--ink-soft); font-size: 16px; line-height: 1; }
+    #tree .row .sub { display: block; font: 500 10px/1.4 'IBM Plex Mono', monospace; color: var(--ink-soft); letter-spacing: .04em; }
+    #tree .row.site.current { background: var(--evergreen); color: var(--on-accent); border-color: var(--evergreen); }
+    #tree .row.site.current .sub { color: rgba(255,255,255,.75); }
+    #tree .row.site.current .star { color: var(--on-accent); }
+    .star { background: none; border: 0; font-size: 16px; line-height: 1; color: var(--line-2); padding: 2px 4px; }
+    .star.on { color: var(--thermal); }
+    #tree .row.site.current .star:not(.on) { color: rgba(255,255,255,.5); }
+    .section-label { padding: 12px 6px 4px; }
+    .finder-foot { margin-top: auto; padding: 12px 18px calc(14px + var(--sab)); border-top: 1px solid var(--line);
+      font: 500 10.5px/1.5 'IBM Plex Mono', monospace; color: var(--ink-soft); }
+    .finder-foot a { color: var(--accent-text); text-decoration: none; border-bottom: 1px solid currentColor; }
+
+    /* ── Forecast ──────────────────────────────────────────────── */
+    #forecast { background: var(--paper); padding-top: var(--sat); display: flex; flex-direction: column; }
+    /* A flex column the height of the pane: the chart (or table) flexes to fill
+       what the two control rows leave, so it is as tall as the screen allows. */
+    .fc-inner { width: 100%; max-width: 1100px; margin: 0 auto; padding: 10px 24px calc(10px + var(--sab));
+      display: flex; flex-direction: column; gap: 10px; flex: 1 1 auto; min-height: 0; }
+    #windgram-content { display: flex; flex-direction: column; gap: 10px; flex: 1 1 auto; min-height: 0; }
+    .topbar { display: flex; align-items: center; gap: 10px; min-height: 36px; flex: none; }
+    .back { display: none; }
+    .site-head { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 6px 12px; flex-wrap: wrap; }
+    .site-head h2 { font-weight: 800; font-size: 22px; letter-spacing: -.02em; line-height: 1.05; max-width: 100%;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .site-head .coords { font: 500 11px/1.3 'IBM Plex Mono', monospace; color: var(--ink-soft); white-space: nowrap; }
+    .site-head .coords .area::before { content: " · "; }
+    .controls { display: flex; align-items: center; justify-content: space-between; gap: 8px 12px; flex-wrap: wrap; flex: none; }
+
+    .segmented { --n: 3; --i: 0; position: relative; display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr));
+      background: var(--panel); border: 1px solid var(--line-2); border-radius: 10px; padding: 3px;
+      box-shadow: inset 0 1px 2px var(--inset); flex: 0 1 auto; width: max-content; min-width: min(260px, 100%); max-width: 100%; }
+    .segmented .indicator { position: absolute; top: 3px; left: 3px; bottom: 3px; width: calc((100% - 6px) / var(--n));
+      background: var(--evergreen); border-radius: 7px; box-shadow: 0 2px 8px -2px rgba(22,58,45,.5);
+      transform: translateX(calc(var(--i) * 100%)); transition: transform .28s cubic-bezier(.5,.1,.1,1); z-index: 0; }
+    /* Names only: the toggle is as wide as its widest name needs (equal columns),
+       at least 260px, never wider than the row; only in a row narrower than that
+       do names clip. A model that lacks the current day is dimmed and its tooltip
+       names the day a tap opens; the run age sits on the hint line under the chart. */
+    .segmented label { position: relative; z-index: 1; display: flex; align-items: baseline; justify-content: center; min-width: 0; overflow: hidden;
+      padding: 6px 10px; cursor: pointer; user-select: none; border-radius: 7px; transition: color .2s; }
+    .segmented label .name { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: 600; font-size: 13px; letter-spacing: -.01em; white-space: nowrap; }
+    .segmented label.dim .name { color: var(--ink-soft); }   /* lacks the current day */
+    .segmented input { position: absolute; opacity: 0; pointer-events: none; }
+    .segmented label:has(input:checked) .name { color: var(--on-accent); }
+
+    /* Days: one pill per day, Today to +4, under the chart. Lit when the current
+       model has the day; dashed, naming the model a tap would switch to, when
+       only another model has it; faded when no model has it yet. Swiping or
+       scrolling the chart, a pill, or ← → step the day. */
+    .days { display: flex; align-items: center; justify-content: center; flex: none; margin-top: -2px; }
+    .days.single { display: none; }
+    .pills { display: flex; gap: 5px; width: 100%; max-width: 520px; }
+    .pills button { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 5px 4px; line-height: 1.2;
+      border: 1px solid var(--line-2); border-radius: 9px; background: var(--panel); color: var(--ink); cursor: pointer; transition: background .18s, border-color .18s, color .18s; }
+    .pills button .d { font-weight: 600; font-size: 12.5px; letter-spacing: -.01em; white-space: nowrap; }
+    .pills button .n { font: 500 10px/1.2 'IBM Plex Mono', monospace; color: var(--ink-soft); letter-spacing: .02em; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+    .pills button:hover { border-color: var(--ink-soft); }
+    .pills button[aria-selected="true"] { background: var(--evergreen); border-color: var(--evergreen); color: var(--on-accent); }
+    .pills button[aria-selected="true"] .n { color: rgba(255,255,255,.75); }
+    .pills button.dim { border-style: dashed; background: none; color: var(--ink-soft); }
+    .pills button.off { border-color: transparent; background: none; color: var(--ink-soft); opacity: .45; cursor: default; }
+
+    /* The stage takes the room the controls leave. The chart (or table) and the
+       dots sit in it, centred when there is spare height (a tall phone), and the
+       chart shrinks to fit when there is not (a short screen). */
+    .wg-stage { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; justify-content: center; justify-content: safe center; gap: 10px; }
+    /* The chart: a tap flips it to the table; a swipe, or the wheel, steps the day. */
+    .wg-frame { flex: 0 1 auto; min-height: 220px; display: flex; align-items: center; justify-content: center;
+      cursor: pointer; touch-action: pan-y; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; outline-offset: 4px; }
+    .wg-frame img { display: block; width: auto; height: auto; max-width: 100%; max-height: 100%; pointer-events: none;
+      border: 1px solid var(--line-2); border-radius: 14px; background: var(--panel); box-shadow: var(--shadow);
+      transition: transform .22s cubic-bezier(.2,.7,.2,1), opacity .22s; }
+    .no-data { padding: 40px 20px; text-align: center; color: var(--ink-soft); font-size: 14px;
+      border: 1px dashed var(--line-2); border-radius: 14px; background: var(--panel-soft); }
+    .reveal { animation: wgIn .4s cubic-bezier(.2,.7,.2,1) both; }
+    @keyframes wgIn { from { opacity: 0; transform: translateY(8px) scale(.99); } to { opacity: 1; transform: none; } }
+
+    .wg-table { flex: 1 1 auto; min-height: 220px; overflow: auto; -webkit-overflow-scrolling: touch; cursor: pointer;
+      border: 1px solid var(--line-2); border-radius: 14px; background: var(--panel); box-shadow: var(--shadow); }
+    .wg-table th.row[data-desc] { cursor: help; }
+    /* (#tree .row is scoped to the finder: an unscoped .row once turned these th into flex boxes.) */
+    .wg-table table { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; font: 500 11px/1.2 'IBM Plex Mono', monospace; }
+    .wg-table th, .wg-table td { padding: 3px 5px; text-align: center; vertical-align: middle; white-space: nowrap; border-bottom: 1px solid var(--line); }
+    .wg-table th.row { position: sticky; left: 0; z-index: 1; background: var(--panel); text-align: left;
+      font: 500 11px/1.25 'Bricolage Grotesque', system-ui, sans-serif; color: var(--ink); width: 160px; min-width: 132px; max-width: 160px;
+      white-space: normal; cursor: help; border-right: 1px solid var(--line-2); border-radius: 0; }
+    .wg-table th.row .u { color: var(--ink-soft); font-size: 10px; }
+    .wg-table tr.time th, .wg-table tr.time td { position: sticky; top: 0; z-index: 2; background: var(--evergreen); color: var(--on-accent); font-weight: 600; border-bottom-color: var(--evergreen-d); }
+    .wg-table tr.time th.row { z-index: 3; color: var(--on-accent); border-right-color: var(--evergreen-d); }
+    .wg-table tr.section th { font: 700 11.5px/1.2 'Bricolage Grotesque', system-ui, sans-serif; color: var(--accent-text); background: var(--tint-green); padding: 7px 8px; }
+    .wg-table tr.section td { background: var(--tint-green); }
+    .wg-table tbody tr:hover td:not(.sec) { background-image: linear-gradient(var(--tint-ink), var(--tint-ink)); }
+    .wg-table td.wind { line-height: 1.05; padding-top: 2px; padding-bottom: 2px; }
+    .wg-table .arrow { display: block; width: 11px; height: 11px; margin: 0 auto 1px; }
+    .wg-table .arrow svg { display: block; width: 100%; height: 100%; fill: var(--ink); }
+    .wg-note { font-size: 12px; line-height: 1.45; color: var(--ink-soft); padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-soft-2); }
+    .wg-note.warn { color: var(--stale); border-color: var(--stale); }
+    #data-warning, #debug-line { flex: none; overflow-wrap: anywhere; }
+    .wg-note b { color: var(--ink); }
+    .wg-note:empty { display: none; }
+
+    .actions { display: flex; align-items: center; justify-content: space-between; gap: 6px 12px; flex-wrap: wrap; flex: none; }
+    .actions .hint { font: 500 10.5px/1.3 'IBM Plex Mono', monospace; color: var(--ink-soft); letter-spacing: .02em; }
+    .actions .hint:empty { display: none; }
+    .actions .hint .age.stale { color: var(--stale); font-weight: 600; }   /* a chart older than a day: a refresh was missed */
+    .actions .links { display: inline-flex; gap: 14px; margin-left: auto; }
+    .open-link { font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 500; color: var(--accent-text);
+      text-decoration: none; border-bottom: 1px solid transparent; transition: border-color .15s; background: none; border-top: 0; border-left: 0; border-right: 0; padding: 0; }
+    .open-link:hover { border-bottom-color: var(--evergreen); }
+
+    .empty { margin: 8vh auto 0; max-width: 460px; text-align: center; color: var(--ink-soft); padding: 40px 24px;
+      border: 1px dashed var(--line-2); border-radius: 16px; background: var(--panel-soft); }
+    .empty .mark { font-size: 34px; display: block; margin-bottom: 12px; }
+    .empty .lead { font-weight: 600; font-size: 16px; color: var(--ink); }
+    .empty .hint { font-size: 13px; margin-top: 6px; line-height: 1.5; }
+    .empty .btn { margin-top: 16px; }
+
+    /* ── Map picker (overlay) ─────────────────────────────────── */
+    #mapOverlay { position: fixed; inset: 0; z-index: 1000; background: var(--paper); display: flex; flex-direction: column; }
+    .map-top { display: flex; align-items: center; gap: 12px; padding: calc(10px + var(--sat)) 14px 10px; border-bottom: 1px solid var(--line-2); background: var(--paper); }
+    .map-top .title { font-weight: 700; font-size: 15px; }
+    .map-top .hint { font: 500 11px/1.3 'IBM Plex Mono', monospace; color: var(--ink-soft); }
+    .map-top .btn { margin-left: auto; }
+    #map { flex: 1; min-height: 0; background: var(--map-bg); }
+    .site-marker { width: 26px; height: 26px; text-align: center; line-height: 26px; font-size: 19px; cursor: pointer; }
+    .site-marker .glyph { display: inline-block; transition: transform .12s cubic-bezier(.2,.7,.2,1); filter: drop-shadow(0 1px 1px rgba(0,0,0,.35)); }
+    .site-marker:hover .glyph { transform: scale(1.25); }
+    .site-marker.selected .glyph { transform: scale(1.65); filter: drop-shadow(0 2px 3px rgba(224,102,42,.55)); }
+    .site-marker.selected::after { content: ""; position: absolute; left: 50%; top: 56%; width: 46px; height: 46px; margin: -23px 0 0 -23px;
+      border: 2px solid var(--thermal); border-radius: 50%; animation: ring 1.6s ease-out infinite; }
+    @keyframes ring { 0% { transform: scale(.39); opacity: .8; } 100% { transform: scale(1); opacity: 0; } }
+    .maplibregl-ctrl-group { background: var(--panel); border: 1px solid var(--line-2); box-shadow: var(--shadow); }
+    .site-tip .maplibregl-popup-content { font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 500;
+      background: var(--evergreen-d); color: var(--on-accent); box-shadow: var(--shadow); padding: 3px 8px; border-radius: 6px; pointer-events: none; }
+    .site-tip .maplibregl-popup-tip { border-top-color: var(--evergreen-d); }
+    .maplibregl-ctrl-attrib { font-family: 'IBM Plex Mono', monospace; font-size: 10px; }
+
+    /* ── One screen at a time (phones, and the narrow half of a fold) ── */
+    @media (max-width: 759px) {
+      #app { display: block; }
+      #finder, #forecast { height: 100dvh; border-right: 0; }
+      #app[data-screen="list"] #forecast { display: none; }
+      #app[data-screen="forecast"] #finder { display: none; }
+      .back { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 10px;
+        border: 1px solid var(--line-2); background: var(--panel); color: var(--accent-text); font-size: 18px; box-shadow: var(--shadow); flex: none; }
+      .fc-inner { padding: 8px 14px calc(10px + var(--sab)); gap: 8px; }
+      #windgram-content, .wg-stage { gap: 8px; }
+      .site-head h2 { font-size: 20px; }
+      .site-head .coords .ll { display: none; }              /* the area is enough; lat/lon are on the map */
+      .site-head .coords .area::before { content: none; }
+      .segmented { flex: 1 1 260px; width: auto; min-width: 0; max-width: none; }   /* fills the row */
+      .pills button { padding: 5px 2px; }
+      .pills button .n { font-size: 9px; letter-spacing: 0; }   /* "14 · HRDPS" fits a 65px pill */
+      .segmented label { padding: 6px 4px; }
+      .wg-table th.row { width: 136px; min-width: 112px; max-width: 136px; }
+    }
+    /* Wide desktops: give the finder a little more room */
+    @media (min-width: 1400px) { :root { --finder-w: 400px; } }
+
+    /* ── Foldables: one pane per screen, the hinge in the gutter ───
+       Browsers that report viewport segments place the panes by the real
+       hinge. The selectors carry the data-screen attribute so they outrank the
+       one-screen-at-a-time rules above (a stacked fold is under 760px wide),
+       and every env() has a fallback so a browser that matches the media
+       feature but cannot resolve the variable still gets a sane split. */
+    @media (horizontal-viewport-segments: 2) {
+      #app { display: grid; grid-template-columns: env(viewport-segment-right 0 0, 50%) calc(env(viewport-segment-left 1 0, 50%) - env(viewport-segment-right 0 0, 50%)) minmax(0, 1fr); }
+      #app[data-screen] #finder { grid-column: 1; display: flex; height: auto; }
+      #app[data-screen] #forecast { grid-column: 3; display: flex; height: auto; }
+      #app::before { content: ""; grid-column: 2; }
+      .back { display: none; }
+    }
+    @media (vertical-viewport-segments: 2) {
+      #app { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: env(viewport-segment-bottom 0 0, 50%) calc(env(viewport-segment-top 1 0, 50%) - env(viewport-segment-bottom 0 0, 50%)) minmax(0, 1fr); height: 100dvh; }
+      #app[data-screen] #finder { grid-row: 1; display: flex; height: auto; border-right: 0; border-bottom: 1px solid var(--line-2); }
+      #app::before { content: ""; grid-row: 2; }
+      #app[data-screen] #forecast { grid-row: 3; display: flex; height: auto; }
+      .back { display: none; }
+    }
+    /* Surface Duo spanned side by side without segment support (Chrome there
+       reports none): the viewport is exactly 540 + 34 hinge + 540 = 1114px wide,
+       and the plain two-column layout would run the forecast across the hinge.
+       Give each screen its pane. Nothing else is 1114px wide and this short. */
+    @media (min-width: 1108px) and (max-width: 1120px) and (max-height: 760px) {
+      #app { display: grid; grid-template-columns: calc(50% - 17px) 34px minmax(0, 1fr); }
+      #finder { grid-column: 1; }
+      #forecast { grid-column: 3; }
+      #app::before { content: ""; grid-column: 2; }
+    }
+    @media (prefers-reduced-motion: reduce) { .reveal, .segmented .indicator, .site-marker .glyph { animation: none; transition: none; } }
+  </style>
+</head>
+<body>
+<div id="app" data-screen="list">
+
+  <nav id="finder" aria-label="Sites">
+    <header class="brand">
+      <h1>PNW <span class="lift">Soaring</span></h1>
+      <button class="btn" id="map-btn" type="button" title="Pick a site on the map"><span class="glyph">⌖</span> Map</button>
+    </header>
+    <div class="search"><input id="q" type="search" placeholder="Find a site…" autocomplete="off" aria-label="Find a site"></div>
+    <div class="tree" id="tree" role="list"></div>
+    <div class="finder-foot">Forecasts for 176 sites from NOAA's RRFS and HRRR models, downscaled to 1.3 km with Dr Jack's RASP physics.</div>
+  </nav>
+
+  <main id="forecast" aria-live="polite">
+    <div class="fc-inner">
+      <div class="empty" id="windgram-empty">
+        <span class="mark">🪂</span>
+        <div class="lead">Pick a site from the list</div>
+        <div class="hint">Search by name, star the ones you fly, or browse by area. The map picker is there when you'd rather point.</div>
+        <button class="btn" type="button" id="empty-map-btn"><span class="glyph">⌖</span> Open the map</button>
+      </div>
+
+      <div id="windgram-content" hidden>
+        <div class="topbar">
+          <button class="back" id="back-btn" type="button" aria-label="Back to the list">‹</button>
+          <div class="site-head">
+            <h2 id="site-name"></h2>
+            <span class="coords"><span class="ll" id="site-coords"></span><span class="area" id="site-area"></span></span>
+          </div>
+          <button class="btn" id="site-map-btn" type="button" title="Show on the map"><span class="glyph">⌖</span> Map</button>
+        </div>
+
+        <div class="controls">
+          <div class="segmented" role="radiogroup" aria-label="Forecast model">
+            <span class="indicator" aria-hidden="true"></span>
+            <label><input type="radio" name="model" value="rrfs" checked><span class="name">RRFS</span></label>
+            <label><input type="radio" name="model" value="hrrr"><span class="name">HRRR</span></label>
+            <label><input type="radio" name="model" value="hrdps"><span class="name">HRDPS</span></label>
+            <label><input type="radio" name="model" value="gfs"><span class="name">GFS</span></label>
+          </div>
+        </div>
+        <div class="wg-note warn" id="data-warning" hidden role="status"></div>
+        <div class="wg-note" id="debug-line" hidden></div>
+
+        <div class="wg-stage">
+          <div class="wg-frame" id="windgram-frame" role="button" tabindex="0" aria-label="Show the forecast as a table"><img id="windgram-img" alt="" draggable="false"></div>
+          <div class="wg-table" id="windgram-table" hidden title="Back to the chart"></div>
+          <div class="no-data" id="windgram-nodata" hidden></div>
+          <div class="days single" id="days">
+            <span class="pills" id="pills" role="tablist" aria-label="Forecast day"></span>
+          </div>
+        </div>
+        <div class="wg-note" id="windgram-note"></div>
+      </div>
+
+      <!-- Outside the panel: static apart from its text, so it never animates with it. -->
+      <div class="actions" id="wg-actions" hidden>
+        <span class="hint" id="view-hint"></span>
+        <span class="links">
+          <a class="open-link" id="open-full" href="#" target="_blank" rel="noopener">Open full size ↗</a>
+          <a class="open-link" id="open-data" href="#" target="_blank" rel="noopener" hidden>Raw data (JSON) ↗</a>
+          <button class="open-link" id="copy-link" type="button" title="Copy a link that opens this site">Copy link</button>
+        </span>
+      </div>
+    </div>
+  </main>
+
+  <div id="mapOverlay" role="dialog" aria-modal="true" aria-label="Pick a site on the map" hidden>
+    <div class="map-top">
+      <span class="title">Pick a site</span>
+      <span class="hint" id="map-hint">Tap a marker</span>
+      <button class="btn" id="map-close" type="button">✕ Close</button>
+    </div>
+    <div id="map"></div>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+// The data bucket's CORS rule names the https origin only. Loaded over http
+// (a typed address while Pages still answered on it) the page got images but
+// none of the JSON: one day, no dots, every model listed. Go to https first.
+if (location.protocol === 'http:' && !/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)) {
+  location.replace('https://' + location.host + location.pathname + location.search + location.hash);
+  return;
+}
+// ── Data paths ───────────────────────────────────────────────────────────
+// Windgrams, their blipspot JSON and the metadata probes live in R2; every
+// forecast leg uploads its own files the moment it finishes
+// (.github/actions/publish-r2) under forecasts/<date|latest>/<model>/<region>/.
+// The bucket's CORS rule allows GET/HEAD from this origin; objects carry a
+// 2-minute Cache-Control, so JSON probes ask with no-cache to revalidate.
+const DATA_BASE = 'https://pub-de96e47b1e91464bb2959747602c1914.r2.dev';
+// Toggle order. RRFS is the default (it replaced NAM, retired 2026-11-03).
+// hrdps: ECCC's 2.5 km run (issaquah tile so far); gfs: days 3 and 4, beyond RRFS's reach (every tile).
+// The order is also the preference order when several models have a day.
+const MODELS = ['rrfs', 'hrrr', 'hrdps', 'gfs'];
+const DEFAULT_MODEL = 'rrfs';
+// What to assume when the forecast index cannot be read at all (offline, or
+// the bucket blocked from this origin): every model, and each model's usual
+// reach as day offsets from today. A day drops out when its chart 404s.
+const USUAL_DAYS = { rrfs: [0, 1, 2], hrrr: [0, 1], hrdps: [0, 1], gfs: [3, 4] };
+let indexDown = false;
+const $ = (s) => document.querySelector(s);
+const app = $('#app');
+
+let currentModel = DEFAULT_MODEL, currentSite = null, currentDate = null;
+let currentView = 'chart';
+let metadata = {}, availableDays = {}, generatedAt = {}, blipCache = new Map(), currentBlipUrl = null, imgFailed = false;
+let sites = [], siteIndex = {}, areas = {};
+let favorites = {};
+try { (localStorage.getItem('favorites') || '').split(';').filter(Boolean).forEach(n => favorites[n] = 1); } catch (_) {}
+const saveFavorites = () => { try { localStorage.setItem('favorites', Object.keys(favorites).filter(n => favorites[n]).join(';')); } catch (_) {} };
+
+const prettyName = (name) => String(name).replace(/_/g, ' ').replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/\s+/g, ' ').trim();
+const siteKey = (name) => String(name).toLowerCase().replace(/[^a-z0-9]/g, '');
+const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+const isNarrow = () => window.matchMedia('(max-width: 759px)').matches;
+const setScreen = (s) => { app.dataset.screen = s; if (s === 'list') $('#finder').scrollTop = 0; else $('#forecast').scrollTop = 0; };
+
+// ── Finder: search, favourites, State > Area > Site ─────────────────────
+const root = { name: 'All areas', states: [], favorites: { name: 'Favourites' } };
+let node = root;
+function buildTree() {
+  const states = {};
+  for (const s of sites) {
+    const [state, area] = areas[s.name] || ['Washington', s.region === 'issaquah' ? 'Tiger Area' : s.region.charAt(0).toUpperCase() + s.region.slice(1)];
+    s.state = state; s.area = area;
+    const st = states[state] || (states[state] = { name: state, areas: {}, sites: [], parent: root });
+    if (!area || area === state) { st.sites.push(s); s.node = st; continue; }
+    const ar = st.areas[area] || (st.areas[area] = { name: area, sites: [], parent: st });
+    ar.sites.push(s); s.node = ar;
+  }
+  root.states = Object.values(states).sort((a, b) => a.name.localeCompare(b.name));
+  for (const st of root.states) st.areas = Object.values(st.areas).sort((a, b) => a.name.localeCompare(b.name));
+  root.favorites.parent = root;
+}
+const byName = (a, b) => prettyName(a.name).localeCompare(prettyName(b.name));
+const favList = () => Object.keys(favorites).filter(n => favorites[n] && siteIndex[siteKey(n)]).map(n => siteIndex[siteKey(n)]).sort(byName);
+const countSites = (n) => (n.sites ? n.sites.length : 0) + (n.areas ? n.areas.reduce((a, x) => a + x.sites.length, 0) : 0);
+
+function rowButton(html, cls, onclick) {
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'row ' + cls; b.setAttribute('role', 'listitem');
+  b.innerHTML = html; b.addEventListener('click', onclick); return b;
+}
+function siteRow(s, sub) {
+  const on = favorites[s.name] ? ' on' : '';
+  // The star is a span with its own role, not a nested button (invalid HTML).
+  const b = rowButton(`<span><span class="name">${esc(prettyName(s.name))}</span>${sub ? `<span class="sub">${esc(sub)}</span>` : ''}</span>` +
+    `<span class="star${on}" role="button" tabindex="0" aria-pressed="${on ? 'true' : 'false'}" aria-label="Favourite ${esc(prettyName(s.name))}" title="Favourite">★</span>`,
+    'site' + (currentSite && currentSite.name === s.name ? ' current' : ''), () => { selectSite(s); if (isNarrow()) setScreen('forecast'); });
+  const star = b.querySelector('.star');
+  const toggleFav = (e) => {
+    e.stopPropagation(); e.preventDefault();
+    favorites[s.name] = favorites[s.name] ? 0 : 1; saveFavorites();
+    if (node === root.favorites && !$('#q').value) renderFinder();
+    else { star.classList.toggle('on', !!favorites[s.name]); star.setAttribute('aria-pressed', String(!!favorites[s.name])); }
+  };
+  star.addEventListener('click', toggleFav);
+  star.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') toggleFav(e); });
+  return b;
+}
+function renderFinder() {
+  const tree = $('#tree'); tree.innerHTML = '';
+  const q = $('#q').value.trim().toLowerCase();
+  if (q) {
+    // Site names first: the exact name, names starting with the query, names with
+    // a later word starting with it, names containing it anywhere; and only then
+    // the sites whose area or state matches. Alphabetical within each group.
+    const rank = (s) => {
+      const names = [prettyName(s.name).toLowerCase(), s.name.toLowerCase().replace(/_/g, ' ')];
+      if (names.some(n => n === q)) return 0;
+      if (names.some(n => n.startsWith(q))) return 1;
+      if (names.some(n => n.includes(' ' + q))) return 2;
+      if (names.some(n => n.includes(q))) return 3;
+      if ((s.area || '').toLowerCase().includes(q) || (s.state || '').toLowerCase().includes(q)) return 4;
+      return 5;
+    };
+    const hits = sites.map(s => [rank(s), s]).filter(([r]) => r < 5).sort((a, b) => a[0] - b[0] || byName(a[1], b[1])).slice(0, 60).map(([, s]) => s);
+    if (!hits.length) { tree.innerHTML = '<div class="no-data">No site matches.</div>'; return; }
+    for (const s of hits) tree.appendChild(siteRow(s, `${s.area} · ${s.state}`));
+    kbdIndex = Math.min(kbdIndex, hits.length - 1); tree.children[kbdIndex].classList.add('kbd');
+    return;
+  }
+  if (node === root) {
+    const favs = favList();
+    tree.appendChild(rowButton(`<span>★ Favourites</span><span class="count">${favs.length}</span>`, 'node', () => { node = root.favorites; renderFinder(); }));
+    for (const st of root.states) tree.appendChild(rowButton(`<span>${esc(st.name)}</span><span><span class="count">${countSites(st)}</span> <span class="chev">›</span></span>`, 'node', () => { node = st; renderFinder(); }));
+    return;
+  }
+  const crumb = document.createElement('div'); crumb.className = 'crumb';
+  const back = document.createElement('button'); back.type = 'button'; back.innerHTML = '‹ ' + esc(node.parent === root ? 'All areas' : node.parent.name);
+  back.addEventListener('click', () => { node = node.parent; renderFinder(); });
+  crumb.appendChild(back); const here = document.createElement('span'); here.textContent = '/ ' + node.name; crumb.appendChild(here);
+  tree.appendChild(crumb);
+  const list = node === root.favorites ? favList() : (node.sites || []).slice().sort(byName);
+  if (node === root.favorites && !list.length) tree.innerHTML += '<div class="no-data">Star a site and it shows up here.</div>';
+  for (const s of list) tree.appendChild(siteRow(s, node === root.favorites ? `${s.area} · ${s.state}` : null));
+  for (const ar of (node.areas || [])) tree.appendChild(rowButton(`<span>${esc(ar.name)}</span><span><span class="count">${ar.sites.length}</span> <span class="chev">›</span></span>`, 'node', () => { node = ar; renderFinder(); }));
+}
+// Typing re-ranks the results and the highlight goes back to the first; ↑ ↓ move
+// it, Enter opens the highlighted site (so Enter straight after typing takes the
+// best match), Escape clears the search.
+let kbdIndex = 0;
+$('#q').addEventListener('input', () => { kbdIndex = 0; renderFinder(); });
+$('#q').addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && e.target.value) { e.preventDefault(); e.target.value = ''; kbdIndex = 0; renderFinder(); return; }
+  if (!e.target.value.trim()) return;
+  const rows = [...$('#tree').querySelectorAll('.row.site')]; if (!rows.length) return;
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault();
+    kbdIndex = (kbdIndex + (e.key === 'ArrowDown' ? 1 : -1) + rows.length) % rows.length;
+    rows.forEach((r, i) => r.classList.toggle('kbd', i === kbdIndex)); rows[kbdIndex].scrollIntoView({ block: 'nearest' });
+  } else if (e.key === 'Enter') { e.preventDefault(); rows[Math.min(kbdIndex, rows.length - 1)].click(); }
+});
+
+// ── Models: which have anything to show, and how fresh ──────────────────
+async function loadMetadata() {
+  await Promise.all(MODELS.map(async model => {
+    try { const r = await fetch(`${DATA_BASE}/forecasts/latest/${model}/metadata.json`, { cache: 'no-cache' }); if (r.ok) metadata[model] = await r.json(); } catch (_) {}
+  }));
+  indexDown = MODELS.every(m => !metadata[m]);
+  renderToggleMeta();
+}
+const timeAgo = (d) => { const h = (Date.now() - d.getTime()) / 3.6e6; return h < 1 ? `${Math.round(h * 60)}m ago` : h < 24 ? `${Math.round(h)}h ago` : `${Math.round(h / 24)}d ago`; };
+function renderToggleMeta() {
+  document.querySelectorAll('input[name="model"]').forEach(input => {
+    const model = input.value, label = input.closest('label');
+    const lacks = !!(currentSite && currentDate) && shownModels.includes(model) && !has(model, currentDate);
+    label.classList.toggle('dim', lacks);
+    const d = lacks ? nearestDay(model, currentDate) : null;
+    label.title = d ? `No ${model.toUpperCase()} forecast for this day · opens ${d.label}` : '';
+  });
+}
+// "HRRR run 2h ago" opens the hint line under the chart: the age of the chart on
+// screen (its day's metadata), or of the model's latest run when the day's is unknown.
+function runAge() {
+  const gen = currentSite && currentModel && ((currentDate && generatedAt[`${currentModel}/${currentDate}`]) || (metadata[currentModel] || {}).generated);
+  if (!gen) return null;
+  const updated = new Date(gen), el = document.createElement('span');
+  el.className = 'age' + ((Date.now() - updated.getTime()) / 3.6e6 > 24 ? ' stale' : '');
+  el.textContent = `${currentModel.toUpperCase()} run ${timeAgo(updated)}`;
+  return el;
+}
+function layoutToggle() {
+  const seg = $('.segmented'); const shown = [...seg.querySelectorAll('label')].filter(l => !l.hidden);
+  seg.style.setProperty('--n', shown.length);
+  seg.style.setProperty('--i', Math.max(0, shown.findIndex(l => l.querySelector('input').checked)));
+}
+let offeredModels = MODELS.slice();   // the models with anything published at all (set by pruneModels)
+async function pruneModels() {
+  const avail = await Promise.all(MODELS.map(async m => !!metadata[m] && (await discoverDays(m)).length > 0));
+  const offered = MODELS.filter((m, i) => avail[i]);
+  $('#data-warning').hidden = !indexDown;
+  if (indexDown) $('#data-warning').textContent = 'The forecast index did not load, so this shows the usual days without freshness. Reload if it keeps happening.';
+  if (!offered.length) { layoutToggle(); return; }
+  offeredModels = offered; shownModels = offered;
+  MODELS.forEach((m, i) => { const input = document.querySelector(`input[name="model"][value="${m}"]`); if (input) input.closest('label').hidden = !avail[i]; });
+  if (!offered.includes(currentModel)) { currentModel = offered[0]; document.querySelector(`input[name="model"][value="${currentModel}"]`).checked = true; }
+  layoutToggle();
+}
+
+// ── Days: Today to +4 (Pacific) as fixed slots; per model, which of them has a
+// published chart. The day strip under the chart and the model toggle are the
+// two rows of one picker: a day the current model lacks, or a model that lacks
+// the current day, is dimmed with the alternative named, and choosing it
+// switches the other row. The day wins: the model follows the day, and snaps
+// back to the one you chose whenever that one has the day. ──
+const dayLabel = (off, ds) => off === 0 ? 'Today' : off === 1 ? 'Tomorrow' : new Date(ds + 'T12:00:00Z').toLocaleDateString(undefined, { weekday: 'short' });
+const weekday = (ds) => new Date(ds + 'T12:00:00Z').toLocaleDateString(undefined, { weekday: 'short' });
+const SLOTS = (() => {
+  const [by, bm, bd] = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' }).split('-').map(Number);
+  const out = [];
+  for (let off = 0; off <= 4; off++) {
+    const ds = new Date(Date.UTC(by, bm - 1, bd + off)).toISOString().slice(0, 10);
+    if (Date.now() > Date.parse(ds + 'T20:00:00-08:00')) continue;   // the day's soaring window is over
+    out.push({ date: ds, off, label: dayLabel(off, ds), short: off === 0 ? 'Today' : weekday(ds), sub: ds.slice(5), num: String(Number(ds.slice(8))) });
+  }
+  return out;
+})();
+async function discoverDays(model) {
+  if (availableDays[model]) return availableDays[model];
+  const out = [];
+  for (const day of SLOTS) {
+    if (indexDown) { if ((USUAL_DAYS[model] || []).includes(day.off)) out.push(day); continue; }   // assume the usual reach
+    try {
+      const r = await fetch(`${DATA_BASE}/forecasts/${day.date}/${model}/metadata.json`, { cache: 'no-cache' });
+      if (r.ok) { out.push(day); const j = await r.json().catch(() => null); if (j && j.generated) generatedAt[`${model}/${day.date}`] = j.generated; }
+    } catch (_) {}
+  }
+  availableDays[model] = out; return out;
+}
+let shownModels = MODELS.slice();   // the toggle's models for the current site (set by pruneModels and selectSite)
+let chosenModel = null;             // the model picked in the toggle or the link; null = whichever is best for the day
+const has = (m, date) => (availableDays[m] || []).some(d => d.date === date);
+const modelsFor = (date) => shownModels.filter(m => has(m, date));
+const autoModel = (date) => modelsFor(date)[0] || null;
+const openDays = () => SLOTS.filter(s => modelsFor(s.date).length).length;   // days with any forecast
+// The model to show for a day: the chosen one when it has the day, else the best that does.
+const modelFor = (date) => (chosenModel && shownModels.includes(chosenModel) && has(chosenModel, date)) ? chosenModel : autoModel(date);
+// A model's day nearest to a date: the latest on or before it, else its first.
+function nearestDay(m, date) {
+  const days = shownModels.includes(m) ? (availableDays[m] || []) : [];
+  const earlier = days.filter(d => d.date <= date);
+  return earlier.length ? earlier[earlier.length - 1] : days[0] || null;
+}
+function checkRadio(m) { const r = document.querySelector(`input[name="model"][value="${m}"]`); if (r) r.checked = true; }
+function setModel(m) { currentModel = m; checkRadio(m); layoutToggle(); renderToggleMeta(); }
+function renderDays() {
+  const list = $('#pills'); list.innerHTML = '';
+  $('#days').classList.toggle('single', openDays() < 2);
+  for (const day of SLOTS) {
+    const models = modelsFor(day.date), here = has(currentModel, day.date);
+    const via = !here && models.length ? modelFor(day.date) : null;   // the model a tap would switch to
+    const b = document.createElement('button'); b.type = 'button'; b.setAttribute('role', 'tab');
+    b.className = !models.length ? 'off' : !here ? 'dim' : '';
+    b.innerHTML = `<span class="d">${day.short}</span><span class="n">${via ? `${day.num} · ${via.toUpperCase()}` : day.num}</span>`;
+    const tip = `${day.label} · ${day.sub}` + (via ? ` · ${via.toUpperCase()}` : !models.length ? ' · no forecast yet' : '');
+    b.setAttribute('aria-selected', String(day.date === currentDate)); b.setAttribute('aria-label', tip.replace(/ · /g, ' ')); b.title = tip;
+    if (!models.length) b.setAttribute('aria-disabled', 'true');
+    b.addEventListener('click', () => goToDate(day.date));
+    list.appendChild(b);
+  }
+}
+let slideDir = 0, revealedSite = null;
+// Show a day, switching the model when the current one lacks it; false when no model has it or it is already up.
+function goToDate(date) {
+  if (date === currentDate) return false;
+  const m = modelFor(date); if (!m) return false;
+  slideDir = !currentDate || date > currentDate ? 1 : -1;
+  currentDate = date; setModel(m);
+  renderDays(); updateWindgram(); syncUrl(); return true;
+}
+// The next day with any forecast in that direction.
+function stepDay(delta) {
+  let i = SLOTS.findIndex(s => s.date === currentDate);
+  if (i < 0) return false;
+  for (i += delta; i >= 0 && i < SLOTS.length; i += delta) if (modelsFor(SLOTS[i].date).length) return goToDate(SLOTS[i].date);
+  return false;
+}
+// Settle the day and model: the linked or current day when some model has it,
+// else the nearest earlier day with one, else the first; then that day's model.
+async function loadDays() {
+  await Promise.all(shownModels.map(discoverDays));
+  const open = SLOTS.filter(s => modelsFor(s.date).length);
+  if (!currentDate || !modelsFor(currentDate).length) {
+    const earlier = currentDate ? open.filter(d => d.date <= currentDate) : [];
+    currentDate = earlier.length ? earlier[earlier.length - 1].date : open.length ? open[0].date : null;
+  }
+  setModel(currentDate ? modelFor(currentDate) : (shownModels[0] || currentModel));
+  renderDays();
+}
+
+// ── The forecast panel ──────────────────────────────────────────────────
+function updateWindgram() {
+  const empty = $('#windgram-empty'), content = $('#windgram-content');
+  $('#wg-actions').hidden = !currentSite;
+  if (!currentSite) { empty.hidden = false; content.hidden = true; return; }
+  empty.hidden = true; content.hidden = false;
+  if (revealedSite !== currentSite) {   // the reveal is for a new site, not a new day or model
+    content.classList.remove('reveal'); void content.offsetWidth; content.classList.add('reveal'); revealedSite = currentSite;
+  }
+  const base = currentDate ? `${DATA_BASE}/forecasts/${currentDate}/${currentModel}` : `${DATA_BASE}/forecasts/latest/${currentModel}`;
+  const src = `${base}/${encodeURIComponent(currentSite.region || 'issaquah')}/${encodeURIComponent(currentSite.name)}_windgram.png`;
+  $('#site-name').textContent = prettyName(currentSite.name);
+  $('#site-coords').textContent = `${currentSite.lat.toFixed(4)}, ${currentSite.lon.toFixed(4)}`;
+  $('#site-area').textContent = currentSite.area || currentSite.region;
+  $('#windgram-nodata').textContent = `No ${currentModel.toUpperCase()} forecast for this site yet.`;
+  const img = $('#windgram-img');
+  imgFailed = false;
+  img.alt = `${prettyName(currentSite.name)} windgram`;
+  img.onerror = () => {
+    // Index down and the assumed day is not there for this model: drop it, then
+    // show the day from another model that has it, else the nearest earlier day.
+    if (indexDown && currentDate && has(currentModel, currentDate)) {
+      availableDays[currentModel] = availableDays[currentModel].filter(d => d.date !== currentDate);
+      if (!modelsFor(currentDate).length) {
+        const open = SLOTS.filter(s => modelsFor(s.date).length), earlier = open.filter(d => d.date <= currentDate);
+        currentDate = earlier.length ? earlier[earlier.length - 1].date : open.length ? open[0].date : null;
+      }
+      if (currentDate) { setModel(modelFor(currentDate)); renderDays(); updateWindgram(); syncUrl(); return; }
+    }
+    imgFailed = true; applyView();
+  };
+  img.onload = () => { imgFailed = false; applyView(); };
+  if (slideDir) {   // the new day slides in from the side it was swiped from
+    img.style.transition = 'none'; img.style.transform = `translateX(${slideDir * 28}px)`; img.style.opacity = '.4';
+    requestAnimationFrame(() => requestAnimationFrame(() => { img.style.transition = ''; img.style.transform = ''; img.style.opacity = ''; }));
+    slideDir = 0;
+  }
+  img.src = src;
+  $('#open-full').href = src;
+  currentBlipUrl = src.replace(/_windgram\.png$/, '_blipspot.json');
+  $('#open-data').href = currentBlipUrl;
+  document.title = `${prettyName(currentSite.name)} · PNW Soaring Forecast`;
+  applyView();
+}
+
+// Chart ⇄ table (wxtofly's "blipspot"): sections, rows, titles and descriptions
+// follow wxtofly.net/v2's blipspots.js / blipspotParam.js (DrJack's BLIPMAP notes).
+const BLIP_SECTIONS = [
+  { title: 'Wind (knots)', rows: [
+    { key: 'sfc_wind', wind: true, level: 'sfc', tint: 'wind', title: 'Surface', desc: 'The speed and direction of the wind at the lowest available model level above the ground.' },
+    { key: 'wind10m', wind: true, tint: 'wind', title: '10 m', desc: 'The speed and direction of the wind at 10 m above the ground.' },
+    { key: 'treetop_wind', wind: true, level: 'treetop', tint: 'wind', title: 'Tree-top level', desc: 'The wind at the next model level above 10 m above the ground.' },
+    { key: 'above_treetop_wind', wind: true, level: 'above_treetop', tint: 'wind', title: 'Level above tree-top', desc: 'The wind at the next model level above the tree-top level.' },
+    { key: 'bl_wind', wind: true, tint: 'wind', title: 'Boundary layer average', desc: 'The speed and direction of the vector-averaged wind in the boundary layer.' },
+    { key: 'bltop_wind', wind: true, tint: 'wind', title: 'Boundary layer top', desc: 'The speed and direction of the wind at the top of the boundary layer.' },
+    { key: 'bl_shear_kt', title: 'Wind shear', unit: 'kt', desc: 'The vertical change in wind through the BL: the magnitude of the vector wind difference between the top and bottom of the BL. This is vertical wind shear; it does not indicate so-called "shear lines", which are horizontal changes of wind speed or direction.' },
+    { key: 'bl_convergence_cms', title: 'Max convergence', unit: 'cm/s', desc: 'Maximum grid-area-averaged extensive upward or downward motion within the BL as created by horizontal wind convergence. Positive values go with local convergence lines; if CAPE is also large, thunderstorms can be triggered. Negative values (divergence) mean subsiding air, creating low-level inversions that limit thermalling heights. The model spreads a convergence line over a whole grid cell, so it greatly under-predicts the real upward motion.' },
+  ]},
+  { title: 'Thermal', rows: [
+    { key: 'bs_ratio', title: 'Buoyancy/shear ratio', desc: 'Dry thermals may be broken up by vertical wind shear (wind changing with height) and unworkable if the B/S ratio is 5 or less (hang gliders can soar with smaller values than sailplanes). If convective clouds are present the real ratio is larger than calculated here, as cloudsuck is neglected.' },
+    { key: 'wstar_fpm', title: 'Thermal updraft velocity W*', unit: 'ft/min', tint: 'lift', desc: 'Average dry thermal updraft strength near mid-BL height. Subtract the glider descent rate to get the average vario reading for cloudless thermals. Updrafts are stronger than this when convective clouds are present, since cloud condensation adds buoyancy aloft (cloudsuck is neglected). W* depends on both the surface heating and the BL depth.' },
+    { key: 'hcrit_agl_ft', title: 'Max soar [AGL]', unit: 'ft', tint: 'height', desc: 'Maximum soaring altitude above ground with a 1.1 m/s (225 ft/min) sink rate.' },
+    { key: 'hcrit_ft', title: 'Max soar [1.1 m/s]', unit: 'ft ASL', desc: 'Maximum soaring altitude ASL with a 1.1 m/s (225 ft/min) sink rate: the height at which the average dry updraft strength drops below 225 ft/min. Expected to give better numbers for the maximum cloudless thermalling height than the BL top, especially when mixing comes from wind shear rather than thermals. With clouds present the maximum may instead be limited by the cloud base. Being for dry thermals, it omits cloudsuck.' },
+    { key: 'hglider_ft', title: 'Max soar [cloud]', unit: 'ft ASL', desc: 'The maximum soaring altitude expected when cumulus clouds are present: the dry maximum, capped at the cumulus cloud base (LCL). This is what the paraglider marks on the chart show.' },
+    { key: 'bl_top_ft', title: 'Boundary layer top [TI=0]', unit: 'ft ASL', desc: 'Height of the top of the mixing layer, which for thermal convection is the average top of a dry thermal. Over flat terrain maximum thermalling heights will be lower, because of the glider descent rate and other factors. With clouds (which release additional buoyancy aloft, creating cloudsuck) the updraft top will be above this, but the maximum thermalling height is then limited by the cloud base. When the mixing comes from shear turbulence rather than thermals this parameter is not useful for glider flying.' },
+    { key: 'bl_depth_ft', title: 'Boundary layer depth', unit: 'ft', desc: 'Depth of the layer mixed by thermals or (vertical) wind shear. Useful to judge which flight direction allows better thermalling when average surface elevations differ greatly by direction (with the same cautions as the BL top). Also an important determinant of thermal strength, as is the surface heating.' },
+    { key: 'bl_top_variability_ft', title: 'Boundary layer top variability', unit: 'ft', desc: 'How much higher the BL top would be if the boundary layer were 1 °C warmer than forecast. Larger values mean more uncertainty and better thermalling over local hot spots or small-scale terrain the model cannot resolve, but also more sensitivity to errors in the forecast surface temperature. Small values usually mean a stable (inversion) layer caps thermal growth. Best read relative to what is typical for a site.' },
+    { key: 'sfc_heating_wm2', title: 'Surface heating', unit: 'W/m²', desc: 'Heat transferred into the atmosphere by solar heating of the ground, creating thermals. An important determinant of thermal strength, as is the BL depth.' },
+    { key: 'mslp_mb', title: 'MSL pressure', unit: 'mb', desc: 'Barometric pressure reduced to mean sea level, in millibars (hPa).' },
+  ]},
+  { title: 'Clouds & Moisture', rows: [
+    { key: 'bl_cloud_pct', title: 'Cloud cover [BL]', unit: '%', tint: 'cloud', desc: 'Percentage cloud cover in the boundary layer, from a very simple relationship between cloud cover and the maximum relative humidity within the BL. An additional way of judging cloud formation within the BL, used with or instead of the other cloud parameters. The cloud base is not predicted but is expected to be below the BL top.' },
+    { key: 'rain_1h_mm', title: 'Rain accumulation', unit: 'mm', tint: 'rain', desc: 'Rain accumulated over the last hour.' },
+    { key: 'td2_f', title: 'Surface dew point', unit: '°F', desc: 'The dew point temperature 2 m above ground level.' },
+    { key: 'lcl_ft', title: 'CU lifted condensation level', unit: 'ft ASL', desc: 'Estimated cloud base for small, non-extensive "puffy" clouds in the BL, if any form. The surface LCL is the level to which humid air must rise before it cools to its dew point, based on the surface mixing ratio, so it is relevant only to small clouds. Consider it the minimum possible cloud base.' },
+    { key: 'od_potential_ft', title: 'OD potential [if CU]', unit: 'ft', desc: 'Over-development potential if cumulus are present: the BL top minus the BL condensation level. Positive values mean the BL is deep enough for extensive cloud (overcast development) to form.' },
+    { key: 'od_base_ft', title: 'OD base [all clouds]', unit: 'ft ASL', desc: 'Estimated cloud base for extensive BL clouds (overcast development), if any form. The BL condensation level is based on the humidity averaged through the BL and is therefore relevant only to extensive clouds.' },
+    { key: 't2_f', title: 'Temperature [2 m]', unit: '°F', desc: 'Temperature 2 m above the ground.' },
+  ]},
+];
+const TINTS = {
+  wind:   (s) => s == null ? '' : `rgba(255,0,0,${(s < 3 ? .1 : s < 5 ? .2 : s < 7 ? .3 : s < 9 ? .4 : s < 11 ? .5 : s < 13 ? .6 : s < 15 ? .6 : s < 17 ? .7 : s < 19 ? .8 : 1) * .72})`,
+  lift:   (v) => v == null || v < 200 ? '' : `rgba(255,204,0,${Math.min(v / 1000, 1) * .85})`,
+  height: (v) => v == null || v < 500 ? '' : `rgba(0,153,255,${Math.min(v / 5000, 1) * .6})`,
+  cloud:  (v) => v == null || v <= 0 ? '' : `rgba(128,128,128,${(v / 100) * .75})`,
+  rain:   (v) => v == null || v <= 0 ? '' : `rgba(0,204,0,${v < 2 ? .25 : v < 3 ? .45 : v < 4 ? .6 : v < 5 ? .75 : .9})`,
+};
+const arrow = (fromDeg) => `<span class="arrow" style="transform:rotate(${(fromDeg + 180) % 360}deg)" aria-label="from ${fromDeg}°"><svg viewBox="0 0 10 10"><path d="M5 0l3.6 4.6H6.3V10H3.7V4.6H1.4z"/></svg></span>`;
+const fmtHour = (h) => h % 12 === 0 ? `12${h < 12 ? 'a' : 'p'}` : h < 12 ? `${h}a` : `${h - 12}p`;
+function renderBlipspot(b) {
+  const hours = b.hours_local || [], n = hours.length, P = b.params || {};
+  const timeRow = `<tr class="time"><th class="row" scope="row">Time</th>${hours.map(h => `<td>${fmtHour(h)}</td>`).join('')}</tr>`;
+  let html = '<table><tbody>';
+  for (const sec of BLIP_SECTIONS) {
+    const rows = sec.rows.filter(r => P[r.wind ? r.key + '_kt' : r.key]);
+    if (!rows.length) continue;
+    html += `<tr class="section"><th class="row">${esc(sec.title)}</th><td class="sec" colspan="${n}"></td></tr>${timeRow}`;
+    for (const r of rows) {
+      const vals = P[r.wind ? r.key + '_kt' : r.key], dirs = r.wind ? P[r.key + '_dir'] : null;
+      const lvl = r.level && b.levels_agl_ft && b.levels_agl_ft[r.level] != null ? ` <span class="u">~${Math.max(10, Math.round(b.levels_agl_ft[r.level] / 10) * 10)} ft</span>` : '';
+      const unit = r.unit ? ` <span class="u">(${esc(r.unit)})</span>` : '';
+      html += `<tr><th class="row" scope="row" data-title="${esc(r.title)}" data-desc="${esc(r.desc)}" title="${esc(r.desc)}">${esc(r.title)}${lvl}${unit}</th>`;
+      for (let i = 0; i < n; i++) {
+        const v = vals[i], bg = r.tint && TINTS[r.tint] ? TINTS[r.tint](v) : '', style = bg ? ` style="background:linear-gradient(${bg},${bg}) var(--tint-base)"` : '';
+        if (v == null) { html += `<td${style}>–</td>`; continue; }
+        html += r.wind ? `<td class="wind"${style}>${dirs && dirs[i] != null ? arrow(dirs[i]) : ''}${v}</td>` : `<td${style}>${v}</td>`;
+      }
+      html += '</tr>';
+    }
+  }
+  return html + '</tbody></table>';
+}
+const tableEl = $('#windgram-table'), noteEl = $('#windgram-note');
+function setView(v) {
+  currentView = v === 'table' ? 'table' : 'chart';
+  applyView(); syncUrl();
+}
+const touch = matchMedia('(hover: none)').matches, tapWord = touch ? 'Tap' : 'Click';
+function applyView() {
+  const table = currentView === 'table';
+  $('#windgram-frame').hidden = table || imgFailed;
+  $('#windgram-nodata').hidden = table || !imgFailed;
+  tableEl.hidden = !table;
+  noteEl.textContent = '';
+  $('#open-full').hidden = table; $('#open-data').hidden = !table;
+  const dayHint = openDays() < 2 ? '' : touch ? ' · swipe for the next day' : ' · scroll or ← → for the next day';
+  const text = imgFailed && !table ? '' : table ? `${tapWord} the table to go back to the chart` : `${tapWord} the chart for the table${dayHint}`;
+  const hint = $('#view-hint'), age = text && runAge(); hint.replaceChildren();
+  if (age) hint.append(age, ' · ');
+  hint.append(text);
+  if (table && currentSite) loadBlipspot();
+}
+async function loadBlipspot() {
+  const url = currentBlipUrl; if (!url) return;
+  let data = blipCache.get(url);
+  if (data === undefined) {
+    tableEl.innerHTML = '<div class="no-data">Loading the table…</div>';
+    try { const r = await fetch(url, { cache: 'no-cache' }); data = r.ok ? await r.json() : null; } catch (_) { data = null; }
+    blipCache.set(url, data);
+  }
+  if (url !== currentBlipUrl || currentView !== 'table') return;
+  tableEl.innerHTML = data ? renderBlipspot(data) : `<div class="no-data">No table for this ${currentModel.toUpperCase()} forecast yet — it comes with the next forecast run.</div>`;
+  tableEl.scrollTop = 0;
+}
+// A row title explains the parameter; anywhere else on the table flips back to the chart (as on wxtofly).
+tableEl.addEventListener('click', (e) => {
+  const th = e.target.closest('th.row[data-desc]');
+  if (th) { noteEl.innerHTML = `<b>${esc(th.dataset.title)}</b> — ${esc(th.dataset.desc)}`; return; }
+  setView('chart');
+});
+
+// The chart: tap → table; a horizontal swipe → previous/next day (vertical swipes still scroll).
+const frame = $('#windgram-frame');
+let swipe = null, swipedAt = 0;
+frame.addEventListener('click', () => { if (Date.now() - swipedAt < 400) return; setView('table'); });
+frame.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setView('table'); } });
+frame.addEventListener('pointerdown', (e) => {
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
+  swipe = { id: e.pointerId, x: e.clientX, y: e.clientY, t: Date.now(), dx: 0, moved: false };
+  try { frame.setPointerCapture(e.pointerId); } catch (_) {}
+});
+frame.addEventListener('pointermove', (e) => {
+  if (!swipe || e.pointerId !== swipe.id) return;
+  const dx = e.clientX - swipe.x, dy = e.clientY - swipe.y;
+  if (!swipe.moved) {
+    if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+    if (Math.abs(dy) > Math.abs(dx)) { swipe = null; return; }   // a scroll, not a swipe
+    swipe.moved = true;
+  }
+  swipe.dx = dx;
+  const img = $('#windgram-img'); img.style.transition = 'none'; img.style.transform = `translateX(${dx * 0.35}px)`;
+});
+function endSwipe(e, cancelled) {
+  if (!swipe || e.pointerId !== swipe.id) return;
+  const s = swipe; swipe = null;
+  const img = $('#windgram-img'); img.style.transition = ''; img.style.transform = '';
+  if (!s.moved) return;
+  swipedAt = Date.now();
+  if (cancelled) return;
+  const quick = Date.now() - s.t < 700;
+  if ((quick && Math.abs(s.dx) > 40) || Math.abs(s.dx) > 110) stepDay(s.dx < 0 ? 1 : -1);
+}
+frame.addEventListener('pointerup', (e) => endSwipe(e, false));
+frame.addEventListener('pointercancel', (e) => endSwipe(e, true));
+// No day that way: nudge the chart a little in the direction asked for.
+function nudge(dir) {
+  const img = $('#windgram-img'); if (!img.animate) return;
+  img.animate([{ transform: 'translateX(0)' }, { transform: `translateX(${dir * -12}px)` }, { transform: 'translateX(0)' }], { duration: 240, easing: 'ease-out' });
+}
+// Wheel or trackpad over the chart: one day per gesture, in whichever direction
+// dominates. A trackpad keeps sending decaying momentum events long after the
+// fingers lift, so the end of a gesture is not silence: a new one is a pause of
+// 150 ms, a discrete wheel notch, or, once 300 ms have passed since the step, a
+// delta that grows past twice the recent ones or reverses direction.
+let wAcc = 0, wArmed = true, wLast = 0, wStep = -1e9, wHist = [];
+frame.addEventListener('wheel', (e) => {
+  if (openDays() < 2) return;
+  e.preventDefault();
+  let d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+  if (e.deltaMode === 1) d *= 16; else if (e.deltaMode === 2) d *= innerHeight;
+  const now = performance.now(), gap = now - wLast, ad = Math.abs(d);
+  wLast = now;
+  if (ad < 0.5) return;
+  let fresh = gap > 150;
+  if (!fresh && !wArmed && now - wStep > 300 && wHist.length) {
+    const prev = wHist[wHist.length - 1], floor = Math.min(...wHist.map(Math.abs));
+    fresh = (gap > 50 && ad >= 50) || (ad >= 20 && ad > floor * 2) || (ad >= 8 && Math.sign(d) !== Math.sign(prev));
+  }
+  wHist.push(d); if (wHist.length > 3) wHist.shift();
+  if (fresh) { wArmed = true; wAcc = 0; }
+  if (!wArmed) return;
+  wAcc += d;
+  if (Math.abs(wAcc) < 30) return;
+  wArmed = false; wStep = now;
+  const dir = wAcc > 0 ? 1 : -1; wAcc = 0;
+  if (!stepDay(dir)) nudge(dir);
+}, { passive: false });
+// ← → step the day when the forecast is showing and nothing else wants the keys
+// (the model toggle's radios do not count: see below).
+document.addEventListener('keydown', (e) => {
+  if ((e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') || e.altKey || e.ctrlKey || e.metaKey) return;
+  if (!currentSite || $('#windgram-content').hidden || !overlay.hidden) return;
+  if (e.target.closest && e.target.closest('input:not([type="radio"]), textarea, select, .wg-table')) return;
+  const dir = e.key === 'ArrowRight' ? 1 : -1;
+  e.preventDefault(); if (!stepDay(dir)) nudge(dir);
+});
+// The model toggle is a radio group, and a focused radio (a model was just clicked)
+// would switch models on the arrow keys by default. Never: ← → keep stepping the
+// day through the handler above, ↑ ↓ do nothing.
+$('.segmented').addEventListener('keydown', (e) => { if (e.key.startsWith('Arrow')) e.preventDefault(); });
+
+// ── Which models run a site's tile. Not every model runs every tile (the GFS
+// outlook runs issaquah only; a BC tile would be HRDPS only), so the toggle is
+// trimmed per site: each tile's legs publish latest/<model>/<region>/metadata.json,
+// and its presence, checked once per model and region, is the answer. A network
+// error counts as present, so a hiccup never hides a model. ──
+const regionModels = {};
+function modelsForRegion(region) {
+  if (!regionModels[region]) regionModels[region] = Promise.all(MODELS.map(async m => {
+    if (!metadata[m]) return false;
+    try { const r = await fetch(`${DATA_BASE}/forecasts/latest/${m}/${encodeURIComponent(region)}/metadata.json`, { cache: 'no-cache' }); return r.status !== 404; }
+    catch (_) { return true; }
+  })).then(flags => MODELS.filter((m, i) => flags[i]));
+  return regionModels[region];
+}
+let selectSeq = 0;
+async function selectSite(site) {
+  currentSite = site;
+  if (site && site.node && !$('#q').value) node = site.node;
+  renderFinder(); if (map) highlightMarker();
+  const seq = ++selectSeq;
+  const here = site ? await modelsForRegion(site.region || 'issaquah') : offeredModels;
+  if (seq !== selectSeq) return;                               // another site was picked meanwhile
+  const both = offeredModels.filter(m => here.includes(m));
+  const shown = both.length ? both : offeredModels;            // nothing known for the tile: show them all
+  MODELS.forEach(m => { const input = document.querySelector(`input[name="model"][value="${m}"]`); if (input) input.closest('label').hidden = !shown.includes(m); });
+  shownModels = shown;
+  await loadDays(); if (seq !== selectSeq) return;             // settles the day and model for this tile (e.g. GFS, then a site outside its tile)
+  updateWindgram(); syncUrl();
+}
+
+// ── Links: /<Site>[?model=..&day=..&view=table]; the 404 twin serves /<Site> ─
+function readParams(params, out) {
+  for (const [k, v] of params) {
+    if (k === 'site' && v) out.site = v;
+    else if (k === 'model' && MODELS.includes(v)) out.model = v;
+    else if (k === 'day' && /^\d{4}-\d{2}-\d{2}$/.test(v)) out.day = v;
+    else if (k === 'view' && (v === 'table' || v === 'chart')) out.view = v;
+  }
+}
+function parseLink() {
+  const out = { site: null, model: null, day: null, view: null };
+  const seg = location.pathname.replace(/^\/+|\/+$/g, '');
+  if (seg && !seg.includes('/') && !/\.html?$/i.test(seg)) { try { out.site = decodeURIComponent(seg); } catch (_) { out.site = seg; } }
+  readParams(new URLSearchParams(location.search), out);
+  const raw = location.hash.replace(/^#/, '');
+  if (raw) { if (raw.includes('=')) readParams(new URLSearchParams(raw), out); else if (!out.site) { try { out.site = decodeURIComponent(raw); } catch (_) { out.site = raw; } } }
+  return out;
+}
+function syncUrl() {
+  if (!currentSite) { history.replaceState(null, '', '/'); return; }
+  const p = new URLSearchParams();
+  const first = SLOTS.find(s => modelsFor(s.date).length);
+  if (currentDate && first && currentDate !== first.date) p.set('day', currentDate);
+  if (currentDate && currentModel !== autoModel(currentDate)) p.set('model', currentModel);
+  if (currentView === 'table') p.set('view', 'table');
+  const q = p.toString();
+  history.replaceState(null, '', '/' + encodeURIComponent(currentSite.name) + (q ? '?' + q : ''));
+}
+function applyLinkedSite(name) {
+  const s = name && siteIndex[siteKey(name)]; if (!s) return false;
+  selectSite(s); setScreen('forecast'); return true;
+}
+for (const ev of ['popstate', 'hashchange']) window.addEventListener(ev, () => { const l = parseLink(); if (l.site) applyLinkedSite(l.site); });
+$('#copy-link').addEventListener('click', async (e) => {
+  const btn = e.currentTarget, url = location.href;
+  try {
+    if (navigator.share && isNarrow()) { await navigator.share({ title: document.title, url }); return; }
+    await navigator.clipboard.writeText(url); btn.textContent = 'Copied'; setTimeout(() => { btn.textContent = 'Copy link'; }, 1500);
+  } catch (_) { window.prompt('Link to this site:', url); }
+});
+$('#back-btn').addEventListener('click', () => setScreen('list'));
+
+// ── Map picker: MapLibre loads on first open, never before ──────────────
+let map = null, markers = [], selectedMarker = null, siteBounds = null;
+const overlay = $('#mapOverlay');
+function loadMapLibre() {
+  if (window.maplibregl) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = 'https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css'; document.head.appendChild(css);
+    const js = document.createElement('script'); js.src = 'https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js'; js.onload = resolve; js.onerror = reject; document.head.appendChild(js);
+  });
+}
+function initMap() {
+  const esri = (service) => [`https://server.arcgisonline.com/ArcGIS/rest/services/${service}/MapServer/tile/{z}/{y}/{x}`];
+  map = new maplibregl.Map({
+    container: 'map',
+    style: { version: 8,
+      sources: {
+        'esri-gray': { type: 'raster', tiles: esri('Canvas/World_Light_Gray_Base'), tileSize: 256, maxzoom: 16, attribution: 'Basemap &copy; Esri, HERE, Garmin, OpenStreetMap contributors' },
+        'esri-hillshade': { type: 'raster', tiles: esri('Elevation/World_Hillshade'), tileSize: 256, maxzoom: 16, attribution: 'Hillshade &copy; Esri, USGS, NASA, NGA' },
+        'esri-labels': { type: 'raster', tiles: esri('Canvas/World_Light_Gray_Reference'), tileSize: 256, maxzoom: 16 } },
+      layers: [ { id: 'bg', type: 'background', paint: { 'background-color': '#e4e4e2' } }, { id: 'gray', type: 'raster', source: 'esri-gray' },
+        { id: 'hillshade', type: 'raster', source: 'esri-hillshade', paint: { 'raster-opacity': 0.5 } }, { id: 'labels', type: 'raster', source: 'esri-labels' } ] },
+    center: [-121.0, 46.5], zoom: 6, minZoom: 4, maxZoom: 16, attributionControl: false, dragRotate: false, pitchWithRotate: false, touchPitch: false,
+  });
+  map.touchZoomRotate.disableRotation();
+  map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
+  map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
+  const tip = new maplibregl.Popup({ closeButton: false, closeOnClick: false, anchor: 'bottom', offset: 16, className: 'site-tip' });
+  for (const site of sites) {
+    const el = document.createElement('div'); el.className = 'site-marker'; el.setAttribute('role', 'button'); el.setAttribute('aria-label', prettyName(site.name));
+    el.innerHTML = '<span class="glyph">🪂</span>';
+    const marker = new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat([site.lon, site.lat]).addTo(map);
+    marker.site = site;
+    el.addEventListener('mouseenter', () => tip.setLngLat(marker.getLngLat()).setText(prettyName(site.name)).addTo(map));
+    el.addEventListener('mouseleave', () => tip.remove());
+    el.addEventListener('click', (e) => { e.stopPropagation(); selectSite(site); closeMap(); if (isNarrow()) setScreen('forecast'); });
+    markers.push(marker);
+  }
+  const lons = sites.map(s => s.lon), lats = sites.map(s => s.lat);
+  siteBounds = sites.length ? [[Math.min(...lons), Math.min(...lats)], [Math.max(...lons), Math.max(...lats)]] : null;
+}
+function highlightMarker() {
+  if (selectedMarker) selectedMarker.getElement().classList.remove('selected');
+  selectedMarker = currentSite ? markers.find(m => m.site === currentSite) || null : null;
+  if (selectedMarker) selectedMarker.getElement().classList.add('selected');
+}
+async function openMap() {
+  overlay.hidden = false;
+  $('#map-hint').textContent = currentSite ? `Showing ${prettyName(currentSite.name)} · tap another marker to switch` : 'Tap a marker';
+  try { await loadMapLibre(); } catch (_) { $('#map-hint').textContent = 'The map could not load.'; return; }
+  if (!map) initMap();
+  map.resize(); highlightMarker();
+  if (currentSite) map.easeTo({ center: [currentSite.lon, currentSite.lat], zoom: 10, duration: 0 });
+  else if (siteBounds) map.fitBounds(siteBounds, { padding: 40, maxZoom: 9, animate: false });
+}
+const closeMap = () => { overlay.hidden = true; };
+$('#map-btn').addEventListener('click', openMap);
+$('#empty-map-btn').addEventListener('click', openMap);
+$('#site-map-btn').addEventListener('click', openMap);
+$('#map-close').addEventListener('click', closeMap);
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !overlay.hidden) closeMap(); });
+
+// A model that lacks the current day takes you to its nearest day instead.
+document.querySelectorAll('input[name="model"]').forEach(r => r.addEventListener('change', e => {
+  const m = e.target.value; chosenModel = m;
+  if (currentDate && !has(m, currentDate)) { const d = nearestDay(m, currentDate); if (d) { slideDir = d.date > currentDate ? 1 : -1; currentDate = d.date; } }
+  setModel(m); renderDays(); updateWindgram(); syncUrl();
+}));
+
+// ── Boot: link → metadata → models → days → sites ──────────────────────
+const pendingLink = parseLink();
+if (pendingLink.model) { chosenModel = currentModel = pendingLink.model; checkRadio(currentModel); }
+if (pendingLink.day) currentDate = pendingLink.day;
+if (pendingLink.view) currentView = pendingLink.view;
+if (new URLSearchParams(location.search).has('debug')) {
+  const segs = matchMedia('(horizontal-viewport-segments: 2)').matches ? 'h2' : matchMedia('(vertical-viewport-segments: 2)').matches ? 'v2' : '1';
+  const api = window.getWindowSegments ? window.getWindowSegments().length : (visualViewport && visualViewport.segments ? visualViewport.segments.length : 'n/a');
+  const dbg = $('#debug-line'); dbg.hidden = false;
+  const line = () => { dbg.textContent = `debug · viewport ${innerWidth}×${innerHeight} css px · screen ${screen.width}×${screen.height} · dpr ${devicePixelRatio} · pinch ${visualViewport ? visualViewport.scale.toFixed(2) : '?'} · segments media ${segs}, api ${api} · ${navigator.userAgent.replace(/^.*\) /, '')}`; };
+  line(); addEventListener('resize', line);
+}
+(async () => {
+  const sitesP = fetch('/sites.json').then(r => r.json()).catch(() => []);
+  const areasP = fetch('/areas.json').then(r => r.json()).catch(() => ({}));
+  await loadMetadata(); await pruneModels(); await loadDays();
+  sites = await sitesP; areas = await areasP;
+  siteIndex = {}; for (const s of sites) siteIndex[siteKey(s.name)] = s;
+  buildTree();
+  if (!applyLinkedSite(pendingLink.site)) { if (pendingLink.site) syncUrl(); setScreen('list'); renderFinder(); updateWindgram(); }
+})();
+})();
+</script>
+</body>
+</html>
